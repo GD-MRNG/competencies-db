@@ -26,7 +26,7 @@ Levels 4 and 5 are not part of the course pipeline; they are written from real-w
 - **Course folders:** kebab-case, descriptive (`devops-fundamentals`, not `course-1`)
 - **Topic slugs:** kebab-case from the topic's most distinctive nouns (`dns-resolution-chain`)
 - **Level 2+ filenames:** parent slug(s) joined with `--` separator (`topic--sub-concept--exercise`)
-- **Level 1 filenames:** two-digit numeric prefix for topics that come from numbered modules (e.g. `01_introduction.md`), zero-padded to a single digit doesn't apply — use double digits throughout
+- **Level 1 filenames:** two conventions exist depending on source structure. Sequential modules use a two-digit prefix with underscores (`01_introduction.md`, `02_cryptography.md`). Module-and-topic encoded courses use a four-digit prefix with a hyphen separator (`11-networking-fundamentals.md` = module 1, topic 1; `21-source-control.md` = module 2, topic 1). Follow whichever convention the course folder already uses.
 
 ## How the prompt pipeline chains
 
@@ -70,7 +70,13 @@ Each prompt declares named `{placeholder}` variables. The standard variables are
 | `level_2.md` | `{level_0_summary}`, `{level_1_post}`, `{level_2_candidate}` |
 | `level_3_handoff.md` | `{level_2_post}` |
 | `level_3.md` | `{level_0_summary}`, `{level_2_post}`, `{exercise_description}` |
+| `level_4.md` | `{author_notes}` (required); `{level_0_summary}`, `{level_2_post}`, `{level_3_post}` (optional) |
+| `level_5.md` | `{practice_description}`, `{organizational_context}`, `{author_experience}`, `{artifact_type}` (all required); `{level_2_post}`, `{level_3_post}`, `{level_4_post}` (optional) |
 | `learning_companion.md` | `{content}` (a Level 1 article) |
+| `structural_companion_engineer.md` | `{content}` (a Level 1 article, engineering audience) |
+| `structural_companion_analyst.md` | `{content}` (a Level 1 article, analyst audience) |
+
+The two structural companion prompts are variants of `learning_companion.md`. The engineer variant orients toward mechanics, failure modes, and tradeoffs; the analyst variant orients toward material conditions and structural mechanisms. Both produce the same five-section structure. See `_prompts/docs/structural_companion_prompts.md` for design notes on how to extend or adapt them.
 
 ## Content rules to preserve
 
