@@ -75,8 +75,9 @@ Each prompt declares named `{placeholder}` variables. The standard variables are
 | `learning_companion.md` | `{content}` (a Level 1 article) |
 | `structural_companion_engineer.md` | `{content}` (a Level 1 article, engineering audience) |
 | `structural_companion_analyst.md` | `{content}` (a Level 1 article, analyst audience) |
+| `structural_companion_civilisation.md` | `{content}` (any historical or civilisational content) |
 
-The two structural companion prompts are variants of `learning_companion.md`. The engineer variant orients toward mechanics, failure modes, and tradeoffs; the analyst variant orients toward material conditions and structural mechanisms. Both produce the same five-section structure. See `_prompts/docs/structural_companion_prompts.md` for design notes on how to extend or adapt them.
+The structural companion prompts share a common five-section pedagogy. See `_prompts/docs/structural_companion_prompts.md` for the overarching pattern and guidance on creating new variants.
 
 ## Content rules to preserve
 
