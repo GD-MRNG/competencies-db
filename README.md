@@ -2,6 +2,10 @@
 
 > A markdown-based repository for documenting and growing competencies over time.
 
+## Purpose
+
+To build a durable floor of understanding across the domains that matter — so that after any break, any shift, any disruption, you are never starting from zero. You always have structure to return to, entry points to re-engage from, and principles to reason with.
+
 ## What this is
 
 When you finish a course or read a book, the conventional move is to leave with a few highlights and maybe a summary. Six months later most of it is gone. This repo replaces that with a layered set of documents where each layer represents one increment of mastery for a given topic.
@@ -9,6 +13,20 @@ When you finish a course or read a book, the conventional move is to leave with 
 You do not generate every layer for every topic. You start at the top and descend only into the topics where deeper mastery is worth the effort. The result is a structured body of notes that shows not only what you know, but how you arrived there.
 
 The system works for technical material (a DevOps course, a security certification, a database book) and non-technical material (a course on negotiation, a book on systems thinking).
+
+## Principles
+
+- **Floor, not ceiling.** The goal is not mastery of everything. It is a solid surface to stand on in any territory that matters.
+- **Compounding over collecting.** Documents connect to each other. Connections become internalized. The value grows non-linearly over time.
+- **Honest depth.** The level of document you can produce for a topic is a signal of where you actually stand. Nothing is inflated.
+- **Principles over tools.** Tools change. Mental models endure. The system captures the reasoning behind things, not just the things themselves.
+
+## Outcomes
+
+- A web of mental models that grows denser and more connected over time
+- Faster re-entry into any domain after absence
+- Clearer self-assessment of where you actually stand on any topic
+- A foundation that makes complexity navigable rather than disorienting
 
 ## How it works
 
@@ -63,6 +81,11 @@ competencies-db/
 ```
 
 Filenames carry lineage. A Level 2 filename includes the parent Level 1 slug; a Level 3 filename includes both. Splitting any filename on `--` gives back the full parent chain.
+
+## What It Is Not
+
+Not a second brain. Not a note-taking system. Not a substitute for experience.
+It is infrastructure — built during the calm, so the storm has less power to disorient you.
 
 ## Licensing
 

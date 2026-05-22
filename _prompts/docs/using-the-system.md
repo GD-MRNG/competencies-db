@@ -1,5 +1,13 @@
 # Using the Competency System
 
+## Why this system exists
+
+This is personal knowledge infrastructure. The goal is not mastery of everything — it is a durable floor of understanding across the domains that matter, so that after any break, any shift, any disruption, you are never starting from zero. You always have structure to return to, entry points to re-engage from, and principles to reason with.
+
+The level of document you can honestly produce for a topic is a signal of where you actually stand. Nothing here is inflated. Documents connect to each other; connections become internalized; the value grows non-linearly over time.
+
+Return to this file when you come back to the system. The documents are the material. This is the reason they exist.
+
 ## The course pipeline, step by step
 
 When you finish a course, book, or other piece of structured learning material:
@@ -62,3 +70,8 @@ The five levels map directly onto a 1–5 mastery scale:
 - **5.** Can teach it and design systems around it. *(Level 5 artifact landed in a real audience.)*
 
 The level of doc you can honestly write for a topic is a strong signal of where you actually sit on that scale.
+
+## What this system is not
+
+Not a second brain. Not a note-taking system. Not a substitute for experience.
+It is infrastructure — built during the calm, so the storm has less power to disorient you.
