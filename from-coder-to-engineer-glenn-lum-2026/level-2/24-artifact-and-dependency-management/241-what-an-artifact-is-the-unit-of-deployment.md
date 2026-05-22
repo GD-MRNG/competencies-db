@@ -93,4 +93,101 @@ If you carry one thing forward from this post, it should be the habit of thinkin
 - Enable tag immutability in your artifact registry. Without it, the same tag can reference different artifacts over time, making it impossible to know what's actually running.
 - When redeploying during an incident, pull the existing artifact from the registry — do not rebuild from source. Rebuilding introduces variables you cannot control during an outage.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+A lot of deployment mistakes come from talking as if “the commit” and “the thing running” are the same object. They are not. That mismatch matters the moment you try to answer operational questions like: what exactly is in production, what did we test, and can we roll back to the known-good version? If your team only tracks source commits, those questions become surprisingly hard to answer with confidence.
+
+What breaks in practice is reproducibility of operations. You rebuild from the same commit and assume nothing changed, but the new build pulls a patched base image, resolves dependencies slightly differently, or runs under a different toolchain. Now “the same version” behaves differently across staging and production, or across two incident redeploys. You lose the ability to reason cleanly about cause and effect.
+
+This is why artifact identity matters. Without it, deployments become slippery: tags drift, rebuilds introduce invisible changes, and debugging gets contaminated by uncertainty about whether the software itself changed. The problem is not vocabulary precision for its own sake; the problem is being unable to say, with evidence, what bytes are actually running.
+
+---
+
+## What You Need To Know First
+
+**1. Build process**  
+A build is the set of steps that turns code into something runnable or deployable. Depending on the stack, that might mean compiling, bundling, linking, packaging dependencies, or assembling a container image. The important part is that a build is a transformation step between source code and execution.
+
+**2. Dependencies and version pinning**  
+Your application usually relies on third-party packages, libraries, or base images. “Pinning” means recording exact versions so the build uses the same dependency set each time, instead of “whatever is current.” This reduces one source of drift, but it does not eliminate all drift.
+
+**3. Hashes / digests**  
+A digest is a hash computed from content. You can think of it as a fingerprint of the bytes. If the content changes, the digest changes. That makes digests useful as immutable identifiers: they identify what something is, not just what someone called it.
+
+**4. Runtime configuration**  
+Some values should be supplied when the software runs, not when it is built: database URLs, API endpoints, credentials, feature flags, region-specific settings. If these are baked into the build output, then each environment needs its own separately built artifact.
+
+---
+
+## The Key Ideas, Connected
+
+**1. You do not deploy source code; you deploy an artifact.**  
+Source code is what humans write, but it is not usually what the runtime executes directly. Something has to happen in between: compilation, packaging, dependency installation, bundling, image creation. The result of that transformation is the artifact. That matters because the deployable unit is the output of the build, not the input. Once you accept that, the next question becomes: what determines the artifact you get?
+
+**2. A build is a function of multiple inputs, not just the source commit.**  
+The article’s formula is the key mechanic:
+
+`artifact = build(source, dependencies, toolchain, environment, configuration)`
+
+This means the commit SHA tells you only one part of the story. The exact dependency graph, compiler or runtime version, OS libraries, CPU architecture, locale, build flags, and embedded config can all influence the output. That is why “same commit” does not imply “same artifact.” Once you see the build as a multi-input function, it becomes obvious why rebuilding later can silently produce different results.
+
+**3. Because builds can vary, source identity and runtime identity must be separated.**  
+A commit identifies authored source at a point in version control. An artifact identifies a concrete built output. Those are related, but not interchangeable. Two builds from the same commit can produce different artifacts if any non-source input changed. So if your operational question is “what is running?”, a commit is an incomplete answer. You now need a way to identify the artifact itself, which leads directly to tags versus digests.
+
+**4. Tags are labels; digests are identity.**  
+A tag like `v1.2.3` or `latest` is a human-assigned pointer. It is convenient, but it can be moved. A digest is derived from the artifact’s content, so it changes only when the bytes change. Mechanically, this is the difference between naming by convention and naming by content. If your deployment references a tag, the meaning of that reference can change without the manifest changing. If your deployment references a digest, changing what runs requires changing the reference itself. That makes the change visible and reviewable.
+
+**5. Once artifact identity is content-based, safe deployment means deploying the exact tested artifact.**  
+If a digest identifies one exact set of bytes, then “the artifact we tested” is a concrete thing, not an abstract version label. From there, the next principle follows almost automatically: the thing promoted to production should be the same digest that passed staging or tests. If you rebuild for production, you have broken that chain. Even if the source commit matches, the output might not. So the tested object and the deployed object diverge.
+
+**6. This creates the build-once, promote-through-environments model.**  
+To preserve identity, you build once, store the artifact, test that artifact, and then promote that same artifact to later environments. Promotion is not another build step; it is a decision about where to deploy an already-built object. This model exists because repeated building reintroduces variation. If deployment safety means “production runs the tested bytes,” then rebuilding per environment defeats that safety property.
+
+**7. Build-once promotion only works if environment-specific values are not baked into the artifact.**  
+This is an important dependency. If the artifact contains a staging DB URL or staging-only flags, you cannot promote it unchanged to production. You are forced to rebuild. So the promotion model requires environment-agnostic artifacts and runtime configuration injection. In other words: immutability of the artifact pushes configuration out of the build and into deployment/runtime mechanisms.
+
+**8. Immutable artifacts and reproducible builds are different guarantees.**  
+An immutable artifact means that after creation, those exact bytes are stored and deployed unchanged. A reproducible build means rerunning the build with the same inputs produces the same bytes again. The first is about deployment consistency; the second is about rebuild verifiability. This distinction matters because teams often chase reproducibility when their immediate operational need is simply to stop rebuilding during promotion or incident response. You need immutability to know what you are running. You need reproducibility to prove a rebuild would match.
+
+**9. Most real failure modes come from violating artifact identity without noticing.**  
+“Redeploy the same version” often means “rerun CI on the same commit,” which is not the same thing at all. Tag overwrites let the label stay stable while the content changes underneath. Environment-specific builds multiply artifacts and make staging validation less meaningful. Poor container layer structure inflates artifact size and slows pulls because the artifact is actually a stack of content-addressed layers, not one opaque blob. These failures are all expressions of the same underlying mistake: treating deployment as if the source version alone determines what runs.
+
+**10. The right mental model is: source expresses intent, artifact is the executable snapshot.**  
+Source tells you what developers wrote. The artifact captures what the build system actually resolved, compiled, bundled, and packaged at one moment in time. Operationally, the artifact is the thing you can store, hash, promote, redeploy, and audit. Once you internalize that, “what’s running?” stops being answered with a branch or commit and starts being answered with an artifact digest.
+
+---
+
+## Handles and Anchors
+
+**1. Handle: “A commit is a recipe; an artifact is the meal.”**  
+The recipe describes what should be made. But the actual meal depends on ingredients, kitchen tools, substitutions, and preparation. Two cooks can use the same recipe and produce different dishes. In the same way, two builds from the same commit can produce different artifacts.
+
+**2. Handle: “Tags are nicknames; digests are fingerprints.”**  
+A nickname can be reused or reassigned. A fingerprint is tied to the thing itself. If you want operational certainty, use the fingerprint.
+
+**3. Question to ask of any deployment system:**  
+“When we say ‘deploy the same version,’ do we mean reusing the exact same artifact bytes, or rebuilding from the same source?”  
+If the answer is the second one, the system is less stable than it sounds.
+
+---
+
+## What This Changes When You Build
+
+**1. An engineer who understands this will treat the artifact registry as part of the release system, because the deployable unit must be stored and reused, not regenerated.**  
+The unaware default is to let CI build on demand whenever a deployment happens. The consequence is that rollback and incident redeploys become fresh builds, which introduces new variables exactly when you need stability.
+
+**2. An engineer who understands this will pin deployments by digest, not by mutable tags, because “same tag” does not guarantee “same bytes.”**  
+The unaware default is to deploy `:latest` or even a semantic version tag and assume that label is stable enough. The consequence is silent drift: pod restarts or later deploys may pull different content without any config diff showing why.
+
+**3. An engineer who understands this will design pipelines around build-once promotion, because test results only transfer if the exact artifact transfers.**  
+The unaware default is separate staging and production builds from the same commit. The consequence is false confidence: staging validated one artifact, production runs another.
+
+**4. An engineer who understands this will move environment-specific configuration to runtime injection, because baked-in config prevents artifact promotion across environments.**  
+The unaware default is compiling endpoints, flags, or credentials directly into the artifact for each environment. The consequence is multiple environment-specific artifacts, slower pipelines, and no clean path to immutable promotion.
+
+**5. An engineer who understands this will care about Dockerfile layer ordering and artifact composition, because the artifact is a structured object whose layout affects operational cost and speed.**  
+The unaware default is writing a Dockerfile that copies everything early and rebuilds large layers constantly. The consequence is larger pushes and pulls, worse cache reuse, slower deploys, and higher registry/network costs.
+
+---

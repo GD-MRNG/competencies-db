@@ -110,4 +110,97 @@ What makes this framework powerful is not its precision — the specific numbers
 
 - SLO-based alerting has a coverage gap for failures that prevent requests from reaching your instrumentation; synthetic monitoring from external vantage points is the necessary complement.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Reliability is easy to talk about badly. Teams often say things like “the service seems stable” or “we should probably be more careful with deploys,” but those are judgment calls, not operating rules. When reliability is handled as a feeling, every release becomes a negotiation: product wants to ship, engineering is nervous, and nobody has a shared way to decide whether the system can absorb more risk. The result is usually one of two bad defaults: either teams move too cautiously and slow down unnecessarily, or they keep shipping through visible degradation until users force the issue.
+
+What breaks in practice is not just uptime — it is decision quality. Alerts fire on thresholds that do not map to user pain. Dashboards are green while users are failing at the edge. Teams burn time arguing about whether an incident was “bad enough” to halt launches. And when reliability targets exist but have no policy attached, they become retrospective scorecards rather than something that changes behavior. The SLI/SLO/error budget framework exists to turn reliability into something operational: measurable in a user-relevant way, bounded over time, and tied to specific actions when the system is spending too much reliability.
+
+---
+
+## What You Need To Know First
+
+**1. Metrics vs. user experience signals**  
+A metric is just a measurement: error count, latency, CPU usage, request volume. Useful, but incomplete. To reason about reliability, you need a measurement that says something about whether users actually got acceptable service. The article’s core move is to distinguish raw internal measurements from signals that represent “how often did the user get what they needed?”
+
+**2. Time windows**  
+Most reliability claims are not about a single instant; they are about performance over some span of time. “99.9% over 30 days” means small failures may be acceptable, but only up to a limit within that window. The choice of window matters because it changes how quickly past failures stop affecting current decisions.
+
+**3. Percentiles**  
+A percentile tells you how the worst part of a distribution behaves. If p99 latency is 200ms, that means 99% of requests are faster than 200ms and 1% are slower. This matters because averages hide tails. In systems work, the tail often contains the real failure modes users notice.
+
+**4. Feedback control as a mental model**  
+A control system measures some output, compares it to a target, and adjusts behavior based on the gap. You do not need formal control theory here — just the idea that measurement is only useful if it feeds action. That is the shape of the SLI/SLO/error budget system: measure, compare to target, change operating behavior.
+
+---
+
+## The Key Ideas, Connected
+
+**1. An SLI is a ratio of acceptable outcomes, not just any metric.**  
+The important distinction is that an SLI answers: “Out of all the things users tried to do, how many were good?” That ratio structure matters because reliability is about the fraction of interactions that met a standard, not about isolated raw counts. Ten errors means something very different in a thousand requests than in a hundred million requests. Once you define reliability as a ratio, you are forced to define what counts as “good,” which leads directly to the next idea.
+
+**2. The definition of “good” is the real design decision in an SLI.**  
+A request can be “good” because it returned without a 5xx, or because it finished under 300ms, or because it returned correct and fresh data. Those are different user promises. This is why an SLI is not mechanically extracted from existing telemetry; it is chosen. If you choose badly, you can measure the system accurately and still learn the wrong thing. That makes measurement location important, because even a good definition of “good” can become misleading if you observe it from the wrong place.
+
+**3. Where you measure the SLI determines which failures are visible.**  
+If you measure at the app server, you only see what reaches the app server. If DNS is broken, the user cannot connect, but your app-side SLI may still look perfect because no bad requests arrived there to be counted. If you measure at the load balancer, you see more of the path, but still not everything the user experiences. If you measure at the client, you capture the real path but inherit more noise and operational complexity. The mechanism here is simple: an instrument can only observe failures downstream of where it sits. That is why “measure close to the user” is not a slogan; it follows from what failures each vantage point can and cannot see. Once you have a visible ratio measured from some vantage point, you can set a target on it.
+
+**4. An SLO is an SLI plus a target plus a time window.**  
+An SLO is not just “99.9%.” It is a specific promise about a specific user-relevant ratio over a specific span of time. Remove the window, and you cannot say when the promise has been kept or broken. Remove the SLI definition, and you do not know what is being promised. Remove the target, and there is nothing to compare performance against. This combination is what turns measurement into a standard. That standard cannot be 100% in realistic systems, which brings in the next idea.
+
+**5. The target is below 100% because change and dependencies introduce unavoidable risk.**  
+A 100% target means any failure is unacceptable, which effectively means no risk-taking is acceptable. But deployments, migrations, dependency outages, retries, failovers, and configuration changes all carry nonzero failure probability. Also, your service cannot usually be more reliable than the chain it depends on without substantial extra architecture. So the SLO target is really an explicit answer to: “How much unreliability is acceptable before users or the business are materially harmed?” Once you accept less than perfection, you have created a gap between perfect service and acceptable service. That gap is the error budget.
+
+**6. The error budget is the allowed amount of unreliability implied by the SLO.**  
+If your target is 99.9%, the missing 0.1% is not an accident — it is the amount of failure you are allowing yourself. This is the conceptual shift the article cares about most. Instead of treating failure as something vaguely bad, you treat a bounded amount of it as spendable. The budget is finite and depletes as bad events accumulate. That makes reliability legible as a resource, but a raw amount remaining is still not enough to operate on moment to moment. You also need to know the speed of consumption.
+
+**7. Burn rate tells you whether the current failure pattern is dangerous.**  
+A remaining budget number is static: it says how much room you have left. Burn rate is dynamic: it says how quickly you are eating that room. The mechanism is what makes it useful: the same instantaneous error rate means different things depending on how long it persists. A brief spike may be irrelevant; a sustained smaller issue may exhaust the whole window. Burn rate combines severity and duration into one operational signal. That is why it works better for alerting than fixed thresholds — it asks not just “is the error rate elevated?” but “at this pace, are we on track to run out of tolerated unreliability too soon?” Once alerting is based on budget consumption, the framework is ready to drive behavior.
+
+**8. The framework only works if exhausting the budget changes what the organization is allowed to do.**  
+Without an attached policy, an error budget is just a descriptive number. The mechanical point is important: the budget is supposed to close a loop. If the budget gets low or reaches zero, deploy policy, review rigor, rollout speed, or engineering priorities should change. Otherwise, no control action occurs and the system is open-loop — it observes reliability but does not regulate behavior with it. This is why teams with dashboards but no enforcement get very little value. But even with enforcement, the framework can still fail if the measured signal does not match actual user value.
+
+**9. The framework breaks when the SLI is gameable, incomplete, or disconnected from user experience.**  
+If you measure CPU, you are not measuring user experience at all. If you measure only availability, teams can preserve the success ratio while harming latency or correctness. If you measure only at the gateway, outages before the gateway remain invisible. These are not edge cases; they come directly from how targets shape behavior. Once a number becomes a target, teams optimize for it. That is Goodhart’s Law in system form. The response is not to abandon SLOs, but to design them more carefully: use multiple SLIs for different dimensions of user experience and complement internal event-based measurement with synthetic checks that cover blind spots.
+
+**10. The full system is a control loop for balancing velocity against reliability.**  
+Now the earlier pieces fit together. The SLI is the sensor. The SLO is the acceptable operating point. The error budget is the allowed deviation. Burn rate is the “how urgently is this drifting?” signal. Policies tied to exhaustion are the actuator that changes engineering behavior. This is why the article says the output is not a dashboard but a decision. The framework’s purpose is to help an organization decide when it can safely move fast and when reliability debt has become too expensive to keep spending.
+
+---
+
+## Handles and Anchors
+
+**1. Reliability budget is like financial budget, not a smoke alarm.**  
+A smoke alarm only tells you something is wrong right now. A budget tells you how much capacity you have left to spend and whether your current spending rate is sustainable. That is the jump from threshold monitoring to error budgets.
+
+**2. Ask: “What user failure can this measurement not see?”**  
+This is a strong test for whether an SLI is well designed. If a DNS outage, stale response, or slow tail request can badly hurt users while your SLI stays green, your measurement point or “good event” definition is wrong or incomplete.
+
+**3. Core tension: “How much failure are we willing to spend in exchange for shipping faster?”**  
+That sentence captures why SLOs are governance, not just observability. The framework exists because reliability and delivery speed compete, and teams need an explicit rule for trading one against the other.
+
+---
+
+## What This Changes When You Build
+
+**1. An engineer who understands this will define service objectives from user interactions, not infrastructure symptoms, because only user-facing ratios can support meaningful reliability policy.**  
+The unaware default is to pick whatever is easy to graph — CPU, memory, queue depth, generic error count. That produces attractive dashboards but weak decisions, because the team is managing machine stress rather than user harm.
+
+**2. An engineer who understands this will choose instrumentation points deliberately because where the SLI is measured determines what classes of incidents count against reliability.**  
+The unaware default is to measure wherever telemetry already exists, often deep inside the service. The consequence is blind spots: edge failures, DNS problems, TLS expiry, CDN issues, and network path failures can produce severe outages that do not show up in the SLO.
+
+**3. An engineer who understands this will use latency thresholds and percentiles instead of averages because tail behavior is where meaningful user pain and system pathologies often show up.**  
+The unaware default is average latency, because it is simple and familiar. The consequence is that a minority of very bad experiences disappear inside a healthy-looking mean, especially during lock contention, cache misses, GC pauses, or retry storms.
+
+**4. An engineer who understands this will build burn-rate-based alerting with different urgency tiers because operational response should depend on how quickly the budget is being consumed, not merely on whether a raw error threshold was crossed.**  
+The unaware default is a static alert like “page if errors exceed 1%.” That tends to create either noisy pages for harmless spikes or silence during long, slow degradations that are quietly draining the month’s reliability.
+
+**5. An engineer who understands this will attach explicit release and prioritization policies to budget exhaustion because the framework only changes outcomes when low reliability constrains future risk-taking.**  
+The unaware default is to publish SLOs without enforcement. The consequence is organizational theater: reliability is measured, reviewed, and discussed, but feature delivery continues unchanged, so the supposed tradeoff between velocity and stability never actually gets managed.
+
+**6. An engineer who understands this will often define multiple SLIs for one service because optimizing one dimension alone can degrade another while keeping the target green.**  
+The unaware default is a single easy metric, usually availability. The consequence is metric gaming by accident or necessity: fast but empty responses, successful retries that are painfully slow, or technically served but stale data.
+
+---

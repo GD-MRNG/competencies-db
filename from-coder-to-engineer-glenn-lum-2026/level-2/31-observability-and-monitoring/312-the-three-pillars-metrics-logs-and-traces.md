@@ -95,4 +95,100 @@ No single projection can reconstruct the full picture. A metric tells you someth
 - **If you're aggregating logs to produce a number, you need a metric. If you're joining logs across services to reconstruct a call path, you need a trace.** Misusing one pillar as a substitute for another produces worse results at higher cost.
 
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+A lot of teams think they “have observability” because they’ve deployed the standard tooling set: metrics backend, log aggregator, tracing system, dashboards. Then an incident happens and they discover they still cannot answer basic questions fast enough: What is broken? Which requests are affected? Where in the call chain is the time going? They have data, but not a model of what that data actually represents.
+
+What usually goes wrong is not lack of collection, but mismatch between question and data model. Teams ask metrics to explain a single bad request, ask logs to provide cheap real-time fleet-wide signals, or expect traces to be complete when context propagation or sampling broke them. The result is slow incident response, expensive storage, misleading dashboards, and blind spots exactly where engineers expected clarity.
+
+If you do not understand the mechanics underneath metrics, logs, and traces, you inherit bad defaults without noticing: high-cardinality metrics that blow up the backend, massive log volumes doing the job of metrics, traces that look “enabled” but are fragmented and missing the requests you care about. The practical problem is not terminology. It is that the wrong representation gives you the wrong answers.
+
+---
+
+## What You Need To Know First
+
+**Aggregation**  
+Aggregation means combining many raw events into a summary. Instead of storing “request A took 230ms” and “request B took 410ms,” you might store bucket counts or totals that summarize many requests over time. Aggregation is what makes metrics cheap and fast, but it also destroys detail. Once data has been folded into a summary, you cannot recover the original events from it.
+
+**Labels / dimensions**  
+A label is a key-value tag attached to telemetry, like `method=GET` or `status=500`. Labels let you break data down by category. In metrics systems, every unique combination of label values creates a separate time series, so labels are useful but also dangerous when they have too many possible values.
+
+**Distributed request flow**  
+In a microservice system, one user request often becomes many internal operations: service A calls service B, which calls a database and service C, which calls an external API, and so on. Understanding system behavior means understanding not just isolated events, but how one unit of work triggers others across boundaries.
+
+**Percentiles vs averages**  
+An average gives you one central value, but it can hide outliers. Percentiles answer questions like “how slow are the slowest 1% of requests?” For latency, this matters because users often feel tail behavior, not the average. The article assumes you already care about that distinction because it changes what metrics need to capture.
+
+---
+
+## The Key Ideas, Connected
+
+**The three pillars are different data structures, not three interchangeable views of the same data.**  
+Metrics, logs, and traces exist because each preserves a different aspect of system behavior and throws away different information. That means each is good at different questions by construction, not by tooling preference. Once you see them as different data models, the rest of the tradeoffs make sense: cost, speed, failure modes, and query style all follow from what the system chooses to store.
+
+**Metrics store pre-aggregated numerical summaries over time.**  
+A metric is not a list of request events. It is a compact rolling summary: counters go up, gauges change, histogram buckets are incremented. The key consequence is that storage cost depends mostly on how many distinct time series you have, not how many raw events occurred. That is why metrics stay cheap even at high request rates and are suitable for alerting and dashboards. But the mechanism that makes them cheap is exactly what removes per-event identity. Since the raw events are never kept, metrics can tell you that latency got worse but can never tell you which exact request was slow. That limitation leads directly to the next idea: the central operational constraint in metrics is not event volume, but series explosion.
+
+**In metrics systems, cardinality is the governing constraint because every unique label combination becomes a separate time series.**  
+If you add labels with a small bounded set of values, you create a manageable number of series. If you add something unbounded like `user_id` or `request_id`, the number of time series multiplies dramatically. The backend must track each active series in memory and storage, so high cardinality can overload the monitoring system itself. This is why experienced engineers treat label choice as architecture, not decoration. Once you understand that metrics are compressed summaries indexed by label combinations, it becomes obvious why they cannot safely carry highly specific identifiers. Those detailed, high-cardinality facts need a different representation: logs or traces.
+
+**Logs preserve individual events and their full attached context.**  
+A log record keeps the event as an event: this request, this user, this downstream target, this error, this duration. That is why logs can answer highly specific forensic questions that metrics fundamentally cannot. But logs do this by storing each event separately, so cost scales with event volume. More requests means more records to ingest, index, and retain. This is not a tooling flaw; it is the direct price of preserving identity and detail. Because logs preserve arbitrary event context but not causal structure across services by default, they solve a different problem than metrics and expose the need for a representation that captures relationships, not just records.
+
+**Traces capture causality and structure by representing work as a graph of related spans.**  
+A trace is not just “logs with IDs” and not “metrics for a request.” It is a graph showing how one request moved through the system: which operation called which, what happened in parallel, and where time accumulated. That graph structure is the unique thing traces preserve. Metrics lose identity; logs preserve identity but flatten events unless you reconstruct relationships yourself. Traces explicitly encode the parent-child relationships, which is what lets you answer “why was this request slow?” in a cross-service sense. But because traces depend on linked spans from multiple services, they are only as complete as the context propagation that creates those links.
+
+**Trace context propagation is the mechanism that turns isolated spans into one coherent trace.**  
+When an incoming request starts a trace, the service creates identifiers for the overall request and for its own unit of work, then sends that context on downstream calls. Each downstream service must extract that context, create its own child span, and continue forwarding it. If any service fails to do that, the graph breaks into disconnected pieces. This means tracing quality is not just about “tracing turned on”; it depends on consistent participation across every hop. In polyglot systems, this is often where reality diverges from intent. And once you realize traces require cooperation everywhere, the next problem appears: even if propagation works, keeping every trace can be too expensive.
+
+**Tracing at scale requires sampling, which means accepting intentional incompleteness.**  
+A high-throughput system generates too many spans to retain all of them economically. Sampling is how you cap cost, but the way you sample determines what kinds of debugging are possible. Head-based sampling decides early and is operationally simple, but it randomly discards many traces before you know whether they were interesting. Tail-based sampling waits to see the outcome and can keep error or high-latency traces, but that requires buffering and more collector-side complexity. This is a direct tradeoff between cost predictability and diagnostic usefulness. Once traces are sampled and metrics are aggregated, you now have multiple incomplete projections of reality. To investigate effectively, you need a way to move between them.
+
+**The main practical failure mode is not missing telemetry, but uncorrelated telemetry.**  
+A team notices a latency spike in metrics, searches logs around that time, maybe opens traces, and still spends too long manually lining things up. That happens because the three data stores are not linked. Without shared identifiers, engineers are doing timestamp archaeology instead of investigation. Correlation identifiers solve this by letting a metric point to an example trace, and logs carry the trace ID that ties a local event back to the broader request path. The mechanism matters: the identifiers must be attached at instrumentation time and supported by the tooling path end to end. Otherwise the pillars remain separate systems.
+
+**Using one pillar as a substitute for another creates both cost and clarity problems.**  
+If you scan logs to compute latency numbers, you are paying event-level storage and query cost for a question that metrics answer naturally. If you reconstruct call chains by joining logs with request IDs, you are manually rebuilding something traces are designed to represent. This misuse happens when teams focus on “we have data” rather than “what representation fits this question?” The right mental move is to start from the question: aggregate fleet behavior suggests metrics; event-specific local detail suggests logs; cross-service causal structure suggests traces. That leads to the final model.
+
+**The three pillars are three projections of one underlying stream of system activity, each preserving different information and discarding different information.**  
+Metrics preserve aggregate shape and discard identity. Logs preserve event identity and local context but do not natively encode system-wide causality. Traces preserve causal structure across components but often via partial collection and fragile propagation. No one projection can reconstruct the others after the fact because the discarded information is truly gone. That is why observability is not about picking the “best” pillar. It is about knowing which lens fits the current question and designing the system so you can pivot between lenses when one stops being sufficient.
+
+---
+
+## Handles and Anchors
+
+**1. Three cameras pointed at the same traffic intersection.**  
+Metrics are the traffic counter: 400 cars per minute, average speed, congestion level. Logs are the police notebook: this specific car ran the light at 2:03 PM. Traces are the route map of one car through multiple intersections. Same reality, different captured information. You cannot reconstruct a single car’s route from the counter, and you cannot cheaply measure total traffic by reading every notebook entry.
+
+**2. “Cheap means compressed; detailed means expensive.”**  
+This sentence captures a lot. Metrics are cheap because they compress events into summaries. Logs are detailed because they keep events, and that costs money. Traces keep structure, which costs coordination and often sampling. If a system is both cheap and detailed, ask what information it is silently discarding.
+
+**3. Ask: what question am I actually asking?**  
+- “Is the fleet unhealthy right now?” → metric question.  
+- “What happened to this exact request?” → log question.  
+- “Why did this request become slow across services?” → trace question.  
+This is a practical diagnostic handle you can use in real incidents and in design reviews.
+
+---
+
+## What This Changes When You Build
+
+**An engineer who understands this will choose metric labels differently because every extra label combination creates real backend series cost.**  
+The unaware engineer often adds labels like `user_id`, `session_id`, or `request_id` because they sound useful for slicing dashboards later. The consequence is a cardinality explosion that makes the metrics system slow, expensive, or unstable. The informed engineer restricts metric labels to bounded dimensions and routes high-cardinality detail into logs or traces instead.
+
+**An engineer who understands this will instrument latency with histograms rather than relying on averages or precomputed per-instance percentiles because only histograms can be merged correctly across instances.**  
+The unaware engineer sees a nice p99 on each pod or an average latency graph and assumes they can roll those up for the service. The consequence is misleading fleet-level latency visibility, especially in tail behavior. The informed engineer chooses histogram buckets deliberately at instrumentation time, knowing that bucket design constrains future analysis.
+
+**An engineer who understands this will treat trace propagation as a cross-service integration requirement, not a library checkbox, because one non-participating hop breaks the causal graph.**  
+The unaware engineer enables tracing in a few services and assumes traces are “on.” During an incident they discover fragmented traces and missing links right where the problem sits. The informed engineer verifies propagation through HTTP headers, async message metadata, gateways, and background workers, and tests for broken context paths explicitly.
+
+**An engineer who understands this will choose a sampling strategy based on incident questions, not just cost targets, because sampling determines which failures are visible later.**  
+The unaware engineer picks a low head-sampling rate to control spend and later finds that rare but important error traces are absent. The informed engineer asks whether the system must reliably retain slow/error traces and, if so, accepts the collector complexity of tail-based sampling or some hybrid policy.
+
+**An engineer who understands this will add correlation identifiers across pillars because investigation speed depends on pivoting between representations without manual matching.**  
+The unaware engineer leaves logs, metrics, and traces as separate tools and relies on timestamps and guesswork during incidents. The consequence is slow diagnosis and fragile human correlation. The informed engineer ensures logs carry trace IDs, metrics emit exemplars where possible, and tooling supports click-through from anomaly to trace to local event detail.
+
+**An engineer who understands this will stop using logs as the default sink for every observability need because logs are the most expensive place to do metric or trace work badly.**  
+The unaware engineer logs durations, aggregates them later, and stitches request IDs together to infer system paths. The consequence is huge log bills and slow queries for routine operational questions. The informed engineer keeps logs for event context, emits metrics for summaries, and uses traces for cross-service structure, reducing both cost and cognitive friction during debugging.

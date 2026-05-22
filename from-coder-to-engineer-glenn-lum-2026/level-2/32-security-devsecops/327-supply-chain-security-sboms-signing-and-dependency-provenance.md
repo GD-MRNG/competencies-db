@@ -107,4 +107,130 @@ The underlying principle is that trust must be *verifiable and automated*. A hum
 - Transitive dependency chains are the weakest link: your supply chain visibility extends only as far as your dependencies themselves publish SBOMs and provenance, which today is rarely more than one level deep.
 - Package URL (purl) identifiers are what make SBOMs queryable against vulnerability databases — without stable, cross-ecosystem identifiers, correlation degrades to unreliable string matching.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Modern software is assembled from layers you did not write: packages, container base images, compilers, build actions, vendored code, transitive dependencies. That means an attacker does not need to break into your production cluster directly if they can poison something upstream and let your normal build and deploy process carry it the rest of the way. When teams only talk about “supply chain security” in terms of documents and signatures they produced, they often miss the operational question that matters: what in the pipeline actually refuses bad artifacts?
+
+Without a working model here, teams create evidence but not enforcement. They generate SBOMs that nobody queries, sign images that nobody verifies, and attach provenance that no policy engine reads. In that state, a vulnerable library stays unnoticed until exploitation, a malicious image signed from the wrong identity still deploys, or a release built from an untrusted workflow is treated the same as one built from hardened CI. The failure mode is not “we lacked a security artifact.” The failure mode is “we had no mechanism turning that artifact into a trust decision.”
+
+The topic matters because these mechanisms answer different questions, and if you confuse them you leave gaps. Knowing what is inside an artifact does not tell you who produced it. Knowing who signed it does not tell you whether it came from your approved build path. If you do not separate those questions, you will think you have coverage while an attack walks through the unanswered one.
+
+---
+
+## What You Need To Know First
+
+**1. Hashes and digital signatures**  
+A hash is a fingerprint of data: if the file changes, the hash changes. A digital signature uses a private key to sign that fingerprint so that anyone with the public key can verify two things: the content has not changed, and the signer possessed the private key. That is the base mechanism behind artifact signing.
+
+**2. CI/CD pipelines and build systems**  
+A build system is the thing that turns source code plus inputs into an artifact: binary, package, image, release bundle. CI/CD pipelines automate that process. This matters because many supply-chain claims are really claims about the build environment: what inputs it used, what workflow ran, and whether that environment can be trusted not to forge results.
+
+**3. Container images and OCI registries**  
+A container image is a packaged filesystem plus metadata, usually stored in a registry. OCI is the common format and distribution model many tools build around. Signatures and attestations can be stored next to the image in the same registry and linked to the image by digest, which is why registries become the place where these trust artifacts live.
+
+**4. Dependency graphs and transitive dependencies**  
+Your code depends on packages directly, and those packages depend on others. Those indirect dependencies are transitive dependencies. Supply-chain security gets tricky because the real software you ship includes the whole graph, not just the top-level packages you intentionally chose.
+
+---
+
+## The Key Ideas, Connected
+
+**1. Supply chain security is really three separate questions about an artifact: what is in it, who produced it, and how it was produced.**  
+The article’s core model is that SBOMs, signatures, and provenance are not interchangeable controls. They cover different uncertainty. An SBOM describes composition. A signature binds an artifact to an identity. Provenance describes the build process that created it. You need this separation first because the rest of the mechanics only make sense if you stop expecting one artifact to answer all three questions.
+
+That separation immediately creates a practical requirement: each question needs its own evidence and its own verification path. Once you see that, it becomes obvious why “we sign our images” does not answer “what vulnerable libraries are inside them,” and “we generated an SBOM” does not answer “did this come from our approved CI.” That leads directly to understanding SBOMs more precisely.
+
+**2. An SBOM is a standardized inventory of the components actually present in a built artifact, not just a list of declared dependencies.**  
+A dependency file like `package-lock.json` or `go.sum` reflects what your source says it wants or resolved during package management. An SBOM aims to describe the contents of the final thing you ship: packages, embedded libraries, OS packages, runtimes, build tools, vendored code, and more. The reason standard formats matter is that machines need a predictable structure to query and compare across tools.
+
+This matters because vulnerability matching is not done against “whatever developers wrote in a manifest.” It is done against identified components in shipped artifacts. If your goal is to ask “are we running something affected by this new CVE?”, the quality of that answer depends on whether the SBOM reflects reality. That requirement forces the next idea: when and how you generate the SBOM changes what it can truthfully claim.
+
+**3. The timing of SBOM generation determines whether it describes declared intent, observed build inputs, or detectable shipped contents.**  
+Source-level generation is fast because it reads manifests, but it only sees what was declared. Build-time generation sees what the resolver, compiler, linker, and image builder actually used. Binary analysis sees what ended up in the final artifact but can miss things that are hard to detect from compiled output. These are not just implementation choices; they are different observation points on the lifecycle of software.
+
+Mechanically, each point has blind spots because each sees a different slice of reality. Source analysis misses what the build introduced. Binary analysis misses what cannot be inferred from bytes alone. Build-time generation often gives the strongest practical view because it watches the actual assembly process. Once you understand that, another requirement appears: if the SBOM is going to drive automation, its component names must be stable enough for other systems to match reliably.
+
+**4. Stable identifiers like purl are what make an SBOM machine-actionable instead of merely human-readable.**  
+If one tool says “lodash,” another says “npm lodash,” and a vulnerability database stores “pkg:npm/lodash@4.17.21,” correlation becomes brittle guesswork. Package URL gives a standard way to identify packages across ecosystems. That lets scanners and policy systems join SBOM entries to vulnerability records reliably.
+
+This is a deeper point than formatting. Queryability is the whole value proposition if you want automation. Without stable identifiers, the SBOM cannot consistently answer “does this artifact contain component X?” And once the SBOM becomes machine-actionable, you hit the operational truth the article stresses: the document by itself still does nothing unless some system consumes it.
+
+**5. SBOMs create security value only when they are consumed by a pipeline that continuously correlates them against vulnerability intelligence.**  
+An SBOM sitting in storage is inert. The useful system is: generate SBOM, store it where it can be found, ingest it into a service, correlate components against updated CVE data, and alert or gate when there is a match. The mechanism is important: vulnerabilities are often discovered after deployment, so the pipeline must re-check old artifacts against newly updated vulnerability data.
+
+That is why “we generated the SBOM during build” is not the finish line. The artifact answers “what is in this image,” but only a consuming system turns that into “this image now contains a newly disclosed vulnerable library.” Once you see that gap between evidence and decision, the same pattern becomes easier to understand for signing.
+
+**6. Artifact signing proves that a particular identity signed a specific artifact digest, but the hard problem is establishing and operating trust in that identity.**  
+At the cryptographic level, signing is simple: hash the artifact and sign the hash. But a verifier has to know which public key or trust root to believe, whether the key was compromised, how it rotates, and whether the key really belongs to the claimed producer. Traditional long-lived keys push all that pain onto key storage, distribution, and lifecycle management.
+
+That is why the industry moved toward systems like Sigstore. The problem was never “we lacked a mathematical way to sign files.” The problem was “operating long-lived trust anchors safely at scale is hard.” Once that becomes the bottleneck, a different model becomes attractive: bind signatures to short-lived verified identity instead of persistent private keys.
+
+**7. Sigstore replaces long-lived signing keys with short-lived certificates tied to an authenticated identity and recorded in a transparency log.**  
+With Sigstore, Fulcio issues a short-lived certificate after the signer authenticates through an identity provider such as GitHub OIDC. An ephemeral key signs the artifact, and Rekor records the event in an append-only log. Cosign handles the workflow. Verification therefore checks more than file integrity: it checks that a trusted identity signed it, that the certificate was valid at the signing time, and that the event was publicly logged.
+
+This is stronger operationally because it changes the trust statement. Instead of “someone in possession of private key K signed this,” you get something closer to “this GitHub workflow identity signed this at this time, and the event is publicly visible.” That extra context makes policy possible. If identity becomes meaningful, then deployment systems can enforce “only artifacts signed by identities we expect.” That naturally leads to where signing is useful in practice.
+
+**8. Signing only matters when verification is enforced in the deployment path as a hard gate.**  
+If a cluster, deploy job, or registry allows unsigned or wrongly signed artifacts through anyway, signatures are decoration. The mechanism of enforcement is usually an admission controller or a CD policy step that verifies signature properties before the artifact can run. This is where the abstract trust evidence becomes an actual operational control.
+
+This idea mirrors the SBOM point: generated evidence without consumption is theater. But it also reveals a limit of signing. Even if you can prove the right identity signed the image, you still do not know whether that image was built through the approved process. A developer or attacker with signing ability might sign something produced outside your controlled pipeline. That is why provenance exists.
+
+**9. Provenance attestations answer a different question: not who signed the artifact, but what build system, inputs, and workflow produced it.**  
+A provenance attestation is a signed statement about the build event. It names things like source repository, commit, builder identity, workflow entry point, and materials used. In the SLSA model, the rigor of this claim depends on how trustworthy the build service is. The point is to bridge the gap between artifact and build process.
+
+Mechanically, this lets a verifier test process-level rules. Not just “is this image signed by our org?” but “was this image built by our hardened CI, from our repository, from the expected branch or tag, using the approved workflow?” Signing alone cannot answer those because signatures bind identity to artifact, not workflow to artifact. Once process becomes the thing you care about, provenance has to come from a build system the build itself cannot tamper with.
+
+**10. Provenance is only as trustworthy as the build system that emits it, which makes the build environment the real trust boundary.**  
+A provenance document can look perfectly complete and still be weak if the builder is weak. If attackers can compromise the CI system or forge attestations inside a self-hosted environment without isolation, the document stops being strong evidence. SLSA levels matter precisely because they describe how hard it is for a tenant or attacker to fake the build record.
+
+This is the article’s most important “don’t stop at the label” point. A provenance file is not a guarantee by itself; it is a claim backed by the security properties of the builder. That same realism exposes the remaining weak spot in the wider ecosystem: even if your own artifact has good evidence, your view usually stops quickly as you look down the dependency tree.
+
+**11. Supply-chain trust is only one layer deep unless your dependencies also publish verifiable metadata, and today that recursive chain is incomplete.**  
+Your SBOM can name `libfoo`. A signature can say `libfoo` came from its maintainer. But unless `libfoo` also has its own SBOM and provenance, you cannot see or verify the full nested chain beneath it. The trust graph does not recurse automatically. It depends on downstream ecosystems publishing compatible metadata and tooling being able to traverse it.
+
+This matters because it explains why supply-chain security is valuable but not absolute. These mechanisms reduce uncertainty; they do not eliminate it. That leads to the final operational conclusion: the point is not to collect more documents, but to automate trust decisions from the evidence you do have.
+
+**12. The real shift is from trust-by-default to trust-by-evidence enforced automatically.**  
+The article keeps returning to the same pattern: evidence is only useful when policy consumes it in the critical path. SBOMs feed vulnerability correlation. Signatures feed identity checks. Provenance feeds build-policy enforcement. Humans can inspect these artifacts, but the scalable security property comes from systems refusing deployment when evidence is missing or does not satisfy policy.
+
+That is the chain’s endpoint because all previous ideas feed this one. Standardized component inventory makes automated vulnerability checks possible. Identity-bound signatures make automated producer checks possible. Build attestations make automated process checks possible. The engineering move is to wire those checks into build and deploy gates so artifacts are trusted only when they present verifiable evidence.
+
+---
+
+## Handles and Anchors
+
+**1. Three questions, three artifacts:**  
+Ask of every artifact: **What is in it? Who produced it? How was it produced?**  
+If you remember only this, you can reconstruct the whole topic: SBOM answers the first, signature the second, provenance the third.
+
+**2. A badge, an ingredient label, and a manufacturing record:**  
+An SBOM is the ingredient label. A signature is the badge of the person who handed it to you. Provenance is the factory production record showing which line made it from which inputs. You would not use one of those as a substitute for the others in food safety; same here.
+
+**3. “Evidence that is not enforced is paperwork.”**  
+This captures the central operational tension. Teams think producing the artifact means they have the control. They do not. The control appears only when some system reads that evidence and blocks or alerts on it.
+
+---
+
+## What This Changes When You Build
+
+**1. An engineer who understands this will choose SBOM generation points based on the question they need answered, because source manifests and shipped artifacts expose different truths.**  
+The unaware engineer defaults to “scan `package.json` or `requirements.txt` and call it done.” That misses build-introduced dependencies, base-image packages, linked system libraries, and vendored content. The aware engineer asks: do I need a fast declared-dependency view, or do I need a representation of what we actually ship? That usually pushes them toward build-time or image-level SBOM generation for deployable artifacts.
+
+**2. An engineer who understands this will design an SBOM consumption pipeline, not just an SBOM generation step, because vulnerabilities are discovered after artifacts are built.**  
+The default behavior is to archive the SBOM for audits and never revisit it. The consequence is that newly disclosed CVEs affecting already deployed images stay invisible unless some manual scan happens later. The aware engineer sets up storage, ingestion, correlation against updated vulnerability feeds, and alerting keyed to deployed artifact digests.
+
+**3. An engineer who understands this will enforce signature verification in admission or deployment policy, because an unchecked signature does not change runtime risk.**  
+The unaware engineer signs everything in CI and assumes that improved security posture follows automatically. But if Kubernetes, the CD job, or the release promotion step never rejects bad signatures, an attacker can still deploy unsigned or wrongly signed artifacts. The aware engineer makes verification a gate: only images signed by expected identities, under expected trust roots, are allowed through.
+
+**4. An engineer who understands this will treat signing policy and provenance policy as separate controls, because identity approval and build-path approval are different decisions.**  
+The default mistake is to say “it was signed by our GitHub org, so it is trusted.” That still permits artifacts built from the wrong workflow, wrong branch, wrong repository, or a less controlled path. The aware engineer writes provenance-aware policies such as “must be built by this reusable workflow from this repository on this ref pattern,” instead of relying on signer identity alone.
+
+**5. An engineer who understands this will evaluate the build system as a security boundary, because provenance strength collapses if the builder can be tampered with.**  
+The unaware engineer sees “SLSA L3 provenance generated” and treats the label as portable truth. The aware engineer asks harder questions: Is the builder isolated? Ephemeral? Can tenants alter the provenance generation path? Who controls the signing identity for attestations? This changes platform choices, especially around self-hosted CI, because the value of provenance is directly tied to how hard it is to forge inside your build environment.
+
+**6. An engineer who understands this will scope promises carefully around dependency depth, because ecosystem trust usually stops after the first layer.**  
+The default assumption is “we have supply-chain visibility now.” In practice, you usually have strong visibility into your artifact and weak visibility into your dependencies’ dependencies. The aware engineer treats recursive trust as partial, prioritizes critical dependencies, and does not overstate the assurance level to the rest of the organization.
+
+---

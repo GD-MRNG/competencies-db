@@ -143,4 +143,131 @@ The single most important conceptual shift: **a non-breaking change is defined b
 
 - Versioning is a tool for managing contract evolution, not a substitute for understanding wire compatibility. Every active version is a contract you're maintaining whether you acknowledge it or not.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+As soon as another system integrates with your API, your implementation stops being just your code and starts being part of someone else’s runtime assumptions. That matters because changes that look harmless from the producer side — renaming a field, changing timestamp interpretation, altering pagination behavior, returning different error bodies — can break consumers in ways that don’t show up in your own tests. The failure mode is often not “request failed loudly.” It is “consumer kept running, but did the wrong thing.”
+
+This gets worse as systems become more distributed. In a monolith, changing a function signature breaks at compile time. Across service boundaries, the break is delayed, partial, and often invisible until production. A REST consumer may silently misread a field. A gRPC consumer may fail on incompatible schema evolution. An event consumer may start dead-lettering messages hours after a producer deploys, or worse, deserialize old data into the wrong meaning.
+
+So the real engineering problem is not “how do I design a nice API?” It is “how do I make and evolve cross-system promises without creating hidden breakage, silent corruption, or an ever-growing maintenance burden?” The article is about the mechanics of those promises: where they are encoded, how strongly they are enforced, and what kinds of mistakes each approach makes easy or hard.
+
+---
+
+## What You Need To Know First
+
+**1. Serialization**
+Serialization is just how data is turned into bytes so it can cross a network or be stored. JSON, protobuf, and Avro are all serialization formats. The important point here is that the format determines what information survives onto the wire: JSON carries field names as text, protobuf carries numeric field tags, and Avro relies on schemas to interpret the bytes. That difference is why “safe change” means different things in each system.
+
+**2. Producer and consumer**
+The producer is the system sending data; the consumer is the system receiving and interpreting it. In synchronous APIs, these are usually the server and client in a direct request-response relationship. In event systems, the producer may not even know who the consumers are. That matters because compatibility is really about whether consumers can still interpret what producers emit.
+
+**3. Backward vs forward compatibility**
+Backward compatibility means new code can read old data. Forward compatibility means old code can read new data. They sound similar, but they protect different deployment orders. If you deploy producers and consumers at different times, you usually need to reason about both, because mixed versions will exist at once.
+
+**4. Schema**
+A schema is a formal description of data shape: fields, types, maybe defaults, maybe constraints. But a schema usually describes only structure. It does not automatically capture meaning like “timestamp is UTC” or behavior like “retrying this request is safe.” That gap is central to the article.
+
+---
+
+## The Key Ideas, Connected
+
+**An API contract is broader than payload shape.**
+
+Most engineers first think of a contract as “what fields are in the request and response.” That is only the structural layer. The article’s main move is to widen the frame: consumers also depend on what fields mean, how operations behave, and how errors are represented. If you only think structurally, you will miss the most dangerous breakages, because many production incidents come from semantics or behavior changing while the payload shape stays valid.
+
+That leads directly to the next idea: if contracts have multiple layers, different API technologies do not just transport data differently — they formalize different parts of the contract differently.
+
+**REST, gRPC, and event schemas differ mainly in where contract enforcement lives.**
+
+The article is not arguing that one style is universally better. It is arguing that the real distinction is where the system puts pressure on correctness. With REST, much of the contract is implicit unless you add tooling and discipline. With gRPC, the schema and service interface are defined up front and used to generate code. With event schemas plus a registry, compatibility checks can be enforced by infrastructure before new messages are even accepted.
+
+Once you see contract enforcement as the axis, the tradeoff becomes clearer: more enforcement usually means less freedom to change things casually, but also fewer ambiguous, consumer-specific interpretations.
+
+**REST is flexible because the wire contract is weakly enforced.**
+
+JSON is easy to produce and consume, but its type system is minimal. Many important constraints — enum values, timestamp semantics, optionality, unknown field handling — are not strongly represented on the wire. That makes REST easy to evolve informally when teams coordinate closely. But the same looseness means producer and consumer can each form different beliefs about what is allowed.
+
+That is why additive changes in REST are only “usually safe.” They are safe only if consumers actually ignore unknown fields. If some consumer uses strict deserialization, your harmless extra field becomes a breaking change. The mechanism here is important: because the format and protocol do not define unknown-field tolerance strongly enough, compatibility depends on consumer implementation choices, not just producer intent.
+
+That weakness naturally motivates stronger schemas.
+
+**gRPC changes the game by making the schema the source of truth, not just documentation.**
+
+In gRPC, the `.proto` file is not an optional description written after the fact. It is the artifact both sides generate code from. That means the structural contract is far more explicit and machine-enforced. Types, field presence, enums, and RPC method signatures are all specified in one formal place.
+
+This matters because it narrows the range of accidental disagreement. Consumers interact with generated types rather than arbitrary JSON blobs. That reduces ambiguity, but it also introduces hard compatibility rules tied to the wire format itself. Once field tags become the identity of fields on the wire, some changes become safe and others become dangerous in a very specific way.
+
+**In protobuf, field tags are the real wire identity, which makes some refactors cheap and others catastrophic.**
+
+A field name is mostly for humans and generated code. On the wire, protobuf sends field numbers. So renaming `total_cents` to `amount_cents` is usually fine if the tag stays the same; the bytes still mean the same thing. But reusing tag `2` for a different field means old bytes will be interpreted as the new field. That produces silent corruption rather than an obvious failure.
+
+This is why `reserved` exists. It is not style polish. It is a mechanism to preserve wire history. Once a tag has existed in the world, it may still exist in stored messages, caches, queues, or logs. If you reuse it, you are not “cleaning up.” You are changing how historical bytes are interpreted.
+
+From there, the article extends the compatibility story beyond direct RPC.
+
+**Event-driven systems make schema evolution harder because producers and consumers are decoupled in time and visibility.**
+
+With a synchronous API, a producer usually knows its consumers at least indirectly: clients call the server, and contract mismatches tend to show up immediately as failed requests or deserialization errors. In event systems, the producer emits data into a broker and may not know who consumes it. Consumers may lag behind, be deployed independently, or replay old events later.
+
+That changes the mechanics of compatibility. You no longer just need “new server works with current clients.” You need “new producers don’t break unknown consumers” and “current consumers can still read months-old events.” Because events persist, schema versions coexist over time, not just during rollout windows.
+
+That persistence creates the need for explicit compatibility enforcement beyond application code.
+
+**Schema registries exist because event systems need compatibility checks at the infrastructure boundary.**
+
+A schema registry stores versioned schemas and can reject incompatible changes when producers try to register or publish them. This is especially useful in event systems because the producer cannot manually coordinate with every consumer. The infrastructure acts as the gatekeeper.
+
+The mechanism is different from gRPC. In gRPC, generated code and protobuf rules constrain application behavior. In event systems, the broker/registry can prevent bad schema evolution from entering the shared stream at all. That is valuable because once a bad event is published, many consumers may ingest it, persist derived state from it, or fail asynchronously long after the deploy.
+
+This also helps explain why Avro’s compatibility rules feel different.
+
+**Compatibility always depends on how missing or unknown data is interpreted.**
+
+In protobuf, old consumers skip unknown fields, and new consumers use defaults when old messages lack new fields. In Avro, reader and writer schemas are resolved together, so adding a field is only safe if the reader has a default for cases where old messages never carried that field. Different mechanism, same underlying problem: mixed versions exist, so the system needs a rule for “what happens when one side expects data the other side never sent?”
+
+That brings the article to its broadest point.
+
+**A non-breaking change is defined by consumer tolerance, not producer intention.**
+
+This is the core mental shift. Producers do not get to declare a change non-breaking just because it seems harmless locally. A change is non-breaking only if existing consumers can continue functioning correctly with it. That includes undocumented dependencies created by real usage, which is why Hyrum’s Law matters: consumers depend on observed behavior, not only specified behavior.
+
+Once you accept that, versioning, schema discipline, and compatibility rules stop looking like ceremony. They are ways of managing the fact that deployed consumers hold assumptions you do not fully control. Different technologies simply move the point where you discover those assumptions: in docs review, in generated code, in registry enforcement, or in production incidents.
+
+---
+
+## Handles and Anchors
+
+**1. “An API contract is whatever consumers have encoded into running code.”**  
+Not what you documented. Not what you meant. What their systems actually assume. If they assume timestamps are UTC, retries are safe, and error bodies contain machine-readable codes, those assumptions are part of the contract whether you wrote them down or not.
+
+**2. Think of REST, gRPC, and event schemas as different places to put guardrails.**  
+REST puts more responsibility on people and process. gRPC puts more responsibility in schema and code generation. Event systems often need guardrails in infrastructure, because producers cannot coordinate directly with all consumers. Same problem, different enforcement location.
+
+**3. Ask this question of any interface: “If I change this today, who can still read yesterday’s data, and who can still handle tomorrow’s data?”**  
+That question forces you into real compatibility thinking. It separates backward from forward compatibility and exposes where your assumptions are only social conventions.
+
+---
+
+## What This Changes When You Build
+
+**An engineer who understands this will treat “add a field” as a compatibility question, not an automatically safe change, because consumer deserialization behavior determines whether additive change is actually non-breaking.**  
+The unaware engineer assumes JSON consumers will ignore unknown fields and ships the change casually. The consequence is that one strict consumer fails in production, often one the producer team did not know existed.
+
+**An engineer who understands this will document and test semantics separately from schema, because schema validation cannot catch meaning changes.**  
+The unaware engineer sees that `created_at` is still a string and assumes nothing broke. The informed engineer asks whether timezone, unit, precision, or business interpretation changed, because that is where silent data corruption comes from.
+
+**An engineer who understands protobuf will reserve deleted field tags immediately, because tag reuse corrupts historical messages instead of throwing obvious errors.**  
+The unaware engineer deletes a field and later reuses the number as cleanup. The consequence is not a clean compile failure; it is misinterpreted bytes in queues, caches, or persisted records, which is much harder to detect and recover from.
+
+**An engineer who understands event contracts will design migrations assuming unknown and slow-moving consumers exist, because producer-consumer coordination is structurally weak in pub/sub systems.**  
+The unaware engineer updates the producer first and expects consumers to catch up. The consequence is consumers dead-lettering messages, lagging behind, or replay jobs failing on older schema versions.
+
+**An engineer who understands where enforcement lives will choose API style based partly on coordination cost, not just team preference, because loose contracts are manageable only when social coordination is cheap.**  
+If there are two teams with tight communication, REST plus disciplined conventions may be enough. If there are many consumers across org boundaries, stronger machine-enforced contracts pay for themselves. The unaware engineer inherits a style by habit and then discovers too late that the coordination model did not match the system’s social reality.
+
+**An engineer who understands this will use versioning sparingly and intentionally, because each active version is an additional contract surface to maintain.**  
+The unaware engineer creates `/v2` whenever compatibility gets confusing. The consequence is permanent multi-version support, duplicated tests, consumer fragmentation, and a growing reluctance to clean anything up.
+
+---

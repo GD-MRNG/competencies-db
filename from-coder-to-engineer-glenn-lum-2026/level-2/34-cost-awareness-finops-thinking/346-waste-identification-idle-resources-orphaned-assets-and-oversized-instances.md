@@ -98,4 +98,102 @@ The second shift is recognizing that identification is the easy half. The hard h
 
 - **Safe cleanup requires bidirectional reference checking** — not just "is this resource attached to something?" but "does any automation, template, or policy reference this resource?"
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Cloud cost problems often get framed as a budgeting issue: "we should do a cleanup" or "there’s probably some waste in the account." That framing is too vague to be useful. What actually hurts teams is that different kinds of waste fail in different ways. If you treat them all as the same thing, you either miss real savings or you delete something that was quiet but still important. A nightly batch instance looks "idle" on average. An unattached volume looks disposable until you discover it held data someone meant to preserve. An oversized database looks healthy because nothing is on fire, even while it quietly burns money every day.
+
+The practical failure mode is not lack of awareness. It is using the wrong detection logic for the wrong waste mechanism, then trusting the output too much. That creates two bad outcomes: false positives that break systems when cleaned up, and false negatives that let waste accumulate because your scans never looked in the right way. Once infrastructure changes continuously, a quarterly audit is operating on stale reality almost as soon as it finishes.
+
+The article is trying to replace the fuzzy idea of "cloud waste" with a more mechanical one: waste forms through specific processes, hides for specific reasons, and can only be removed safely if you understand both how it formed and what still depends on it.
+
+---
+
+## What You Need To Know First
+
+**1. Utilization metrics**  
+These are measurements of how much of a resource is actually being used: CPU %, memory usage, network traffic, disk IOPS, connection count, and so on. The important thing here is that a metric is usually a time series, not a single number. Averages can hide short but important spikes, so "low average utilization" does not automatically mean "safe to remove or shrink."
+
+**2. Resource lifecycle**  
+A cloud resource gets created, used, changed, detached from other things, and eventually deleted — but not all related resources follow the same lifecycle. An instance may be short-lived while its disk, IP, snapshot, alarms, or security group outlive it. You need this idea because much waste appears when related resources stop changing together.
+
+**3. References and dependencies**  
+Cloud systems are full of "this thing points to that thing" relationships: an instance uses a volume, a launch template names a security group, an AMI depends on snapshots, a DNS record points at a load balancer. Some dependencies are enforced by the provider and some are just conventions in your tooling. Waste detection often depends on knowing whether something is still referenced, not just whether it is currently busy.
+
+**4. Reserved capacity commitments**  
+In AWS terms, think Reserved Instances or Savings Plans; other providers have similar commitment models. These are pricing agreements where you commit to paying for a class of usage over time in exchange for lower rates. This matters because removing a resource does not always reduce spend immediately if you are already committed to paying for equivalent capacity.
+
+---
+
+## The Key Ideas, Connected
+
+**Cloud waste is not one problem; it is several different failure modes that only look similar at the billing layer.**  
+At the invoice level, an idle instance, an orphaned disk, and an oversized database all just look like money being spent. But mechanically they are not the same. One is a resource doing little or no work, one is a leftover object whose parent disappeared, and one is an active resource with more capacity than needed. That distinction matters because detection logic must match formation mechanism. Once you accept that, the next question becomes: how does each kind of waste actually come into existence?
+
+**Idle resources form through drift between original intent and current reality.**  
+A resource is often created for a good reason: a staging stack for a feature, a NAT gateway for an older network layout, a compute node for a workload that used to run regularly. Over time the environment changes, but the resource remains. The key mechanism is not bad provisioning at the start; it is that the system moved on and the resource did not. That is drift: provisioning intent stayed frozen while operational reality changed. If drift is the mechanism, then you cannot detect it reliably from a simple average, because the important question is not "does this usually look busy?" but "does this still do meaningful work at any point in its expected pattern?"
+
+**Because drifted resources may still have periodic work, idle detection has to look at the utilization envelope, not averages.**  
+The nightly batch example shows why. A resource can be mostly quiet and still be critical during a narrow window. So the relevant mechanics are time-based: peaks within a window, recency of last meaningful activity, and whether the workload is scheduled or event-driven. This is why "average CPU < 5%" is a poor deletion rule. It collapses a time series into one number and destroys the very shape that tells you whether the resource is truly abandoned or just intermittent. Once you see that some resources are dangerous to classify from utilization alone, it becomes clear that another category of waste must be understood through relationships, not activity.
+
+**Orphaned assets form when references are severed in a graph that does not automatically clean itself up.**  
+Many engineers unconsciously expect deletion to cascade: remove the parent, and the children go too. Cloud platforms often do not work that way. Instead, they behave more like a graph of separate objects linked by references. When one object is deleted, other objects that used to be associated with it may remain. Extra EBS volumes, snapshots, elastic IPs, ENIs, security groups, AMIs — these often survive because the provider treats them as independent resources. So the formation mechanism here is different from drift. The resource is not idle because usage faded; it is orphaned because the thing that justified it disappeared and no automatic cleanup followed.
+
+**Because orphaning is a graph problem, detection must ask "what still references this?" rather than scanning resource types in isolation.**  
+An unattached volume is not always waste. It might be deliberately preserved. A snapshot is not waste if an AMI still depends on it. A security group with no current attachments might still be named by a launch template that will be used tomorrow. The core mechanism is inbound reference checking: does any active resource, template, automation, or policy still point here? That is why per-resource-type reports often produce bad cleanup candidates. They detect "currently unattached" but not "still semantically in use." Once you think in terms of references, you also see why cleanup risk is high: deleting an apparently isolated node can break a future operation that still expects it.
+
+**Oversized resources are different again: they are not unused, they are overprovisioned, and that makes them operationally quiet.**  
+An oversized instance or database is still serving traffic. Nothing is obviously wrong. In fact, from an incident perspective, it may look healthier than necessary because it has ample headroom. That is exactly why oversizing persists. Undersizing emits pain: high latency, OOMs, throttling, alerts. Oversizing emits silence. The initial size choice is often a guess made under uncertainty, and without an explicit feedback loop, that guess becomes sticky. This leads directly to a new detection requirement: if there is no operational alarm for "too large," then the only way to find it is by comparing provisioned capacity to observed demand over time.
+
+**Because oversizing is silent, right-sizing depends on representative peak data, not average demand.**  
+You are not trying to prove that average use is low. You are trying to prove that a smaller resource would still survive real peaks with enough headroom. That means the observation window has to match the business cycle of the workload. Monthly billing runs, end-of-quarter jobs, seasonal traffic, annual enrollment periods — these are not outliers if they are part of the actual demand shape. The mechanism here is simple: provisioned capacity must cover peak needs, so any sizing decision based on a window that misses those peaks is structurally unsafe. This is why the article stresses 30 days as a starting point and longer windows when periodic spikes are known.
+
+**Once you can detect candidates, the real bottleneck becomes disposition: deciding whether elimination is safe.**  
+This is the article’s most practical shift. Detection is often straightforward enough to automate. Disposition is harder because it depends on context: who owns this, why was it created, how long was it meant to live, what still depends on it, and what would break if it disappeared? Without tags, ownership metadata, and dependency information, every candidate becomes an investigation. That manual effort scales with resource count, which is why cleanup programs often stall. Not because no one can find waste, but because no one can cheaply prove that cleanup is safe.
+
+**Missing metadata turns cleanup from a technical query into an expensive human search problem.**  
+If a volume is untagged and unattached, you still cannot confidently delete it without finding a person or a process that knows its purpose. If there are hundreds of such resources, the cost of asking around, checking tickets, reading old IaC, and inspecting usage history can exceed the savings. That is the underlying mechanism behind "tagging matters": tags are not just for chargeback, they lower the cost of making safe disposition decisions. And once disposition depends on metadata, it also becomes obvious why cleanup recommendations can be financially wrong even when technically correct.
+
+**Savings recommendations must be checked against commitment coverage, or you confuse resource removal with actual cost reduction.**  
+A flagged instance may truly be idle or oversized, but if it is covered by an RI or Savings Plan, terminating or shrinking it may not reduce spend right now. The billing commitment remains. So there are really two layers of truth: technical waste and realizable savings. Ignoring the commitment layer leads to recommendations that are mechanically valid in the infrastructure but invalid in financial outcome. This matters because teams often prioritize cleanup by "projected savings," and bad projections send attention to the wrong places.
+
+**All of this leads to the article’s main mental model: waste is a continuous accumulation process, so detection and disposition must also be continuous.**  
+Drift keeps happening as systems evolve. References keep getting severed as resources are deleted non-cascadingly. Stale sizing assumptions keep persisting because silence never forces review. If infrastructure changes every day, then waste opportunities are created every day. A periodic audit can remove some backlog, but it cannot keep pace with the formation mechanisms. The only stable response is an ongoing process that identifies candidates, checks ownership and dependencies, accounts for commitments, and safely disposes of what no longer serves a purpose.
+
+---
+
+## Handles and Anchors
+
+**1. "Cloud waste is not trash in one pile; it is three different leak paths."**  
+One leak comes from drifted resources still left running, one from severed references leaving leftovers behind, and one from stale sizing decisions that never get revisited. If you remember "three leak paths," you are less likely to apply one blunt cleanup rule to everything.
+
+**2. Think in terms of shapes: activity shape, reference shape, capacity shape.**  
+Idle detection asks about the shape of activity over time. Orphan detection asks about the shape of references in the dependency graph. Oversizing asks about the shape of demand versus provisioned capacity. Same billing symptom, different shape to inspect.
+
+**3. Ask this question of any cleanup candidate: "Is this unused, unreferenced, or just overbuilt?"**  
+Those are three different states. Unused suggests drift. Unreferenced suggests orphaning. Overbuilt suggests right-sizing. The answer tells you what evidence you need before touching it.
+
+---
+
+## What This Changes When You Build
+
+**An engineer who understands this will design different detection rules for different waste classes because each class has a different failure mechanism.**  
+The unaware engineer creates one generic report: low-utilization resources plus unattached assets plus large instances. That produces a mixed bag of noisy candidates. The aware engineer separates the pipelines: time-series analysis for idle detection, graph/reference analysis for orphans, and capacity-versus-peak analysis for right-sizing. That change alone improves both safety and signal quality.
+
+**An engineer who understands this will treat averages as suspicious when evaluating "idle" resources because intermittent critical workloads disappear inside averages.**  
+The default behavior is to sort by average CPU and kill the bottom of the list. The better approach is to inspect peak activity, last meaningful use, and known schedule patterns before acting. This changes outcomes in exactly the environments that have cron-driven jobs, failover handlers, monthly processors, and event-triggered workers that are quiet most of the time but not expendable.
+
+**An engineer who understands this will invest in ownership and lifecycle metadata early because cleanup safety depends on disposition, not just detection.**  
+The unaware engineer treats tags as bookkeeping and postpones them. Later, every suspicious resource requires a manual hunt for owner and purpose, so cleanup slows to a halt. The aware engineer enforces tags like owner, service, environment, and expected lifetime because those fields reduce the cost of answering "can I remove this safely?" when the time comes.
+
+**An engineer who understands this will check both live attachments and indirect references before deleting "orphaned" resources because future automation may still depend on them.**  
+The default mistake is to see "unattached" and assume "unneeded." The better practice is to also inspect launch templates, backup policies, AMI relationships, DNS entries, scripts, and IaC definitions. This matters most in production systems where a resource is not used now but is still part of a recovery path, autoscaling path, or deployment path.
+
+**An engineer who understands this will evaluate cost actions through the commitment layer because infrastructure reduction and bill reduction are not always the same event.**  
+The unaware engineer terminates an RI-covered instance and reports the full on-demand price as savings. The aware engineer asks whether the commitment will still be paid and whether that coverage can move elsewhere. This changes prioritization: teams focus first on waste that actually produces near-term savings or on cleanup that frees committed capacity for better use.
+
+**An engineer who understands this will build continuous review into normal operations because waste forms continuously as infrastructure evolves.**  
+The default inherited choice is the quarterly cleanup sprint. The consequence is recurring backlog and stale findings. The better approach is lightweight continuous checks tied to deploys, teardowns, account hygiene jobs, and regular right-sizing reviews. That reduces accumulation rate instead of merely trimming it after it has already grown.
+
+---

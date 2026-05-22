@@ -171,4 +171,110 @@ This two-layer model is the conceptual foundation for everything that follows: i
 - Every Git operation reduces to creating immutable objects, moving mutable pointers, or both — if you can identify which, the operation's behavior becomes fully predictable.
 
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Git feels simple when you stay on the happy path: commit, branch, merge, push. The trouble starts when the visible behavior stops matching the timeline story people carry in their heads. A rebase seems to "change the past" even when the code looks the same. A cherry-pick creates a "different" commit from the one you copied. A reset appears to delete work, except sometimes you can still recover it. If your model is "Git stores a sequence of changes over time," these behaviors look arbitrary.
+
+That confusion turns into real engineering mistakes. People force-push rebased branches without understanding why teammates now see divergent history. They panic after a detached-HEAD commit because they think the work is gone. They commit large binaries, delete them later, and are surprised the repo stays huge. In each case, the command is not the real problem; the missing piece is the storage model underneath. Without that model, Git remains a bag of memorized rituals, and rituals break under pressure.
+
+## What You Need To Know First
+
+### 1. Hashes as content-derived IDs
+
+A hash is a fixed-size identifier computed from data. For this article, the important part is not the math; it is the behavior: same content gives the same hash, different content gives a different hash. Git uses that property to name objects by what they contain, not by where they were created or when.
+
+### 2. A directory tree as a nested structure
+
+A filesystem is not just "files"; it is directories containing files and other directories. If you picture the repository as one root folder with nested subfolders beneath it, you're ready for Git trees. Git needs a way to represent both file contents and the folder structure that arranges them.
+
+### 3. Pointers or references
+
+A pointer is just a name that tells you where to look. In Git, names like `main`, `feature`, and `HEAD` are references to commits. The key idea is that the named thing and the object it points to are separate: the object can stay unchanged while the pointer moves.
+
+### 4. Parent-child relationships in a graph
+
+A graph is just nodes connected by links. In Git, commits are nodes, and each commit links back to its parent commit or commits. You do not need graph theory here; you just need to be comfortable with "this commit came from that earlier one" and with the fact that one commit can have two parents after a merge.
+
+## The Key Ideas, Connected
+
+### Git is not fundamentally a timeline; it is an object store with pointers.
+
+When people say "Git history," they often imagine a logbook of changes over time. That is useful for reading, but it is not how Git stores data. Git stores objects identified by content-derived hashes, and then keeps a small mutable naming layer on top. This matters because most "weird" Git behavior comes from the difference between immutable stored objects and movable names. Once you accept that storage and naming are separate, the next question becomes: what exactly is being stored?
+
+### Git stores four object types, and each one has a specific job.
+
+The article names blobs, trees, commits, and annotated tags. You can think of them as progressively richer layers of meaning. A blob is raw file content. A tree organizes blobs and subtrees into a directory snapshot. A commit points to one root tree and to earlier commit(s), adding metadata like author and message. An annotated tag adds human-facing release metadata around another object. This layering matters because it shows that Git does not start from "changes"; it starts from content and structure. That leads directly to the first surprising object type: the blob.
+
+### A blob stores file contents only, not filename or path.
+
+This is easy to miss because humans think in files-with-names. Git splits that apart. The bytes of the file live in a blob; the name and location live elsewhere. That is why two files with identical contents can share one blob object: if the bytes are the same, the blob is the same. Once content is separated from naming, Git needs another object to describe where that content sits in the repository structure. That is what trees do.
+
+### A tree stores one directory snapshot by naming blobs and subtrees.
+
+A tree is Git's representation of a directory at one moment. It says, in effect, "this directory contains an entry called `README.md` pointing to this blob, and an entry called `src` pointing to this subtree." The tree does not know its own parent directory; it only knows the entries inside it. This means repository structure is built by nesting trees. The important mechanical consequence is that if one file changes, Git does not rebuild everything. It creates a new blob for that file and new trees only along the path back up to the root, while reusing all unchanged objects. That reuse is what makes snapshots practical instead of wasteful. Once you have a complete root tree for the repository, you have enough to describe the full project state at one point in time. The next step is to attach context to that snapshot, which is what commits do.
+
+### A commit is a snapshot plus ancestry, not a stored diff.
+
+This is the central idea. A commit points to the root tree for the entire repository, and it points to parent commit(s). So a commit says both "here is the full project state now" and "here is where I came from." The diff you see in Git commands is computed later by comparing this commit's tree to its parent's tree. Git did not store "change lines 10-15"; it stored the full snapshot and enough ancestry to compare snapshots. This explains several behaviors at once. If the commit includes parent pointers and metadata in its contents, then changing the parent changes the commit object itself. That is exactly why rebase creates new commits.
+
+### Because commit identity includes parent pointers and metadata, "same change" can still mean "different commit."
+
+A commit hash is derived from all the commit's contents: tree, parent(s), author/committer info, timestamps, message. So if you take the same conceptual code change and place it on top of a different parent, you get a different commit object and therefore a different hash. Cherry-pick does this for one commit. Rebase does it for a sequence of commits. The code delta may look equivalent, but the object identity is different because the ancestry is different. Once commits point backward to parent commits, all commits together form a graph.
+
+### Commit parent links form a directed acyclic graph.
+
+Each commit points to earlier commit(s), so the arrows always go backward. Because a commit cannot point to itself through some loop, the structure is acyclic. In normal development, this graph often looks like a line with occasional branches and merges, which is why the timeline metaphor feels close enough at first. But the graph model is more accurate: branching is just two refs pointing into different paths through the same commit graph, and merging is one new commit with two parents. This graph structure is what allows Git to find common ancestors and perform merges or rebases mechanically. But the graph alone still does not explain how `main` or `HEAD` knows where you are. For that, Git adds a mutable naming layer.
+
+### Refs are the mutable names that point into the immutable graph.
+
+Everything below this layer is immutable: blobs, trees, commits, tag objects. Refs are the movable labels. A branch is just a ref whose contents are a commit hash. Creating a branch does not copy commits; it creates another name pointing to an existing commit. Making a new commit while on that branch creates a new commit object, then moves the branch ref forward to point to it. This is a huge simplification: Git is mostly "write new immutable objects, then move a pointer." Once you understand refs this way, `HEAD` becomes easier to reason about.
+
+### HEAD usually points to a branch name, and detached HEAD means it points directly to a commit.
+
+When `HEAD` is attached, it does not name a commit directly; it names a branch ref like `refs/heads/main`. Then new commits move that branch. In detached HEAD state, `HEAD` contains a raw commit hash instead. New commits still work, but no branch ref moves with them. So the commits exist, but nothing with a stable human name points to them after you switch away. That is why detached-HEAD work feels precarious: not because the commits are invalid, but because they are easy to make unreachable. Once you understand unreachable commits as "objects with no refs leading to them," recovery and deletion start to make sense too.
+
+### Many Git operations are just combinations of object creation and ref movement.
+
+This is the payoff. `git commit` creates blobs/trees/commit, then advances the current branch ref. `git branch` creates a new ref and no new objects. `git reset --hard` usually moves a ref and updates the working tree; it does not delete commit objects. `git merge` creates a new commit with two parents and advances the current branch ref. `git rebase` creates new commit objects replayed onto a different base, then moves the branch ref to the new chain. `git cherry-pick` does the same replay idea for one commit. Once you can classify an operation as "create objects," "move pointers," or both, its behavior stops being mysterious. That also explains the failure modes the article calls out.
+
+### The painful Git surprises are direct consequences of the model, not special cases.
+
+Rebasing shared commits hurts because rebasing does not "clean up labels"; it creates new commit objects with different identities. If others built work on the old objects, your force-push moves the shared branch ref to a different path in the graph, and now their local refs and the remote ref disagree. Large-file problems happen because blobs store whole file contents, and old commits still reference old blobs. Reset does not truly erase work because moving refs does not remove objects immediately; unreachable objects can still be found through reflog until garbage collection eventually prunes them. These are not random gotchas. They fall straight out of immutable objects plus mutable refs.
+
+## Handles and Anchors
+
+### 1. "Git is a warehouse plus labels."
+
+The warehouse contains sealed boxes you never edit in place: blobs, trees, commits, tags. The labels on shelves are refs like `main` and `HEAD`. Most Git commands either put new sealed boxes into the warehouse or move labels to point at different boxes. If you remember that, rebasing and resetting become much easier to reason about.
+
+### 2. "A commit is a photo of the whole repo, with arrows to its parent photos."
+
+Do not picture a commit as "the patch." Picture it as a complete snapshot of the repository plus a link backward. The patch view is something Git computes by comparing two photos. This single shift explains why merges, rebases, and cherry-picks behave the way they do.
+
+### 3. Ask: "Did this command create new objects, move refs, or both?"
+
+This is a practical diagnostic question. If you ask it before running a Git command, you can often predict the outcome. Rebase? Both. Branch? Move/create refs only. Commit? Both. Reset? Mostly ref movement. That question turns Git from folklore into mechanics.
+
+## What This Changes When You Build
+
+### An engineer who understands this will approach rebasing shared branches differently because rebase creates new commit objects, not just a prettier view of the same history.
+
+The unaware engineer sees rebase as cosmetic cleanup and force-pushes casually. The consequence is that teammates now have local branches built on old commit IDs, so pulls and merges become confusing even when the code changes are "the same." The aware engineer distinguishes between private history, where rebasing is low-risk, and shared history, where rebasing changes object identity for everyone downstream.
+
+### An engineer who understands this will treat branch creation as cheap and disposable because a branch is only a ref, not a copy of the repository.
+
+The unaware engineer may avoid branches out of fear that they are heavy or duplicative, or may speak as if work "lives inside" a branch. The aware engineer knows a branch is just a movable name pointing at a commit, so creating short-lived feature branches, safety branches before dangerous operations, or recovery branches from detached HEAD is nearly free.
+
+### An engineer who understands this will recover from "lost" work by looking for moved pointers rather than assuming data was deleted.
+
+The default panic response after `reset --hard`, bad rebase, or accidental checkout is "my commits are gone." The aware engineer knows commit objects often still exist and starts with reflog or old refs, because the likely event was pointer movement, not immediate destruction. That changes incidents from data-loss emergencies into recoverable bookkeeping problems.
+
+### An engineer who understands this will make different repository hygiene decisions around binaries because old blobs remain part of reachable history.
+
+The unaware engineer thinks deleting a large file in the next commit removes the cost. It does not; the earlier commit still points to the large blob. The aware engineer keeps large binaries out of normal Git history in the first place, uses Git LFS or artifact storage, and treats "accidentally committed giant file" as a history-rewrite problem rather than a normal delete.
+
+### An engineer who understands this will reason about detached HEAD correctly because the risk is not invalid commits but unnamed commits.
+
+The default misunderstanding is "detached HEAD means commits won't work" or "Git is in a broken state." The aware engineer knows commits made there are real commit objects; the issue is only that no branch ref advances with them. So if the work matters, they create a branch or tag before moving away. That small action turns potentially unreachable work into named, durable history.

@@ -131,4 +131,138 @@ The Level 1 post noted that microservices introduce distributed systems problems
 - The outbox pattern ensures atomic local writes and event publication by writing both in the same database transaction, then relaying events to the broker separately — and this only works because downstream consumers are idempotent.
 - Saga compensating transactions can themselves fail, which means they must be idempotent, retryable, and monitored — there is no framework that eliminates the need for human intervention at the edges of distributed state recovery.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Once work crosses a network boundary, you lose two comforts engineers often take for granted in a single process: you no longer know for sure whether an operation happened, and you no longer have one authoritative place where state changes atomically. That is the condition this topic exists to handle. Without a model for it, teams build systems that look fine in happy-path testing and then fail in production with duplicate payments, missing events, orders that exist without inventory reservations, and users who click twice because the UI appears to have “lost” their action.
+
+The failure mode is not just “distributed systems are hard.” It is more specific: a timeout does not mean failure, a retry is not harmless unless the operation is designed for it, and two services being temporarily out of sync is normal rather than exceptional. If engineers treat those as edge cases instead of baseline mechanics, they accidentally design correctness around assumptions that are false in production.
+
+---
+
+## What You Need To Know First
+
+### 1. Network calls can fail in more ways than local calls
+A local function call usually gives you a result or throws an error. A network call can do both of those, but it can also leave you uncertain: the server may have done the work, while the response was lost or delayed. That “I don't know what happened” state is the core setup for idempotency.
+
+### 2. A transaction is a boundary where changes succeed together or fail together
+In a single database, a transaction lets you say “either all these writes happen, or none do.” That is what prevents half-finished state. Across multiple services with separate databases, you usually do not have one transaction covering all of them, so partial completion becomes possible.
+
+### 3. Events and message brokers decouple services, but not magically
+Instead of one service directly updating another, a service often writes its own data and emits an event like “OrderPlaced.” Other services consume that event later. This improves decoupling, but introduces delay, retries, and duplicate delivery. “Later” might be milliseconds or much longer.
+
+### 4. Consistency is about whether different parts of the system agree right now
+Strong consistency means everyone sees the same current state immediately. Eventual consistency means they may disagree for a while, but will converge if no new updates arrive. The important part is not the word “eventual”; it is the existence of the disagreement window.
+
+---
+
+## The Key Ideas, Connected
+
+### 1. In distributed systems, an operation has three outcomes from the caller’s perspective: success, failure, and unknown.
+The article’s starting point is that the caller does not observe reality directly; it only observes what came back over the network. If the request times out, the caller cannot tell whether the server never saw it, completed it, or is still working on it. That means “unknown” is a normal state, not a rare exception.
+
+Once you accept that unknown is real, you can no longer design as if every call cleanly resolves into success or failure. The next question becomes: when you are in the unknown state, what action is safe?
+
+### 2. Retries are how distributed systems make progress, but retries are only safe if the operation is idempotent.
+If the caller is stuck in “unknown,” doing nothing often means leaving work incomplete forever. So systems retry. That is not laziness or redundancy; it is the standard mechanism for recovering from transient faults like dropped packets, temporary overload, or broker hiccups.
+
+But the moment you retry, you risk executing the same logical action twice. That is why idempotency matters: it turns “I’m not sure whether it already happened” from a correctness hazard into something the system can tolerate. This leads directly to the need to define idempotency precisely.
+
+### 3. Idempotency is about the effect on state, not whether the API returns the same response text.
+An operation is idempotent when doing it multiple times leaves the system in the same state as doing it once. “Set email to X” is idempotent because after the first success, repeating it changes nothing. “Charge $50” is not, because every execution adds another real-world effect.
+
+That distinction matters because engineers often accidentally reason at the wrong level. Returning the same HTTP status twice is not enough if the database changed twice. Once you see idempotency as a state property, the next question becomes: how do you make naturally non-idempotent operations behave safely under retry?
+
+### 4. Non-idempotent operations become retry-safe by giving the logical operation a stable identity.
+The key move is to identify the operation itself, not just the request instance. A retry is not a new intent; it is another attempt to complete the same intent. So the system needs a way to recognize “these two arrivals are the same logical action.”
+
+That is what the idempotency key does. It creates a stable label the server can use to correlate retries. This is necessary because without a stable identity, every retry looks like a fresh command and the server has no basis for deduplication.
+
+### 5. The idempotency key must come from the client, because the client is the one living in uncertainty.
+If the server generated the key after accepting the request, that key would only exist in the response. But the whole problem case is that the client may never receive that response. So a server-generated key cannot help the client retry the same logical operation.
+
+The client has to generate the key before the first attempt and reuse it on every retry. That way, all retries carry the same identity even if the first response is lost. Once that is true, the server can implement a real deduplication mechanism.
+
+### 6. Server-side idempotency works by remembering the first outcome associated with a key and reusing it.
+Mechanically, the server checks whether it has seen the key before. If not, it performs the operation, stores the result under that key, and returns the response. If yes, it does not perform the operation again; it returns the stored result.
+
+This turns retries from “maybe apply another side effect” into “ask again for the result of the same logical action.” But this only works if the key check itself is race-safe. That is why concurrency becomes the next issue.
+
+### 7. Concurrent requests with the same key can still break correctness unless the deduplication step is atomic.
+Imagine the original request and a retry arrive close together. If both check the store before either one records the key, both may conclude “not found” and both execute the side effect. The bug is not in the idea of idempotency; it is in a non-atomic implementation.
+
+So the system needs either locking, uniqueness constraints, or an atomic check-and-set pattern. The mechanism matters because deduplication is only real if “first writer wins” is enforced under race conditions. Once you store keys, another practical issue appears: how long do you remember them?
+
+### 8. Idempotency memory is temporary, so TTL is a correctness tradeoff, not just a storage setting.
+Keeping every key forever is expensive and often unnecessary. So systems expire old keys. But expiration creates a boundary: after the key is gone, a late retry is indistinguishable from a new operation and may execute again.
+
+That means TTL must be chosen against actual retry behavior, client behavior, and operational delays. Too short, and you reintroduce duplicates during slow failures. Too long, and storage grows. This reveals a broader pattern: distributed correctness often depends on scoped, time-bounded engineering choices rather than absolute guarantees.
+
+### 9. Idempotency solves retry-safety for one operation, but not whole-system consistency across services.
+You can make “charge payment” safe to retry and still end up with an order service, payment service, and inventory service disagreeing about what happened overall. That is because each service owns its own state and commits independently.
+
+In a monolith with one database, a transaction can make several related changes happen atomically. In a microservice system, those writes happen in separate databases, so there is no single commit point. Once that shared transaction boundary disappears, partial completion is normal. That is what introduces the distributed state problem.
+
+### 10. Two-phase commit tries to recreate atomicity across systems, but its coordination cost makes it unattractive in practice.
+2PC says: ask everyone to prepare, then ask everyone to commit. In theory, that restores all-or-nothing behavior. In practice, it creates waiting, lock holding, and a coordinator whose failure can stall everyone else. The whole workflow becomes tied to the slowest and least available participant.
+
+So most service architectures avoid relying on distributed transactions across boundaries. Instead of pretending the system can behave like one database, they accept temporary disagreement and design around it. That leads to eventual consistency.
+
+### 11. Eventual consistency means disagreement during the convergence window is expected system behavior.
+This is the part many engineers hear but do not fully internalize. Eventual consistency is not just “it’ll catch up.” It means that after one service commits a change, another service may still answer based on old information for some period of time. During that window, both views are valid from their local perspective.
+
+This shifts the design problem. The challenge is no longer “how do we eliminate all temporary inconsistency?” but “how do we stay correct while the inconsistency exists?” That is why patterns like outbox and sagas exist: they manage transitions through disagreement rather than avoiding disagreement entirely.
+
+### 12. The outbox pattern makes local state change and event creation atomic, then relies on retries and idempotent consumers afterward.
+If a service writes business data and publishes an event as two separate actions, one can succeed while the other fails. The outbox pattern fixes that by writing both the business change and an event record into the same local database transaction. Then a separate relay process publishes the event later.
+
+This guarantees that if the business state changed, the event is durably recorded and can eventually be published. But since publishing may retry, and downstream consumers may see duplicates, idempotent consumption is required. So idempotency is not an isolated API feature; it is the thing that makes reliable asynchronous propagation workable.
+
+### 13. Sagas replace one big transaction with a chain of local transactions plus explicit compensations.
+When a multi-step process spans services, you cannot usually roll it all back with one database transaction. A saga handles this by letting each service do its local commit, and if a later step fails, issuing compensating actions to undo prior steps as best as possible.
+
+This is powerful, but it changes the nature of correctness. The system can now be in legitimate intermediate states: payment captured, order created, inventory not yet reserved. And compensation itself may fail or be delayed. That means your system must tolerate partial progress and recovery as first-class realities, not as bugs in the margins.
+
+### 14. The real discipline is designing for correctness under uncertainty and disagreement, not after they disappear.
+That is the article’s deepest idea. Unknown outcomes force retries. Retries force idempotency. Separate state stores force eventual consistency. Eventual consistency forces designs that remain correct during convergence windows and compensations.
+
+So the model to carry is: distributed systems are not mostly-success/failure systems with occasional weirdness. They are systems where uncertainty, duplicate delivery, stale reads, and partial completion are normal mechanics. If you build as though certainty and instant agreement are the default, your system is only correct by accident.
+
+---
+
+## Handles and Anchors
+
+### 1. Handle: “Idempotency is a seatbelt for the unknown state.”
+You do not add a seatbelt because crashes happen every minute; you add it because when uncertainty arrives, you need a mechanism that keeps the situation survivable. Similarly, idempotency is what lets you retry when you do not know whether the first attempt already took effect.
+
+### 2. Handle: “A retry is not a new request; it is another attempt at the same intent.”
+This is the cleanest way to reason about idempotency keys. If the business intent is the same, the identity should be the same. If the identity changes across retries, the system has no way to know they belong to one logical action.
+
+### 3. Question to ask of any distributed workflow:
+“If this message is delivered twice, delayed for ten minutes, or observed out of order, is the system still correct?”
+If the answer is no, you have probably assumed strong consistency or exactly-once behavior somewhere you do not actually have it.
+
+---
+
+## What This Changes When You Build
+
+### 1. An engineer who understands this will design write APIs around logical operation identity, because retries are inevitable and must be correlated.
+Instead of treating each HTTP request as unique, they will require or generate a client-held idempotency key for non-idempotent actions like “create order” or “charge card.” The unaware engineer often ships a plain POST endpoint and assumes transport retries are harmless, then discovers duplicate side effects under timeout conditions.
+
+### 2. An engineer who understands this will implement idempotency storage with atomicity and concurrency control, because “check then insert” is not enough under race.
+They will use uniqueness constraints, transactional inserts, or lock semantics around the key. The unaware engineer commonly writes application logic that checks for the key and then processes, which works in low traffic tests but allows double execution when original and retry overlap.
+
+### 3. An engineer who understands this will choose TTL and key scope based on the real retry window and business intent, because these are correctness boundaries.
+They will ask: how long can clients retry, what delays can brokers introduce, what exactly counts as “the same operation”? The unaware engineer inherits arbitrary defaults like a one-hour cache TTL or a key based on user ID, and gets either accidental duplicates or accidental suppression of legitimate new actions.
+
+### 4. An engineer who understands this will design read paths and UX for convergence windows, because a successful write does not guarantee every reader can see it immediately.
+They may route immediate follow-up reads to the primary, return enough write-confirmation data for the client to render optimistically, or explicitly represent pending states. The unaware engineer often performs a write, immediately reads from another service or replica, sees stale state, and interprets that as a bug to patch with extra retries rather than a consistency-model issue to design around.
+
+### 5. An engineer who understands this will prefer patterns like outbox plus idempotent consumers over “write DB then publish event,” because separate side effects fail independently.
+They know that if the DB commit succeeds and the publish fails, the system has silently diverged. The unaware engineer often relies on best-effort event publication in the request handler and only discovers the data loss later through reconciliation or customer reports.
+
+### 6. An engineer who understands this will treat saga compensation as an operational workflow, not just application code, because compensations can also end up in the unknown state.
+They will make compensations idempotent, retryable, observable, and recoverable by humans. The unaware engineer often assumes “we have a rollback step” means the problem is solved, then has no answer when the refund timeout leaves the system in a half-recovered state.
+
+---

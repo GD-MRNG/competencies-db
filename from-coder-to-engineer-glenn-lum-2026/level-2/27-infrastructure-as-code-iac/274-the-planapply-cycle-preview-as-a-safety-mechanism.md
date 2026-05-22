@@ -112,4 +112,89 @@ The critical conceptual shift is understanding that the plan is not asking you "
 
 - The most common plan-related incident is not a tool failure — it is an engineer approving a plan they did not read carefully enough, particularly one containing unexpected replacements of stateful resources.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Infrastructure-as-code plans are often treated like a green-light screen: if the plan runs and the output looks vaguely reasonable, people assume the change is safe. That habit breaks down the moment the plan includes something you did not realize the tool meant by “change.” A rename can mean delete-and-recreate. A small config edit can imply replacing a database. A drifted resource can show up in the plan even though nobody touched the code. If you do not understand how the plan was produced, you cannot tell the difference between “expected change” and “silent outage in preview.”
+
+The concrete failure mode is not that the tool lies. It is that the tool tells the truth in a format the operator misreads. Engineers approve plans that destroy stateful resources, miss cascade effects through dependencies, or trust a clean plan as proof that apply will succeed. That leads to data loss, partial applies, broken references, and production changes whose blast radius was visible in the plan output but not recognized.
+
+---
+
+## What You Need To Know First
+
+**1. Declarative infrastructure**  
+In IaC tools like Terraform or CloudFormation, you usually describe the end state you want, not the exact imperative steps to get there. You say “there should be a database with these settings,” and the tool decides whether that means create, update, delete, or replace. This matters because the plan is the tool’s interpretation of your declaration, not your intention in natural language.
+
+**2. State files**  
+A state file is the tool’s stored record of the resources it manages and their last known attributes. It is not the cloud itself, and it is not always current. The plan uses state as one input, which is why stale or wrong state can lead to surprising plan output.
+
+**3. Drift**  
+Drift means the real infrastructure no longer matches what your IaC configuration says, usually because of manual changes, external automation, or cloud-side behavior. Plans surface drift because they compare declared intent to actual reality. So a plan can show changes even when your code diff is empty or tiny.
+
+**4. Resource replacement vs in-place update**  
+Some infrastructure changes can be made on a live resource; others cannot. If the provider API does not allow a field to be modified in place, the tool must destroy the old resource and create a new one. This distinction is central because “change one field” can operationally mean “tear down and rebuild the thing.”
+
+---
+
+## The Key Ideas, Connected
+
+**A plan is not a success prediction; it is a statement of intended actions.**  
+The first thing to fix in your mental model is what the plan is for. It does not answer “will apply succeed?” It answers “given what I can currently see, what actions will I try to take?” That difference matters because a plan can be perfectly accurate about intended destruction, replacement, or updates and still tell you nothing about quota failures, permissions errors, or race conditions at apply time. Once you see the plan as intent rather than guarantee, the next question becomes: intent based on what inputs?
+
+**A plan is computed from three sources of truth, not just old config vs new config.**  
+Most people implicitly imagine a plan as a `git diff` for infrastructure. It is not. The tool reconciles: your desired state in code, its recorded state in the state file, and the live infrastructure it reads from the provider. That is why a plan can show changes you did not type into the config. If reality drifted, the refresh step will discover that, and the diff will include actions to bring reality back to the declared state. Once you understand those three inputs, you can understand why refresh exists and why it is expensive.
+
+**Before diffing, the tool refreshes its view of reality by reading the live infrastructure.**  
+The state file is only a remembered snapshot, so the tool first asks the provider what each tracked resource looks like now. Mechanically, that means API reads for every managed resource. This is why plans get slow as the state grows, why they can hit rate limits, and why plan can fail even before diffing if credentials cannot read a resource or if a tracked object has been deleted unexpectedly. Because refresh is costly, tools let you skip it—but skipping it changes what the plan means.
+
+**Skipping refresh makes planning faster by accepting stale assumptions.**  
+With `-refresh=false`, the tool compares your desired config against its last remembered state instead of against current reality. That saves API calls, but the price is that the plan may be based on infrastructure that no longer exists or no longer matches state. So the tradeoff is not “same plan, faster”; it is “faster plan, weaker truthfulness about the world.” Once the tool has refreshed and compared desired vs current, it has to classify each resource into a type of action.
+
+**The plan output is an action taxonomy: create, update, destroy, or replace.**  
+These labels are not cosmetic. They are the operational meaning of your change. Create usually means additive, low-risk work. Update in place means mutate something existing, with risk determined by which fields change. Destroy means explicit removal. Replace is the dangerous category: the provider cannot do the change on the existing object, so the only legal move is old resource out, new resource in. This is why a harmless-looking field edit can turn into an outage. And that naturally raises the question: what determines whether the impact stays local or spreads?
+
+**Resources are connected by dependencies, so one action can cascade into many more.**  
+Infrastructure is a graph, not a pile. A subnet depends on a VPC; instances depend on the subnet; DNS records may depend on instance attributes. If a foundational resource must be replaced, every downstream resource that cannot survive that identity change may also need to change. The plan shows this, but only if you read beyond the first surprising line. The mechanism is straightforward: dependent resources reference attributes or existence of parent resources, so when the parent is recreated, those references become invalid or point somewhere new. That is why risk assessment cannot stop at “what changed?” and must ask “what depends on it?”
+
+**Because plans encode dependency-driven actions, you read them for blast radius, not just correctness.**  
+At this point the plan becomes a risk document. A small expected code change paired with a huge plan means either drift, hidden dependencies, or a mistaken assumption. Replacements and destroys on stateful resources are high-risk because deletion may mean data loss, not just recreation time. Identity-bearing fields matter because external systems may depend on names, ARNs, IDs, or addresses not visible in this state. `(known after apply)` matters because some downstream values are unresolved until creation time, so the tool is planning with placeholders rather than fixed values. Once you treat plan review as blast-radius analysis, the next important boundary is what the plan cannot know.
+
+**A plan has scope limits, timing limits, and validation limits.**  
+It can only reason about resources in its own state, using provider schemas and the world as observed at plan time. That creates three major blind spots. First, the world may change between plan and apply: another deploy, autoscaling, manual edits, provider maintenance. Second, the provider plugin can compute a diff without knowing whether the actual API call will be rejected for quota, permissions, unsupported combinations, or temporary service conditions. Third, resources outside this state file may depend on what you are changing, and the plan cannot warn you about those cross-state impacts. Once you understand those limits, the final conceptual shift becomes clear.
+
+**The plan’s real value is as a machine-generated disclosure of consequences, not a safety guarantee.**  
+The tool is saying: “Given my model of config, stored state, and current reality, here is what I will attempt.” Your job is not to ask whether the tool is confident. Your job is to verify that the consequences match what you intended and that the risks are acceptable. The reason incidents still happen is usually not that the plan failed to show the action, but that humans stopped reading it as a description of consequences and started treating it as a ceremonial checkmark.
+
+---
+
+## Handles and Anchors
+
+**1. Handle: “A plan is a surgeon’s procedure list, not a prognosis.”**  
+It tells you what operations will be attempted: remove, replace, modify, create. It does not promise the patient will be fine. That helps separate “intended action” from “guaranteed outcome.”
+
+**2. Handle: “Three-way reconciliation, not code diff.”**  
+If you remember only one mechanic, remember this: plan compares desired config, remembered state, and live reality. That explains drift, refresh cost, surprising diffs, and why skipping refresh changes the meaning of the output.
+
+**3. Question to ask every plan: “Which lines here imply identity loss?”**  
+Replacements, destroys, changed IDs/names/ARNs, and foundational resources are the lines that usually expand blast radius. This question forces you to look for consequences, not just counts.
+
+---
+
+## What This Changes When You Build
+
+**An engineer who understands this will review plans by action type first, not by resource count alone, because a single replacement can be more dangerous than fifty tag updates.**  
+The unaware engineer often scans the summary line—“12 to add, 3 to change, 1 to destroy”—and treats that as sufficient. The better approach is to immediately find destroys and replacements, especially on stateful or foundational resources, because that is where outages and data loss usually hide.
+
+**An engineer who understands this will be cautious about `-refresh=false` in CI because they know it changes the truth basis of the plan, not just its speed.**  
+The default unaware move is to disable refresh whenever plans feel slow. The consequence is approving changes against stale assumptions and discovering drift only during apply, when failures are more expensive and harder to unwind.
+
+**An engineer who understands this will treat changes to foundational resources as graph changes, not local edits, because dependencies turn one replacement into a cascade.**  
+The unaware engineer sees “replace VPC” or “replace subnet” as a single-resource event. The aware engineer expects secondary effects—instances, routes, gateways, load balancers, DNS, security relationships—and reads the full plan to map the implied rebuild.
+
+**An engineer who understands this will separate “clean plan” from “safe deploy” because provider validation and TOCTOU gaps still exist.**  
+The unaware engineer assumes plan success means apply should be routine. The aware engineer still checks quotas, permissions, maintenance windows, concurrent automation, and whether enough time has passed for the environment to diverge from the planned snapshot.
+
+**An engineer who understands this will design state boundaries and review processes differently because plan visibility ends at the state file boundary.**  
+The unaware engineer assumes the plan reveals all downstream impact. The aware engineer knows shared infrastructure, cross-team dependencies, and out-of-state consumers are invisible to the plan, so they add extra review, documentation, or architectural boundaries around shared resources rather than trusting plan output alone.

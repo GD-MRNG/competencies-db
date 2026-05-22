@@ -105,4 +105,104 @@ Everything before that decision point should be identical. The artifact pipeline
 - If switching your pipeline from delivery to deployment would require significant rearchitecture, you likely do not have continuous delivery — you have CI with a manual deployment process attached.
 
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Teams often talk about continuous delivery and continuous deployment as if the only difference is whether someone clicks a button at the end. That framing hides the real engineering issue: the pipeline encodes where release risk is judged, how quickly production teaches you something, and how failures are isolated. If you misunderstand that, you build a release process that looks modern but behaves like an old batch-release system.
+
+What goes wrong in practice is concrete. Teams say they are "deployable at any time," but production release still depends on ad hoc steps, environment-specific builds, or tribal knowledge. Or they introduce a manual approval gate without realizing it naturally creates a queue, so changes pile up, deployments get larger, incidents get harder to diagnose, and rollbacks become blunt instruments. The result is not just slower shipping; it is slower learning and more expensive failures.
+
+A second class of failure is organizational. If your business expects humans to make the final release call but your pipeline is optimized for automatic release, or vice versa, then responsibility is smeared across people and tools. Nobody is quite sure whether safety comes from tests, approvals, monitoring, or caution. That ambiguity becomes drag: hesitation, batching, emergency exceptions, and a release process that no one fully trusts.
+
+---
+
+## What You Need To Know First
+
+**1. CI/CD pipeline**  
+A pipeline is the ordered set of steps that turns a code change into something runnable in production. CI usually means code is automatically built and tested after changes. CD extends that path toward production. For this article, the important idea is that a pipeline is not just tooling; it is the system that decides what conditions must be true before software moves forward.
+
+**2. Artifact**  
+An artifact is the built output you actually deploy: for example, a Docker image, binary, or package. The key property here is that it should be versioned and fixed. Once built, it should not silently change. That matters because if you test one thing and deploy a slightly different thing, your test results no longer mean what you think they mean.
+
+**3. Promotion vs build**  
+Building creates the artifact. Promotion moves that same artifact through environments or states, like from staging-ready to production-ready. This distinction matters because many teams think they are "deploying" when they are really rebuilding in each environment. If you rebuild, you are introducing variation at the exact moment you want certainty.
+
+**4. Feedback loop**  
+A feedback loop is the time and clarity between making a change and seeing its real effect. In software delivery, the most valuable feedback often comes from production: latency shifts, error rates, and real user behavior. The shorter and cleaner that loop is, the easier it is to connect cause and effect.
+
+---
+
+## The Key Ideas, Connected
+
+**Continuous delivery and continuous deployment are the same pipeline until the final move to production.**  
+Most of the machinery is shared: commit, build, test, package, validate, prepare an artifact. The article's first important move is to strip away the common confusion that these are two fundamentally different delivery systems from start to finish. They are not. The difference appears only after an artifact has passed all automated checks and is technically ready to go live.
+
+That matters because it relocates the real question. The question is not "how automated are we?" but "what happens once automation says the change is ready?" Once you see that, the next idea becomes sharper: the final gate is not cosmetic; it changes the logic of the whole system.
+
+**The real difference is where the final risk decision lives.**  
+In continuous deployment, passing automated gates is treated as sufficient evidence, so the artifact goes to production automatically. In continuous delivery, passing those gates is necessary but not sufficient; a human must still decide whether now is the right time to release.
+
+This is more than a button/no-button distinction. It determines whether the system says, "automation is the final judge of readiness," or "automation prepares a candidate and a human performs the last acceptance." Once that is the difference, you can see why "deployable at any time" must be literal in continuous delivery. If a human is only deciding *when*, then the *how* must already be solved.
+
+**For continuous delivery to be real, the artifact must already be production-ready before the human decision.**  
+A promotable artifact must be immutable, self-contained, and the same thing across environments. If production release still requires rebuilding, manual edits, or hidden environment-specific tweaks, then the human gate is not just making a timing decision. They are supervising an unpredictable process.
+
+That breaks the intended structure. A true delivery gate should separate decision from execution: the human says "release this version," and the system performs a known, repeatable promotion. If that separation does not exist, then what looks like continuous delivery is actually CI plus a manual release procedure. And once you realize the gate should only decide *when*, the next consequence appears: the presence or absence of that gate changes how fast production can teach you.
+
+**The biggest downstream effect is the production feedback loop.**  
+With continuous deployment, every passing commit reaches production, so every commit generates real production evidence. That means small changes produce fast, attributable signals. If latency rises or errors increase, there are very few candidate causes, often just one commit.
+
+With continuous delivery, production feedback only happens when someone chooses to deploy. If that happens less often, more changes collect behind the gate. Now a regression in production is attached to a batch, not a single change. The mechanism here is straightforward: delayed release causes accumulation; accumulated changes increase ambiguity; ambiguity makes diagnosis slower. That is why the next idea—batch size—is not just process advice but a structural consequence of the gate.
+
+**A manual gate naturally creates a queue, and queues naturally become batches.**  
+Continuous deployment drains the queue automatically: each good change goes out. Continuous delivery does not; artifacts wait. The moment work can wait, work can pile up. Teams then feel pressure to release multiple ready changes together because it seems efficient to "clear the queue."
+
+But that efficiency is deceptive. A batch increases the number of possible causes when something fails. It also broadens rollback impact, because undoing the release means undoing several changes at once, including ones that were not responsible for the problem. So the manual gate creates a queue by mechanism, and the queue creates batching pressure by mechanism. That leads to the practical question: when is accepting that tradeoff justified?
+
+**The choice between delivery and deployment should be made from system capability, not team comfort.**  
+The article frames the decision around three variables: blast radius tolerance, detection capability, and recovery speed. This is useful because it turns a fuzzy cultural preference into an operational model.
+
+If bad changes can only affect a small scope, if monitoring can detect regressions quickly, and if rollback or traffic shift is fast, then automation can often respond faster and more consistently than a human gate can. In that world, an approval step may add delay without reducing harm. But if the cost of even a small mistake is unacceptable, or if monitoring is weak, or if rollback is slow and painful, then a human decision before production may still be rational. Once you think this way, "we're not ready for continuous deployment" stops being an identity statement and becomes a diagnosis of missing capability.
+
+**Compliance does not always force a human gate at deploy time; it forces an auditable decision somewhere in the chain.**  
+Many teams assume regulation automatically means continuous delivery. The article pushes on that assumption by separating *approval* from *deployment timing*. If a qualified person approves the code change earlier, and the system can prove that the exact approved change became the exact deployed artifact, then the regulatory requirement may already be satisfied.
+
+The mechanism is provenance: a trustworthy chain from reviewed commit to built artifact to deployed version. That means some organizations can move the human decision earlier and still automate the final production step. This idea depends on all the prior ones: immutable artifacts, promotion instead of rebuild, and clear risk ownership. It also reinforces the article's final model.
+
+**The clean mental model is: both systems share the same pipeline; only the final gate differs.**  
+This is the article's organizing conclusion. Everything before production should be built as if either mode were possible: reliable artifacts, automated validation, repeatable promotion, observability, and rollback. Then the only configurable difference is whether the final transition is automatic or human-gated.
+
+That conclusion is powerful because it gives you a test. If moving from continuous delivery to continuous deployment would require redesigning large parts of your release machinery, then the pipeline was never actually in a "deployable at any time" state. The gate was hiding unresolved release complexity rather than expressing a deliberate risk decision.
+
+---
+
+## Handles and Anchors
+
+**1. Think of the gate as "who gets final authority: the pipeline or a person?"**  
+That is the simplest anchor. Everything up to that point is evidence gathering. The final distinction is whether passing evidence automatically authorizes production, or whether it merely prepares a package for human authorization.
+
+**2. A manual gate is a queue unless you actively prevent it from becoming one.**  
+This is a strong practical handle because it explains batch releases without blaming people. Queues accumulate by default. If you remember that, you will expect batching pressure in continuous delivery and design against it.
+
+**3. Ask this question: "After tests pass, can I promote this exact artifact to production with one recorded action?"**  
+If the answer is no, you do not yet have true continuous delivery. You have unresolved release work after validation. This question is a good diagnostic because it cuts through pipeline branding and gets to the mechanics.
+
+---
+
+## What This Changes When You Build
+
+**An engineer who understands this will design for artifact promotion instead of environment-specific rebuilds, because test confidence only transfers to production when the thing tested is the thing deployed.**  
+The unaware engineer often accepts separate builds for staging and production or allows deploy-time compilation. That default quietly introduces variation between validation and release, so failures in production cannot be cleanly interpreted as "the tested artifact misbehaved."
+
+**An engineer who understands this will treat a manual production gate as a queue-management problem, because the gate will otherwise accumulate changes and turn small releases into diagnostic messes.**  
+The unaware engineer inherits batching as a convenience: "we already have a few ready, let's ship them together." The result is slower incident attribution, riskier rollback, and longer recovery during production problems.
+
+**An engineer who understands this will invest differently in observability, canaries, and rollback automation, because those capabilities determine whether continuous deployment is safe enough to remove the human gate.**  
+The unaware engineer treats continuous deployment as a cultural aspiration or as recklessness. The informed engineer sees it as conditional on system capability: fast detection plus fast recovery. That changes spending and prioritization decisions.
+
+**An engineer who understands this will separate the decision of *when to release* from the mechanics of *how to release*, because continuous delivery only works when humans decide timing, not procedure.**  
+The unaware engineer often leaves manual runbooks, shell access, or one-off config changes in the final path to production. That means each release depends on operator memory and introduces inconsistency exactly where reliability is needed most.
+
+**An engineer who understands this will examine compliance requirements for where approval must occur, because deploy-time approval may be an inherited assumption rather than a real regulatory need.**  
+The unaware engineer defaults to a permanent manual gate "for compliance," even when earlier review plus artifact provenance could satisfy auditors. The consequence is a slower feedback loop and more batching than the organization may actually need to tolerate.

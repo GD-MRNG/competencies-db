@@ -151,4 +151,108 @@ The skill this builds is not arithmetic. It is the ability to look at a network 
 
 - Plan your address space allocation across all environments, regions, and accounts before creating your first VPC. Treating CIDR allocation as a global constraint rather than a per-VPC decision avoids the overlapping-range problem that becomes exponentially harder to fix over time.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+CIDR matters because “a block of IPs” is not enough of a model to make good network decisions. The moment you have to size subnets, avoid overlaps, leave room for growth, or understand why one route wins over another, hand-wavy intuition stops working. You need to know what the prefix is doing to the bits, because the infrastructure is enforcing those bit boundaries whether you understand them or not.
+
+When engineers do not have that model, the same predictable failures show up: subnets that are too small for Kubernetes or ENI-heavy workloads, VPCs that cannot be peered because teams reused the same private range, and route tables that behave “mysteriously” even though they are doing exactly what longest-prefix match says they should do. What looks like a configuration problem is usually a modeling problem upstream.
+
+This topic exists because network design is really constrained allocation. You are placing boundaries inside a fixed address space, and every boundary creates a tradeoff between size, number, isolation, and future flexibility. CIDR is the language those tradeoffs are written in.
+
+## What You Need To Know First
+
+**1. IPv4 addresses are just 32-bit numbers.**
+
+An address like `10.0.1.5` looks like four separate decimal values, but it is really one 32-bit binary value shown as four 8-bit chunks. Those chunks are called octets. Subnetting works on the binary form, not the dotted decimal display.
+
+**2. Bits are positions, not symbols.**
+
+Each bit can be `0` or `1`, and each position has a value. When you change a bit farther to the left, you change the number by a lot; when you change one on the right, you change it by a little. That is why moving a CIDR prefix by only a few bits creates very large capacity changes.
+
+**3. A mask is a way to separate “fixed” bits from “free” bits.**
+
+In subnetting, the mask marks which bits belong to the network and which belong to the host. Network bits are the fixed identity of the block; host bits are the positions available inside that block. The slash notation, like `/24`, is just a compact way to say where that split happens.
+
+**4. Routing is matching, then choosing the most specific match.**
+
+A router can have several routes that all appear to fit a destination. It does not pick randomly and it does not pick the first broad match; it picks the route with the longest prefix, meaning the route that fixes the most bits and is therefore the most specific.
+
+## The Key Ideas, Connected
+
+**An IP address is not only a label; it is a structured value split into network bits and host bits.**
+
+That is the foundation the article is trying to force into focus. `10.0.1.5` is not just “some machine.” Under CIDR, part of that 32-bit number says which network block the address belongs to, and the rest says which position inside that block it occupies. If you do not see the address as two regions separated by a boundary, subnetting looks arbitrary. Once you do see that split, the rest of the topic becomes mechanical rather than mysterious. That naturally leads to the question: where exactly is the split?
+
+**The CIDR prefix is the boundary line that says how many bits belong to the network.**
+
+`/24` means the first 24 bits are network bits and the remaining 8 are host bits.  `/16` means 16 network bits and 16 host bits. The key move here is to stop reading `/24` as a rough size label and start reading it as an instruction: “freeze the first 24 bits; allow variation only in the last 8.” That is why `/24` gives 256 total addresses: 8 host bits means `2^8` combinations. Once you understand the prefix as a bit boundary, the mask becomes easier to understand because it is just a visible version of that boundary.
+
+**The subnet mask is the binary tool that extracts the network portion from an address.**
+
+A mask is all `1`s for the network bits and all `0`s for the host bits. When you AND the address with the mask, the host bits are zeroed out, leaving the base network address. This matters because it shows that the network address is not guessed or named manually; it is computed from the bit structure. The broadcast address is the opposite edge: keep the network bits, set all host bits to `1`. So now you have a block with a base, a top, and everything in between. Once you can derive those edges, you are ready to reason about block size.
+
+**Block size comes directly from the number of host bits, so prefix changes scale exponentially.**
+
+If there are `32 - N` host bits in a `/N` network, then there are `2^(32-N)` total addresses in the block. That is why changing the prefix by just one bit doubles or halves the space. One more network bit means one fewer host bit, which means half as many combinations. One fewer network bit means one more host bit, which means twice as many. This is the reason small-looking prefix changes are actually large design decisions. Once you understand that scaling, subnet carving stops looking like arbitrary slicing and starts looking like binary partitioning.
+
+**Subnetting is dividing a larger block into smaller blocks by borrowing more bits for network identity.**
+
+If your VPC is `10.0.0.0/16`, that is your total address budget. Creating subnets means taking some of the bits that were previously host bits at the VPC level and using them to define smaller internal networks. A `/24` subnet inside that `/16` says: “within this larger space, fix 8 more bits to identify individual subnets.” This is why more subnets always means fewer addresses per subnet: you are spending bit positions on structure instead of host capacity. That tradeoff leads directly to the rule that trips many people up in practice: not every starting address is valid for a given prefix.
+
+**Valid subnet boundaries are determined by binary alignment, not by what looks neat in decimal.**
+
+A `/20` block has 12 host bits, so its starting address must have those 12 bits set to zero. In dotted decimal, that means the third octet jumps in steps of 16: `0, 16, 32, 48...`. This is where “I kind of understand CIDR” usually fails. Decimal notation hides the real boundary, especially when the prefix lands mid-octet. If you only eyeball the numbers, you create overlaps without realizing it. So the important connection is this: once the prefix defines the block size, the block size also defines which starts are legal. That sets up the next practical constraint — containment.
+
+**A subnet must fit entirely inside its parent network, so its prefix must be more specific than the parent’s.**
+
+If the VPC is `/16`, a subnet cannot also be `/16` unless it is the whole VPC, and it certainly cannot be broader like `/15`. A subnet is a subdivision, so it must fix at least one additional bit beyond the parent. This gives you the real design lever: choose one prefix for total budget and another for per-subnet size. Those two numbers together determine how many subnets you can have and how large each can be. That would already be enough reason to care, but routing makes the structure even more useful.
+
+**Routing works because CIDR creates a hierarchy of increasingly specific matches.**
+
+A destination like `10.0.1.17` can match `10.0.0.0/16`, `10.0.1.0/24`, and `0.0.0.0/0` at the same time. Routers resolve that ambiguity with longest prefix match: the route that fixes the most bits wins. This is the operational payoff of CIDR. You can summarize broadly when that is convenient and override narrowly when needed. A big route says “everything in this region goes here,” and a more specific route says “except this smaller block, which goes there instead.” Once you understand that, CIDR is no longer only about address counting; it becomes a tool for expressing routing intent. That same structure also explains why overlapping networks are such a serious problem.
+
+**Overlapping private ranges break connectivity because the hierarchy stops being unambiguous.**
+
+If two connected VPCs both claim `10.0.0.0/16`, then the destination `10.0.5.20` no longer identifies a unique place. The router cannot tell which network owns that address, because both do. This is why overlap is not a small misconfiguration; it is a collision in the addressing model itself. Re-addressing is painful precisely because addresses are baked into subnets, routes, security rules, interfaces, and often assumptions in deployment systems. So the article’s larger point lands here: subnetting is not clerical work. It is long-term architectural planning under binary constraints.
+
+**The practical skill is learning to feel capacity, overlap, and specificity from the prefix itself.**
+
+The article ends by trying to build intuition, not just procedure. When you see `/24`, you should feel “8 host bits, 256 total addresses.” When you see `/20`, you should feel “mid-octet boundary, step size of 16 in the third octet, much larger capacity.” When someone proposes a subnet size for EKS or reuses `10.0.0.0/16` in another environment, you should be able to predict the pressure points before deployment. That is the real transition from recognition to understanding.
+
+## Handles and Anchors
+
+**1. CIDR is a movable fence in a 32-bit field.**
+
+Everything to the left of the fence says which plot of land you are in. Everything to the right says which house on that plot. Move the fence left and each plot gets bigger but you have fewer plots. Move it right and you get more plots, each with fewer houses.
+
+**2. Subnetting is budgeting with powers of two, not estimating with decimals.**
+
+That is the sentence to keep. If you think in decimal ranges, you will make “looks fine to me” mistakes. If you think in powers of two, the design constraints become visible.
+
+**3. Longest prefix match is “smallest box that still contains the destination wins.”**
+
+Imagine several nested boxes labeled with CIDR ranges. A destination may be inside many boxes, but the router chooses the tightest-fitting one. That gives you an easy way to explain route specificity to someone else without diving straight into binary.
+
+## What This Changes When You Build
+
+**An engineer who understands this will size subnets based on address consumers, not just instance counts, because IP exhaustion often comes from ENIs, pods, and managed service interfaces rather than from VMs alone.**
+
+That changes outcomes in Kubernetes, ECS, Lambda-in-VPC, and load-balanced systems where “we only run a few nodes” is a dangerously incomplete estimate.
+
+**An engineer who understands this will allocate VPC CIDRs as part of an organization-wide plan, not one VPC at a time, because overlap is easy to create locally and expensive to remove globally.**
+
+This changes the way environments, regions, and accounts are provisioned. Instead of copying the tutorial’s `10.0.0.0/16`, they will reserve non-overlapping space deliberately for future peering, transit, and VPN needs.
+
+**An engineer who understands this will verify mid-octet subnet boundaries mechanically, because prefixes like `/20`, `/22`, and `/27` produce valid starts that are not obvious in dotted decimal.**
+
+That changes design reviews and infrastructure changes: they will check whether a proposed block starts on the correct boundary instead of trusting visual inspection.
+
+**An engineer who understands this will read route tables as specificity rules, because a broad route describes default intent while a narrower route deliberately overrides it.**
+
+That changes how they debug traffic flow. Instead of asking “why did traffic ignore the /16 route,” they will ask “what more specific prefix matched first?”
+
+**An engineer who understands this will treat prefix length as a hard tradeoff between segmentation and capacity, because every extra network bit spent on more subnets is one less host bit available inside each subnet.**
+
+That changes network design conversations. Choosing `/24` versus `/20` stops being a stylistic preference and becomes an explicit decision about isolation, growth headroom, and operational flexibility.

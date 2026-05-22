@@ -172,4 +172,104 @@ The decision of what to put in a module is not "what code is repeated?" It is "w
 
 - The right question for module boundaries is not "what code is duplicated?" but "what infrastructure should change together, be versioned together, and be constrained together?"
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Teams usually discover the real value of IaC modules during maintenance, not during initial setup. Copy-pasting Terraform works fine on day one: dev, staging, and prod all come up, and everyone feels productive. The trouble starts months later, when each copy has been edited under different pressures — an incident hotfix in prod, a test change in staging, an experiment in dev. Now a “simple global change” is no longer one change. It is many slightly different changes, each with its own review risk.
+
+That becomes dangerous when the change is urgent or mandatory. A security control, compliance requirement, provider deprecation, or cost fix has to roll out everywhere, but your infrastructure no longer has one shape. Engineers have to rediscover local differences before they can act safely. That slows response time, increases the chance of missing an environment, and turns infrastructure maintenance into archaeology.
+
+Modules exist to control that maintenance problem. If you only think of them as a DRY feature, you will likely design them to reduce typing rather than to preserve a stable contract across time. That usually produces modules that are too loose, too rigid, or too entangled to evolve safely.
+
+---
+
+## What You Need To Know First
+
+### Terraform state
+Terraform keeps a record of what real infrastructure objects it believes it manages. That record is the state file. It maps your configuration to actual cloud resources, and Terraform uses it to decide whether to create, change, or destroy something. If a resource’s identity in configuration changes, Terraform may think the old object should be destroyed and a new one created unless you explicitly tell it the resource was only moved.
+
+### Inputs, outputs, and encapsulation
+A module has things callers are allowed to provide, and things it gives back. Inputs are the allowed variations; outputs are the pieces other code can depend on. Everything else inside the module is internal implementation. The key idea is that consumers should depend on the interface, not the internals, so the internals can change without forcing every caller to change too.
+
+### Dependency graph
+Terraform builds an execution order by following references. If one module takes another module’s output as an input, Terraform infers that the second depends on the first. You usually do not hand-write the order; the tool derives it from the data flow. This matters because module composition is not just organization — it affects how changes propagate and in what order infrastructure is created or updated.
+
+### Version pinning
+When you reference a module at a specific tag or version, you are saying “use exactly this snapshot.” That protects consumers from unreviewed changes. But it also means upgrades do not happen automatically; someone has to choose to move each consumer to a newer version and verify the impact.
+
+---
+
+## The Key Ideas, Connected
+
+### A module’s real job is to create a stable interface for infrastructure that must evolve.
+The article’s core claim is that modules are not mainly about avoiding repeated code. They are about making change manageable. In infrastructure, the expensive part is rarely initial creation; it is the repeated need to modify many similar systems over time. A stable interface lets you improve, patch, or constrain the implementation in one place while giving many consumers a predictable way to adopt that change.
+
+That immediately explains why copy-paste is the real enemy. If there is no shared interface, there is no single place where change can be introduced and propagated deliberately.
+
+### Copy-paste hurts because duplicates do not stay identical; they accumulate separate histories.
+Three copied environment configs start the same, but each one gets changed in response to local needs. Those changes are usually reasonable in isolation. The problem is that the copies stop being instances of one pattern and become three unrelated configurations that merely share ancestry. The maintenance cost then becomes proportional to the number of copies, plus the effort of understanding how each one has drifted.
+
+Once you see divergence as the mechanism, modules make more sense. A module is a way to keep many consumers tied to one maintained implementation while still allowing a controlled set of differences.
+
+### That means the important part of a module is its interface: what varies, what is fixed, and what is exposed.
+A module has inputs, internal resources, and outputs. Inputs define the sanctioned variation between uses. Internal resources are the implementation choices the module owns. Outputs define what downstream consumers may rely on. Together, those three parts form a contract.
+
+This leads directly to the hardest design decision: where to draw the boundary between caller control and module opinion. If too much is an input, consumers can all drift in behavior even though they “use the same module.” If too little is an input, consumers will fork or bypass the module as soon as reality differs from the designer’s assumptions.
+
+### The central tension in module design is flexibility versus consistency.
+Every input variable is permission for callers to differ. Every hardcoded internal is a rule the module enforces. If secret encryption is an optional boolean input, then some environments may disable it. If it is always on inside the module, then the module enforces compliance by construction.
+
+This is not just a style choice. It determines whether the module actually reduces future change cost. Too-flexible modules push complexity outward: callers must still understand and choose many low-level settings. Too-rigid modules fail to survive real usage and get forked, recreating the same divergence problem modules were supposed to solve.
+
+### Once modules are used together, they form a dependency graph rather than isolated building blocks.
+Real systems are built by wiring modules together: network feeds cluster, cluster feeds database, and so on. Outputs from one module become inputs to another. Terraform uses those references to infer order. So module design is not only about reuse; it also shapes the graph of dependencies and therefore the operational behavior of planning and applying changes.
+
+And once composition exists, abstraction depth becomes a tradeoff. Nesting modules can simplify the caller’s view, but it can also make plan output harder to interpret because the actual changed resource may be buried several layers down.
+
+### Because modules are consumed by many callers, versioning becomes part of the design, not an afterthought.
+A pinned module version means consumers are protected from surprise changes. That is good because infrastructure changes are consequential and deserve explicit review. But pinning also means each consumer upgrades on its own timeline. Over time, different environments end up on different module versions.
+
+That creates a new maintenance problem: version sprawl. The same mechanism that makes upgrades safe also makes stale consumers easy to ignore. So a module interface must be treated like a public API. Breaking changes are painful because every caller must coordinate code changes with the version bump.
+
+### Modules are harder to refactor than application helpers because state ties structure to real infrastructure.
+In application code, moving a function is often just code motion. In Terraform, moving a resource between modules changes its address in state. Terraform may interpret that as “old thing gone, new thing needed,” which can trigger destructive actions. Preventing that requires explicit state migration or moved declarations.
+
+This is why module boundaries become sticky. Refactoring a bad boundary later is not just a readability improvement; it is a migration of Terraform’s identity mapping for real infrastructure. That cost makes early boundary decisions much more consequential than many engineers expect.
+
+### So the right module boundary is defined by what should change together, be versioned together, and be constrained together.
+If you organize modules around “what code is duplicated,” you risk making abstraction choices based on syntax rather than operational behavior. A better question is: which infrastructure pieces should share one contract and one upgrade path? Things that should evolve together belong behind the same module interface. Things that need independent lifecycles or independent policies likely should not.
+
+That framing also clarifies the common failure modes. A god module groups too much under one contract, forcing unrelated things to change together. An over-parameterized wrapper groups too little under one opinion, exposing everything and enforcing nothing. Good module design sits between those extremes.
+
+---
+
+## Handles and Anchors
+
+### 1. “A module is a versioned API with side effects.”
+This is probably the best single mental model. Inputs are API parameters, outputs are the response, the internals are implementation, and the side effects are real cloud resources that persist in the world. That is why backward compatibility, versioning, and upgrade coordination matter so much more than “did we avoid repetition?”
+
+### 2. “Copy-paste fails in maintenance, not creation.”
+If you need a quick explanation for a colleague: duplication is not expensive when you create it; it becomes expensive when each copy lives a different life and you later need one safe change everywhere. That sentence gets you to the real reason modules exist.
+
+### 3. Ask: “What should change together?”
+When looking at a possible module, use this test. If these resources need the same policy decisions, the same upgrade cadence, and the same interface contract, grouping them may make sense. If not, the boundary is probably wrong. This question is more reliable than “what looks reusable?”
+
+---
+
+## What This Changes When You Build
+
+### An engineer who understands this will extract modules later and with more evidence, because the real cost is locking in a public contract plus state structure.
+The unaware engineer often pulls a module out after the first duplicated block because it “feels cleaner.” That usually bakes one use case’s assumptions into an interface that later proves wrong. The aware engineer waits until there are multiple concrete consumers and uses those cases to discover which variations are truly needed.
+
+### An engineer who understands this will design fewer, more meaningful inputs, because every exposed variable is a place where consumers can diverge.
+The unaware engineer often exposes every provider argument “for flexibility.” The result is a wrapper that adds indirection but does not enforce standards. The aware engineer asks which choices must remain caller-controlled and which should be fixed inside the module to guarantee consistency, security, or operability.
+
+### An engineer who understands this will treat module versioning as an operational process, not just a source syntax detail, because pinning prevents surprise but creates drift.
+The default failure is to pin versions and then never build inventory or upgrade discipline around them. Environments quietly age. The aware engineer sets up a way to see which consumers are on which versions and treats security or breaking upgrades as work that must be actively driven.
+
+### An engineer who understands this will be cautious about deep nesting, because abstraction depth increases debugging and review cost.
+The default move is to keep decomposing for elegance until plan output becomes unreadable and diagnosing a change requires traversing several layers of modules. The aware engineer still composes modules, but watches whether the abstraction is actually reducing caller complexity or just hiding behavior behind longer addresses.
+
+### An engineer who understands this will treat module refactors as infrastructure migrations, because changing structure can change state addresses and trigger destructive plans.
+The unaware engineer sees “split this big module into two” as a code cleanup task. The aware engineer immediately asks: what resource addresses will change, how will state be migrated, what happens if a pipeline runs mid-migration, and which resources are too dangerous to move casually? That shift in mindset prevents outages caused by innocent-looking reorganizations.

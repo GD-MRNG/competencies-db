@@ -103,5 +103,109 @@ If you carry one idea from this post, it should be this: the discount percentage
 - Layering specific commitments for stable workloads with flexible Savings Plans as a backstop and on-demand for variable peaks is how mature organizations construct their commitment portfolio.
 - The primary risk of commitment-based pricing is not the commitment itself but the organizational gap between who purchases the commitment and who controls the workload it covers — architectural changes that orphan active commitments are the most common and most expensive failure mode.
 
+# Discussion
 
-[← Back to Home]({{ "/" | relative_url }})
+## Why This Conversation Is Happening
+
+Cloud commitment pricing exists because on-demand pricing is intentionally the most flexible and therefore the most expensive way to buy compute. AWS is willing to charge less if you promise future usage, because your commitment reduces their revenue uncertainty. The engineering problem starts when teams treat that promise as a simple discount coupon instead of as a binding position on future infrastructure shape and spend.
+
+What breaks in practice is not usually the first purchase. It is what happens six months later when the workload changes. A team rightsizes instances, migrates regions, moves from EC2 to Fargate, replaces self-managed systems with managed services, or shuts down a product entirely — and suddenly the “savings” instrument no longer matches reality. Then you keep paying for commitments that no longer apply, or you avoid buying commitments at all because no one trusts the lock-in.
+
+Without a working model, teams optimize the wrong thing. They chase 100% coverage and accidentally commit to peak usage instead of baseline usage. They see a 60% discount and miss that Spot would still be cheaper for interruptible work. They centralize purchasing but decentralize infrastructure changes, so orphaned commitments silently waste money. The cost problem is really a systems-model problem.
+
+---
+
+## What You Need To Know First
+
+### On-demand pricing
+On-demand means you pay the listed rate only for the compute you actually run, with no long-term promise. It is operationally simple and highly flexible: start an instance, stop it, change families, move regions. The tradeoff is price — you are paying the premium rate because AWS is taking all the uncertainty.
+
+### EC2 instance attributes
+An EC2 instance is described by attributes like instance family and size (`m5.large`, `r5.2xlarge`), region (`us-east-1`), operating system, and tenancy. Commitment instruments often match against these attributes. If the usage does not match the commitment’s required attributes, the discount does not apply.
+
+### Baseline vs variable demand
+Most systems have some compute that runs almost all the time and some compute that changes with traffic, jobs, or experiments. Baseline demand is the part you are confident will exist continuously. Variable demand is the part that comes and goes. Commitment pricing only works well when you can separate those two in your head.
+
+### Billing discount vs actual capacity
+A billing discount changes how AWS charges you; it does not create or hold infrastructure for you. This matters because “Reserved Instance” sounds like capacity is being set aside. In most discussions here, the important thing is that the reservation affects the bill, not that a specific machine is waiting for you.
+
+---
+
+## The Key Ideas, Connected
+
+### A Reserved Instance is a billing commitment, not a machine reservation.
+What this means mechanically is that buying an RI does not create a special EC2 instance. Nothing new appears in your infrastructure. Instead, AWS records that your account has purchased discounted pricing for usage with certain attributes. If matching usage exists, the bill for that usage is reduced. If matching usage does not exist, you still pay for the RI anyway.
+
+That distinction matters because it changes how you reason about risk. If you thought an RI was tied to one VM, you might think stopping that VM ends the relationship. It does not. The discount can “float” to another matching instance, which leads directly to the next idea: what exactly counts as a match is the real substance of the commitment.
+
+### Different commitment instruments match on different dimensions.
+A Standard RI matches specific infrastructure attributes like family, size, and region. A Savings Plan, by contrast, matches on eligible compute spend per hour rather than a single instance shape. So the commitment is being made on a different axis: one is more about “this kind of thing will exist,” the other is more about “this amount of compute spend will exist.”
+
+Once you see that, the pricing tradeoff becomes easier to understand. AWS gives deeper discounts when your promise is more specific, because a specific promise is more useful to them and less flexible for you. That is why flexibility and discount depth move in opposite directions.
+
+### Commitment decisions are really decisions about specificity versus flexibility.
+Standard RIs are highly specific, so they tend to discount more. Compute Savings Plans are broad and flexible, so they discount less. Convertible RIs and EC2 Instance Savings Plans sit in between. The point is not that one product is universally better; the point is that each one encodes a different amount of future-change risk.
+
+This leads to the next idea because once you know commitments vary along flexibility, you need a way to compare the actual exposure you are taking on. That exposure is not just “one year vs three years.” It has several independent dimensions.
+
+### Every commitment has three separate risk knobs: term, payment timing, and flexibility.
+Term length controls how far into the future you are betting. A three-year term means you are asserting that some usage pattern will persist much longer than with a one-year term. Payment structure controls cash flow, not whether you are committed. No-upfront can feel safer because you did not pay cash today, but you are still obligated for the term. Scope/flexibility controls how much your infrastructure is allowed to change before the discount stops matching.
+
+These knobs are independent, which is why engineers often get confused. “No upfront” sounds like less commitment, but it is mostly different payment timing. “Three-year all upfront” sounds scary, but if the discount is deep enough and the workload is truly durable, it can actually break even relatively early. That leads to the break-even idea.
+
+### The right question is not “is the discount big?” but “how much usage must persist for this to save money?”
+Break-even is the point where the savings from discounted hours exceeds the cost of committing. The article gives the practical shortcut: if the discount is `d`, break-even utilization is roughly `1 - d` of the term. So a 40% discount needs about 60% utilization to break even; a 60% discount needs about 40%.
+
+Mechanically, this works because deeper discounts earn back the cost faster. That is why a longer, deeper commitment can be more forgiving in time-to-break-even than a shorter, shallower one. But that does not remove risk — it shifts the shape of the risk. You may recover the cost sooner, yet still have many months left where an architectural change creates pure waste. That is why understanding matching behavior over time matters more than just reading the discount percentage.
+
+### Some commitments have built-in ways to absorb infrastructure reshaping.
+Regional Linux RIs, for example, have size flexibility using normalization factors. One larger RI can cover several smaller instances in the same family if their normalized units add up correctly. This is a billing-time remapping feature: AWS automatically applies the RI to combinations of matching family sizes rather than forcing a one-instance-to-one-instance relationship.
+
+This matters because it reduces one common failure mode: rightsizing within a family. If you move from one `m5.xlarge` to two `m5.large`, the commitment may still be useful. But that flexibility has boundaries: switch families, regions, or services, and the discount may no longer apply. Which brings us to portfolio behavior.
+
+### When you hold multiple commitments, AWS applies them in a specific order, so the commitments behave like layers.
+More specific instruments are applied first, then more flexible ones, then on-demand pricing catches the remainder. This means commitments do not just exist individually; they interact. A specific RI can cover the most stable usage, while a broader Savings Plan absorbs the rest of the consistent spend. Remaining spikes stay on-demand.
+
+Once you see commitments as layers, the strategy changes from “pick the best product” to “build a stack that fits usage shapes.” This is why mature organizations rarely rely on a single commitment type. Their infrastructure has stable core load, somewhat stable middle load, and spiky peaks — so their pricing instruments mirror that structure.
+
+### The biggest mistakes come from optimizing the wrong metric.
+Coverage asks: how much of my compute usage is under some commitment? Utilization asks: how much of the commitment I already bought is actually being used? These sound similar, but they answer different questions. Coverage measures possible savings opportunity. Utilization measures whether you are wasting money on idle commitments.
+
+If you optimize only for coverage, you tend to commit toward peak demand. Mechanically, that means many committed hours will have no matching usage during normal periods, so utilization drops and waste rises. This is why the correct target is steady-state baseline, not average and definitely not peak.
+
+### The real underlying risk is architectural and organizational, not just mathematical.
+A commitment only pays off if the future infrastructure still resembles the assumption embedded in the commitment. If the workload moves to another service, another family, another region, or disappears, the billing instrument may become stranded. And in real organizations, the team buying the commitment is often not the team changing the infrastructure, so the failure can happen silently.
+
+This is the final idea the rest support: commitment pricing is a financial position on future infrastructure stability. Once you hold that model, the whole topic stops being “buy discount products” and becomes “make explicit bets only where the workload, architecture, and org process are stable enough to justify them.”
+
+---
+
+## Handles and Anchors
+
+### 1. “An RI is not a server; it is a coupon with rules.”
+That sentence fixes the most common misconception. The important engineering question is not “which machine did I reserve?” but “what usage pattern does this coupon apply to, and what happens if my usage stops matching?”
+
+### 2. Think of commitment pricing as buying electricity futures for a factory.
+If you know the factory will run a baseline amount every day, committing in advance lowers cost. If the factory shuts down, moves production elsewhere, or changes its equipment, the contract can become a liability. The value comes from predictable baseline consumption, not from optimism.
+
+### 3. Ask this question: “What part of this workload am I willing to bet will still exist in this form at the end of the term?”
+That question forces the right decision boundary. Not “how good is the discount?” and not “how much are we using today?” but “what usage shape is stable enough to underwrite with a commitment?”
+
+---
+
+## What This Changes When You Build
+
+### An engineer who understands this will commit against baseline load, not total observed usage, because commitments only save money when matching usage persists consistently.
+The unaware engineer exports last month’s total EC2 hours, tries to cover all of it, and accidentally commits to traffic spikes, one-off jobs, and temporary environments. The consequence is low utilization and paying for discounts that have nothing to attach to during normal periods.
+
+### An engineer who understands this will choose commitment type based on expected architectural change, not just maximum discount, because specificity is also fragility.
+If a service is likely to migrate from EC2 to Fargate, or from one family to another during a performance project, they will prefer a more flexible instrument even at a shallower discount. The unaware engineer buys Standard RIs because the percentage looks best, then strands the commitment when the migration happens.
+
+### An engineer who understands this will separate payment-structure decisions from commitment-scope decisions because no-upfront does not mean no obligation.
+The unaware engineer may treat no-upfront as a low-risk trial, when in fact it is still a full-term contract with different cash timing. The informed engineer evaluates upfront choice through treasury and cash-flow constraints, while evaluating term and flexibility through infrastructure predictability.
+
+### An engineer who understands this will track utilization and coverage as different control signals because they diagnose different problems.
+If coverage is low but utilization is high, that usually means there is still safe baseline demand left to commit. If utilization is low, that means existing commitments are already oversized or mismatched. The unaware engineer watches only coverage, pushes it upward, and misses that current commitments are idle.
+
+### An engineer who understands this will build process around ownership boundaries because commitments can outlive the team decisions that invalidate them.
+In practice that means adding commitment-awareness to major architecture reviews, decommission workflows, and rightsizing projects. It may also mean alerting when commitment utilization drops sharply after a deployment or migration. The unaware engineer assumes cloud discounts are purely a finance concern, and by the time finance notices unused commitments, months of waste have already accumulated.

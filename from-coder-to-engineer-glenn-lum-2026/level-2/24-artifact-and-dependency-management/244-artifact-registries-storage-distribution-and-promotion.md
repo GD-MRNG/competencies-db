@@ -92,4 +92,110 @@ The registry sits at the boundary between build and deploy. Everything before it
 
 - **The digest is the single most reliable identifier in the entire pipeline.** It is the only mechanism that guarantees the bytes you deploy are the bytes you tested. Treat it as the source of truth.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Artifact registries become important the moment you need deployments to be repeatable, explainable, and survivable under failure. If your team thinks of the registry as “just storage,” you end up making dangerous assumptions: that `myapp:v1.4.2` always means the same bytes, that rebuilding from the same source is equivalent to reusing the same artifact, or that a deployment can proceed even if the registry is flaky. Those assumptions hold until they suddenly do not.
+
+What actually breaks is concrete. A rollback fetches a tag that was silently repointed. A node added by autoscaling cannot start pods because the registry is unavailable. Two builds from the same commit produce different outputs because a base image or dependency tag moved underneath you. Storage costs explode because garbage collection was never designed into the operating model. These are not “best practice” issues; they are failures caused by misunderstanding what the registry is doing mechanically.
+
+---
+
+## What You Need To Know First
+
+### 1. Cryptographic digests / hashes
+A digest is a fingerprint of some bytes, usually produced by a hash like SHA-256. If the bytes change, the digest changes. That gives you a way to talk about exact content, not just a name someone attached to it. For this article, the important property is: a digest identifies one exact blob or manifest, and you can verify that what you received matches what you expected.
+
+### 2. Immutable vs. mutable identifiers
+An immutable identifier always refers to the same thing. A mutable identifier can be updated to point somewhere else. In registry terms, a digest is immutable identity, while a tag is a mutable label. If you keep that distinction clear, most of the article’s reliability arguments make sense.
+
+### 3. CI/CD pipeline boundary
+A CI/CD pipeline has a build side and a deploy side. The build side turns source code into an artifact; the deploy side takes an artifact and runs it somewhere. The registry sits between those two halves. The key question is whether the deploy side is consuming the exact thing the build side tested, or just something with a similar name.
+
+### 4. Layered artifacts and caching
+Container images are usually built from layers, not as one monolithic file. If two images share the same base layers, those layers can be reused instead of downloaded again. This matters because registries are not only naming systems; they also exploit shared content for performance and storage efficiency.
+
+---
+
+## The Key Ideas, Connected
+
+### 1. A registry does not just store files; it stores structured artifacts with identity semantics.
+What this means is that the registry understands more than “blob in, blob out.” In OCI-style registries, the stored object has internal structure: content blobs, manifests that describe how those blobs fit together, and tags that give humans friendly names. That structure is why the registry can support integrity checks, deduplication, caching, promotion, and policy enforcement.
+
+Once you see that the artifact is structured, the next question becomes: which part of that structure is the stable truth, and which part is just a convenient label?
+
+### 2. The stable truth is the digest, because content is addressed by hash.
+A blob addressed by digest is tied to exact bytes. A manifest also has a digest, so the whole image description can be pinned immutably too. That gives you a strong anchor: if two systems refer to the same digest, they mean the same content.
+
+This matters because humans rarely use digests directly. We prefer names like `latest` or `v1.4.2`. So once immutable identity exists, registries add a more usable naming layer on top of it—and that creates the core tradeoff.
+
+### 3. Tags are useful because they are human-friendly, but dangerous because they are mutable pointers.
+A tag is not the artifact itself. It is a reference that currently points to a manifest digest. That means tags are workflow tools, not truth. They let teams say “deploy the staging-approved build” or “pull version 1.4.2” without memorizing hashes. But because the pointer can change, the same tag can resolve to different content at different times.
+
+That mutability is exactly why deployment systems become non-deterministic when they rely on tags alone. If the pointer moves, your deployment changes without your source code changing. That leads directly to needing to understand how pulls actually resolve.
+
+### 4. Pulling an artifact is a resolution process: first resolve the name, then fetch the referenced content.
+When a client pulls `myapp:v1.4.2`, it does not fetch a single opaque file. It first asks the registry what manifest that tag points to. Then it reads the manifest and fetches the needed blobs by digest. This is the actual mechanical path from a human-readable reference to concrete bytes on disk.
+
+That resolution path explains several behaviors that otherwise look accidental. It explains why tag changes alter future pulls. It explains why clients can reuse existing layers if they already have matching digests. And it explains why caches and mirrors are possible: once content is identified by digest, intermediaries can store and verify it safely.
+
+### 5. Content addressing makes deduplication, local caching, and pull-through caches work.
+Because layers are named by digest, identical layers across many images collapse to the same stored object. A runtime or registry can say, “I already have blob `sha256:...`; I do not need to transfer it again.” That is why large images can pull surprisingly fast when base layers are already present.
+
+This is not only about speed. It creates a reliability tool. A pull-through cache or private proxy can keep local copies of upstream artifacts, reducing dependency on public registries. Since the cached content can be validated against its digest, the cache does not have to blindly trust what it serves. Once registries are part of your delivery path, that availability boundary becomes operationally significant.
+
+### 6. Registry choice is really about trust and availability boundaries, not just public vs. private access.
+A public registry means you depend on someone else’s infrastructure, publishing workflow, and uptime. A private registry means you control—or delegate control over—who can push, what policies apply, and how available the service is to your own systems. The important shift is that the registry becomes part of your supply chain and deployment control plane, not just a download endpoint.
+
+That is why many mature setups use a private registry to proxy public ones. The proxy gives one internal source of truth, one cache, one audit point, and one place to enforce policy. Once you adopt that model, the next issue is not just “where do artifacts live?” but “how do artifacts move through environments without changing?”
+
+### 7. Promotion exists because rebuilding is not the same as reusing the same artifact.
+If you rebuild for staging and rebuild again for production, you have created two different opportunities for drift: dependency versions may change, build tools may change, caches may differ, and upstream tags may move. Even if the source commit is identical, the produced bytes may not be. So “same code” is not strong enough if you care about deploying what you tested.
+
+That is why promotion means carrying forward the already-built artifact. The mechanism can be retagging the same digest or copying the same digest to another registry. In both cases, the digest is the evidence that the promoted object is the tested one. Once promotion becomes the goal, another constraint appears: the artifact itself cannot contain environment-specific state.
+
+### 8. Promotion only works if the artifact is environment-agnostic and configuration is injected later.
+If your image contains staging credentials, then promoting that exact image to production is wrong by construction. The whole promise of promotion is “same artifact, different environment-specific config.” So code and dependencies belong in the artifact, while secrets, endpoints, resource settings, and flags belong outside it at deploy time.
+
+This separation is what lets one digest move cleanly from dev to staging to production. It also makes rollbacks meaningful: you are rolling back to known bytes, while environment-specific configuration stays under separate control. With that model in place, the common failure modes become easier to explain.
+
+### 9. Most operational problems come from anchoring to the mutable layer when you needed the immutable one.
+Tag-based deployment references create surprise changes. Registry outages break pod starts because image pulls require registry access. Garbage collection becomes tricky because shared blobs cannot be deleted by simple file cleanup; you must trace which manifests still reference them. All of these behaviors follow directly from the registry’s mechanics: content-addressed storage plus a mutable naming layer plus shared references.
+
+So the working model to keep is: the digest layer gives identity and reproducibility; the tag layer gives usability and workflow semantics. Reliable systems deliberately choose which layer to rely on for each job. Human communication can use tags. Automation that needs determinism should anchor to digests.
+
+---
+
+## Handles and Anchors
+
+### 1. Think of tags as symlinks and digests as inode-level identity.
+A filename or symlink is convenient for humans, but it can be repointed. The underlying inode-like object is the actual thing. In registries, the tag is the repointable name; the digest is the thing with stable identity.
+
+### 2. One sentence to keep: “Tags tell you what people call it; digests tell you what it is.”
+This is the core distinction behind most of the article. If you remember only one line, remember that one.
+
+### 3. Ask this question of any deployment system:
+“When this system says it is deploying version X, is that a mutable name or an immutable byte identity?”
+If the answer is “a mutable name,” you have found a source of drift, rollback confusion, and hard-to-explain production differences.
+
+---
+
+## What This Changes When You Build
+
+### 1. An engineer who understands this will reference artifacts by digest in deployment automation because tags do not guarantee byte identity.
+The unaware default is to put `myapp:v1.4.2` or `myapp:latest` into Kubernetes manifests or deployment scripts and assume that label is stable enough. The consequence is that restarts, rollouts, or new nodes may pull different bytes than the ones originally tested. The aware engineer may still use tags for release workflow, but resolves them to digests before deployment.
+
+### 2. An engineer who understands this will promote a tested artifact forward rather than rebuild it for each environment because rebuilds reintroduce drift.
+The unaware default is “same source, same result,” so they rerun the pipeline for staging and production. The consequence is subtle non-reproducibility: different base image, dependency, or toolchain state can produce a different artifact. The aware engineer treats the registry as the handoff point and moves the exact same digest through environments.
+
+### 3. An engineer who understands this will separate environment configuration from the artifact because promotion only works when the artifact stays constant.
+The unaware default is to bake environment details into files during build time, especially for convenience in CI. The consequence is either rebuilding per environment or, worse, deploying production with staging settings embedded. The aware engineer keeps config and secrets outside the image and injects them at deploy time.
+
+### 4. An engineer who understands this will design for registry unavailability because image pulls are a runtime dependency, not just a build-time dependency.
+The unaware default is to notice the registry only when CI pushes images. The consequence appears later: node replacement, autoscaling, or pod restart fails during a registry outage. The aware engineer changes cluster design decisions—using mirrors, pre-pulls, local caches, or controlled pull policies—because they recognize that startup path depends on registry reachability.
+
+### 5. An engineer who understands this will treat registry cleanup as graph management, not file deletion, because blobs are shared across artifacts.
+The unaware default is to think old tags can be deleted and storage will naturally shrink. The consequence is either unbounded storage growth or accidental corruption if cleanup is too aggressive. The aware engineer plans retention and garbage collection around manifest-to-blob references, knowing shared layers make deletion non-local.
+
+---

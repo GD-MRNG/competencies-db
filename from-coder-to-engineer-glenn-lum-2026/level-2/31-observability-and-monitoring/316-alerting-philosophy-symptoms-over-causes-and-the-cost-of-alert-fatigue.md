@@ -118,4 +118,96 @@ The shift from cause-based to symptom-based alerting is not a tuning change. It 
 
 - **Alert fatigue propagates culturally and is harder to reverse than to prevent.** Once an on-call rotation develops the institutional habit of ignoring pages, restoring trust requires changing both the alerts and the organizational muscle memory built around dismissing them.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Many teams think their monitoring is mature because they collect lots of metrics and have lots of alerts. But the real failure often shows up later: the pager goes off, the engineer assumes it is another noisy internal threshold crossing, and a real user-facing outage gets ignored or handled late. What breaks is not just incident response speed. Trust in the alerting system itself decays.
+
+The core problem is that teams often page on internal system conditions rather than on actual user harm. That creates a stream of alerts for CPU spikes, queue growth, memory pressure, or transient dependency issues that may never affect users at all. Over time, engineers learn that the pager is usually describing system activity, not urgent action. Once that learning sets in, the alert channel stops working as an emergency channel.
+
+So this topic matters because alerting is not just about detecting bad states. It is about deciding what deserves to interrupt a human. If you get that classification wrong, you do not merely create noise — you train your organization to miss the alerts that actually matter.
+
+---
+
+## What You Need To Know First
+
+**Service Level Objective (SLO)**  
+An SLO is a target for user-visible service quality over a period of time, like “99.9% of requests succeed over 30 days” or “99% of requests complete under 300ms.” It is not about internal component health. It is a statement about what users experience.
+
+**Error budget**  
+If your SLO is 99.9%, then the remaining 0.1% is the error budget: the amount of failure you can “spend” within that window before you miss the target. This gives you a concrete way to reason about whether current degradation is acceptable, urgent, or unsustainable.
+
+**Symptoms vs causes**  
+A symptom is what users experience: errors, high latency, wrong results. A cause is one possible reason that symptom happened: CPU saturation, database locks, certificate expiry, connection pool exhaustion. Many different causes can produce the same symptom.
+
+**Precision and recall for alerts**  
+Treat an alert like a yes/no detector. Precision means “when it fires, how often is there really a meaningful problem?” Recall means “when a meaningful problem exists, how often does it fire?” For pager alerts, low precision is especially damaging because false alarms train people not to trust the signal.
+
+---
+
+## The Key Ideas, Connected
+
+**An alerting system is not mainly a metric collection system; it is a decision system about when to interrupt humans.**  
+The important design question is not “what can we measure?” but “what conditions justify waking someone up?” Teams often slide from one to the other without noticing. They instrument internal metrics, add thresholds, and page on threshold breaches because the data is available. But availability of a metric does not mean that metric is a good trigger for human action. Once you see alerting as a human-interruption system, you immediately care about signal quality, not metric quantity. That leads to the next idea: what kind of signals are structurally better?
+
+**Symptoms are better paging signals than causes because symptoms are stable while causes are open-ended.**  
+Users only experience a limited set of failures: the system is down, slow, or incorrect. But the reasons behind those failures are effectively unbounded. New dependencies, new deploy patterns, obscure interactions, partial downstream failures, timing issues, and environment-specific bugs can all create harm. If you alert on causes, you only catch the causes you predicted in advance. If you alert on symptoms, you catch any cause that produces user-visible damage, including causes nobody imagined. That is why symptom-based alerting has broader coverage with fewer rules. But broad coverage alone is not enough; we also need to understand why cause-based alerts feel so noisy in practice.
+
+**Every alert behaves like a binary classifier, and noisy cause-based alerts usually have poor precision.**  
+On every evaluation cycle, an alert rule decides: fire or do not fire. That makes it a classifier. The key practical issue is precision: when the alert fires, does it usually correspond to a real problem worth action? Cause-based thresholds often fail here because internal conditions frequently occur without user impact. CPU can spike during healthy load. Queue depth can rise briefly and drain normally. Memory pressure can resolve after GC. The alert fires because the threshold was crossed, not because the user is being harmed. So the engineer’s lived experience becomes “this page is usually irrelevant.” Once that happens, the statistical property of low precision turns into a behavioral property: distrust. That is the mechanism behind alert fatigue.
+
+**Alert fatigue is learned behavior produced by repeated false positives, not a vague morale problem.**  
+If engineers repeatedly investigate alerts and find nothing actionable, they adapt rationally. They delay response. They pattern-match instead of investigating. They mute recurring alerts. They teach others which alerts are noise. This is not laziness; it is the system training its operators. The asymmetry matters: a few false alarms can destroy trust faster than a few accurate alerts can rebuild it. So the true failure mode of noisy alerts is not inconvenience. It is that your emergency communication channel loses credibility. Once that is clear, the design goal sharpens: alerts must be tied to conditions that are both meaningful and scarce enough to preserve trust. That is where SLOs and burn rate come in.
+
+**Burn rate turns symptom-based alerting from a crude threshold into a measure of how fast you are consuming tolerated failure.**  
+A raw symptom threshold like “page when errors exceed 1%” is better than paging on CPU, but still blunt. A brief spike may not matter. A small persistent degradation may matter a lot. Burn rate solves this by measuring current failure relative to the allowed failure in your SLO. If your service has a 0.1% error budget and you are currently failing requests at 1.4%, you are burning the budget 14 times faster than sustainable. That is useful because it connects current symptoms to business significance over time. You are no longer asking only “is error rate above some number?” You are asking “at this pace, how quickly are we consuming our allowed unreliability?” That makes the next design move possible: using different windows for different operational purposes.
+
+**Multiple burn-rate windows separate acute incidents from chronic degradation.**  
+A short window catches sharp failures quickly: a sudden outage or steep spike in errors. A longer window catches slow leaks that do not look dramatic minute-to-minute but still threaten the SLO over days. The mechanism matters here: short windows are sensitive but noisy; long windows are stable but slower. Combining them gives you coverage of both “the building is on fire now” and “we are steadily bleeding reliability.” This is why good alerting systems often use a fast-burn page and a slow-burn ticket. Once you understand this split, the next question becomes: if symptoms drive paging, what happens to all those internal metrics?
+
+**Internal metrics do not go away; they move from the notification layer to the diagnostic layer.**  
+CPU, memory, queue depth, thread pools, downstream latency, and similar signals are still valuable. But their value is usually explanatory, not interrupt-worthy. Once a symptom-based alert tells you users are being harmed, those metrics help answer why. That separation is important because it preserves pager trust while still giving engineers the observability they need to debug quickly. If you mix those roles, your diagnostics become your pager, and your pager becomes noisy. The article’s exception makes sense in this framework too: some internal-looking signals really represent unavoidable future symptoms.
+
+**The main exception is predictive exhaustion: conditions that have not hurt users yet but are on a reliable path to doing so soon.**  
+A disk filling to 100%, a certificate nearing expiry, or a quota that will be hit in a known time window can justify alerting before user-visible symptoms appear. But the reason is not “internal metrics matter after all.” The reason is that these metrics are acting as forecasts of imminent user harm. The system is effectively saying: “No users are broken yet, but unless someone acts, users will be broken soon.” That still fits the same philosophy: alert on user impact, present or imminent. And it also supports the page-versus-ticket distinction. If impact is hours away, create planned work. If impact is minutes away, escalate.
+
+**Symptom-based alerting has tradeoffs, and the main one is detection latency in exchange for trust.**  
+Because symptom alerts wait for user-visible degradation to appear and persist, they may fire later than a well-chosen cause alert. That is a real cost. In very tight systems, a few minutes may matter enough that some low-noise cause-based pages are justified. But the article’s point is that this should be a deliberate trade, not the default. Most teams accidentally optimize for earliest possible detection of anything unusual, and in doing so they destroy the trustworthiness of the pager. The better framing is: the pager is a scarce, credibility-limited channel, so only high-confidence, user-relevant signals belong there.
+
+**The final mental model is that alerts spend credibility, and credibility is the real scarce resource.**  
+Every false positive spends some of the operator’s willingness to believe the next page. Every irrelevant page teaches “this channel exaggerates.” A good alerting system therefore computes more than breach/no-breach. It computes whether the condition represents user harm severe enough, sustained enough, or imminent enough to justify consuming human attention. That is the structural shift: from “tell me when internals look odd” to “tell me when users are being harmed, or are about to be harmed.”
+
+---
+
+## Handles and Anchors
+
+**1. Pager = fire alarm, dashboard = instrument panel.**  
+A fire alarm should mean “leave now,” not “something somewhere changed a bit.” The dashboard is where you inspect temperature, airflow, and wiring after the alarm. If you wire the fire alarm to every unusual sensor fluctuation, people stop treating it like a fire alarm.
+
+**2. Symptoms are the destination; causes are the roads.**  
+Many roads can lead to the same destination. If your job is to know whether you have arrived at “users are failing,” checking the destination is more reliable than trying to enumerate every possible road that might get you there.
+
+**3. Ask this question of any alert: “If this fires at 3am, what user harm is likely happening right now?”**  
+If the answer is vague, speculative, or “none necessarily,” it probably should not page. That one question is often enough to distinguish notification signals from diagnostic signals.
+
+---
+
+## What This Changes When You Build
+
+**An engineer who understands this will design paging rules around user-visible SLO indicators rather than around infrastructure thresholds, because symptoms generalize across unknown causes while thresholds only cover imagined ones.**  
+The unaware engineer pages on CPU, memory, queue depth, and dependency internals by default because those are easy to measure. The result is wide alert coverage on paper but poor real coverage of novel incidents.
+
+**An engineer who understands this will evaluate alerts in terms of precision and operator trust, not just whether the alert “caught something once,” because repeated false positives train humans to ignore the channel.**  
+The unaware engineer keeps noisy alerts because they occasionally correlate with real issues. That preserves theoretical signal but destroys practical response behavior.
+
+**An engineer who understands this will tie alert thresholds to error-budget burn rather than arbitrary percentages, because urgency depends on how fast reliability is being consumed over time, not on a raw metric crossing a standalone line.**  
+The unaware engineer picks thresholds like “1% errors for 5 minutes” without connecting them to the service’s reliability target. That causes overpaging for harmless bursts and underreacting to slow sustained degradation.
+
+**An engineer who understands this will separate page-worthy alerts from ticket-worthy alerts, because acute fast-burn failures and slow-burn maintenance risks require different response modes.**  
+The unaware engineer often routes everything important to the pager. The consequence is that urgent incidents and scheduled remediation compete in the same channel, raising noise and reducing urgency clarity.
+
+**An engineer who understands this will invest more in dashboards, logs, and traces after moving to symptom-based paging, because once the page says “users are impacted,” fast diagnosis depends on strong observability rather than on pre-baked cause alerts.**  
+The unaware engineer feels the loss of cause-based pages as loss of information and adds more alert rules to compensate. That makes the pager narrate internals instead of preserving it as a high-trust trigger.
+
+---

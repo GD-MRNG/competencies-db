@@ -98,4 +98,102 @@ Once you internalize this model, the architectural decisions become tractable. Y
 
 - **Vendor lock-in in serverless is primarily in the event topology**, not the function code — the platform-specific wiring between event sources, functions, and downstream services is the expensive thing to migrate.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+A lot of teams adopt serverless using a shallow rule: no servers to manage, automatic scaling, pay only when code runs. That is enough to get something deployed, but not enough to predict how it will behave in production. The problems show up in very specific ways: an endpoint is fast in testing but randomly slow in production because some requests hit cold starts; a traffic spike scales the function tier perfectly but overloads the database; a failed event gets retried and creates duplicate charges, emails, or records because the handler was not idempotent.
+
+What breaks is not usually the function code itself. What breaks is the engineer's mental model of what "running" means. If you assume a serverless function behaves like a tiny web server, you will make the wrong choices about state, connections, retries, latency, and scaling. Then you spend months adding patches around symptoms that were actually built into the execution model from the start.
+
+This topic matters because serverless is not just a hosting choice. It changes process lifetime, failure semantics, scaling behavior, and where bottlenecks move. If you understand those mechanics, you can use serverless where it fits and avoid fighting it where it does not.
+
+---
+
+## What You Need To Know First
+
+**1. Process lifetime**  
+In a traditional app server, your process starts once, loads code, opens connections, and then stays alive waiting for work. That matters because anything in memory can stick around between requests. Serverless breaks that assumption: the runtime may appear only when work arrives, and may disappear soon after. If you keep that contrast in mind, the rest of the article makes more sense.
+
+**2. Events and triggers**  
+An event is just a thing that happened and can cause work: an HTTP request arrived, a file was uploaded, a message was put on a queue, a timer fired. A trigger is the platform wiring that says, "when this event happens, invoke this function." In serverless, your code is usually not sitting there listening; it is activated by these triggers.
+
+**3. Concurrency**  
+Concurrency means multiple units of work happening at the same time. In serverless, if many events arrive together, the platform often handles that by starting many separate execution environments. This is important because downstream systems see many simultaneous callers, not one service instance politely queueing work.
+
+**4. Idempotency**  
+An operation is idempotent if doing it more than once has the same final effect as doing it once. "Set user status to active" can be idempotent; "charge credit card $50" usually is not unless you add an idempotency key. This matters because many serverless invocation models retry automatically, so duplicates are normal behavior, not an edge case.
+
+---
+
+## The Key Ideas, Connected
+
+**1. Serverless changes the unit of compute from a long-lived process to a single invocation.**  
+In a VM or container service, your application exists as a running process that stays resident. In FaaS, the basic unit is not "service instance" but "one event causes one execution." That means there is no guarantee your code is already alive before work arrives. This matters because once compute is created on demand per invocation, the platform has to decide whether it can reuse an existing environment or create a new one.
+
+**2. Because compute is materialized on demand, every invocation takes either a warm path or a cold path.**  
+A warm start means the platform already has an execution environment for your function sitting around, so it can hand the event to that environment quickly. A cold start means no such environment is available, so the platform must create one first. The reason this distinction exists is exactly the previous idea: your code is not continuously running. Once you accept that, cold starts stop looking like a weird anomaly and start looking like a direct consequence of the model.
+
+**3. A cold start is not one delay but several setup steps chained together.**  
+The platform has to provision the sandbox, fetch your code package, start the language runtime, and then run your module-level initialization. Different functions pay different amounts in each step. Big packages slow code download. Heavy runtimes like the JVM make startup slower. Large import graphs or expensive SDK setup make initialization slower. This leads to an important design constraint: if latency matters, you need to know which part of startup cost you are paying, because the optimizations differ by step.
+
+**4. Since warm environments are temporary and not guaranteed, correctness cannot depend on reuse.**  
+A warm environment may survive for some idle period, but the platform can reclaim it. So while warm reuse can improve performance, it cannot be part of your correctness model. You can cache something in memory to make later invocations faster, but you cannot rely on that cache existing. This naturally leads to statelessness: once environment reuse is opportunistic rather than guaranteed, durable state has to live somewhere else.
+
+**5. Statelessness in serverless is not a style preference; it follows from ephemeral execution environments.**  
+Because the platform may route the next invocation to a different environment, local memory and temp files are not durable from one invocation to the next. The only safe place for durable state is an external system such as object storage, a database, or a cache designed for shared access. Once state moves out of the function environment, the next question becomes: what exactly causes a function to run, and what rules govern failure and retries?
+
+**6. The trigger type defines the function's failure semantics.**  
+Synchronous, asynchronous, and stream-based invocations are not just different inputs; they define different contracts. In synchronous mode, the caller waits and sees failure directly. In asynchronous mode, the platform typically acknowledges receipt first, then runs the function later and retries on failure. In stream mode, the platform processes records in batches and can keep retrying failed batches. This matters because you do not get one generic "serverless error model." Your retry behavior and failure blast radius come from the trigger type.
+
+**7. Once the platform retries on your behalf, duplicate delivery becomes normal, which makes idempotency a correctness requirement.**  
+If asynchronous and stream-based systems may deliver the same event more than once, then handlers must tolerate reprocessing. Otherwise retries create corrupted state: duplicate orders, repeated notifications, inventory drift, repeated side effects. The mechanism is straightforward: the platform cannot always know whether your handler completed the side effect before failing, so retrying is safer for delivery but dangerous for business correctness unless your operation is idempotent. Once retries and duplicates are in play, scaling behavior becomes the next major concern.
+
+**8. Serverless scaling works by creating more execution environments, not by loading more work into one running process.**  
+When demand rises, the platform typically scales out horizontally. Ten concurrent events may mean ten environments; hundreds may mean hundreds. Because each environment is isolated, connection pools, caches, and in-memory coordination do not automatically become shared resources. This leads directly to a common production failure: downstream systems see a surge of parallel clients.
+
+**9. Automatic compute scaling shifts the bottleneck to downstream dependencies.**  
+Your function tier can expand very quickly, but your database, third-party API, or legacy service usually cannot. If 500 function invocations all open their own database connections, the database becomes the choke point. The reason is structural: serverless platforms are optimized to create compute concurrency faster than most stateful systems can absorb it. So an engineer who only sees "automatic scaling" misses the more important truth: compute scales first, dependencies often do not.
+
+**10. Because unbounded concurrency can damage shared dependencies, concurrency controls become part of system safety.**  
+Platform concurrency limits and reserved concurrency are not just quota trivia. They are one of the few ways to shape how much pressure your functions can place on downstream services. If you reserve capacity for critical functions, you protect them from noisy neighbors. If you cap concurrency for a database-backed function, you trade throughput for dependency stability. This follows from the previous idea: once scaling can outrun the database, you need deliberate brakes.
+
+**11. Serverless platforms also impose hard resource constraints, and these constraints define what architectures are possible.**  
+Execution time limits mean some tasks simply do not fit in a single invocation. Memory settings often also control CPU allocation, which means "memory" is really a joint performance-and-cost dial. These are not minor tuning details. If a job needs 40 minutes, the platform timeout is not something to wish away; it means you must break the job into steps or use another compute model. Once constraints are hard platform boundaries, architecture has to adapt to them instead of pretending they are implementation details.
+
+**12. These mechanics explain both where serverless shines and where it breaks down.**  
+It works very well when work is bursty, parallelizable, and naturally event-driven, and when paying only during execution beats paying for idle servers. It works poorly when latency is highly sensitive to startup cost, when utilization is continuously high, when workflows are hard to trace across many event hops, or when porting the event topology would be expensive. This is why the article lands on the mental model of "event-materialized compute": every tradeoff emerges from the fact that runtime exists because an event caused it to exist, not because a process was already there waiting.
+
+---
+
+## Handles and Anchors
+
+**1. Think of serverless as a pop-up kitchen, not a restaurant.**  
+A restaurant has a permanent kitchen, stocked and staffed, waiting for orders. A pop-up kitchen appears when an order comes in, cooks, and then may disappear. If orders surge, you can spin up more pop-ups quickly. But each pop-up has to set itself up, and all of them still depend on the same suppliers. That is cold start plus downstream bottlenecks in one picture.
+
+**2. Core sentence: "Serverless removes idle compute, not system constraints."**  
+You stop paying for always-on app servers, but you do not remove startup cost, retries, connection limits, timeouts, or dependency capacity. The constraints move and become easier to ignore until production exposes them.
+
+**3. Diagnostic question: "What happens if this event is delivered twice, and what happens if 500 copies arrive at once?"**  
+If you ask this of every serverless design, you uncover most of the important risks: idempotency bugs, weak downstream systems, missing concurrency controls, and whether the chosen trigger model is actually appropriate.
+
+---
+
+## What This Changes When You Build
+
+**An engineer who understands this will design synchronous endpoints differently because cold start latency is user-visible there.**  
+They will keep packages small, avoid heavy frameworks in latency-sensitive paths, reduce import-time work, and consider provisioned concurrency for critical endpoints. The unaware engineer often treats all functions the same, then discovers that login or checkout is randomly slow under low-traffic periods because the function had gone cold.
+
+**An engineer who understands this will treat retries as part of normal execution because asynchronous delivery is not exactly-once.**  
+They will add idempotency keys, deduplication records, or upsert-style writes around side effects like payments, emails, and state transitions. The unaware engineer writes a handler that "works" in single-run testing, then gets intermittent duplicates in production when retries happen after timeouts or partial failures.
+
+**An engineer who understands this will protect downstream systems because compute can scale faster than dependencies.**  
+They will ask how many concurrent DB connections, API calls, or queue consumers a dependency can tolerate, and then use connection proxies, reserved concurrency, rate limits, buffering, or queue-based smoothing. The unaware engineer inherits the platform default of aggressive scale-out and only learns the real limit from a production outage in the database or a third-party API ban.
+
+**An engineer who understands this will decompose long or variable-duration work because function timeouts are architectural limits.**  
+They will break large jobs into stages, use workflow orchestration, fan-out/fan-in patterns, or move the workload to containers when it fundamentally does not fit. The unaware engineer tries to force a long-running ETL, model training job, or media pipeline into a single invocation and ends up with timeout-driven partial work and hard-to-recover failures.
+
+**An engineer who understands this will tune memory as a performance-cost tradeoff because memory also buys CPU.**  
+They will benchmark multiple memory settings instead of picking the smallest RAM number that avoids out-of-memory errors. For CPU-bound work, they may deliberately allocate more memory to reduce runtime enough that total cost falls. The unaware engineer minimizes memory by default, accidentally underprovisions CPU, and pays more through slower execution and higher latency.
+
+---

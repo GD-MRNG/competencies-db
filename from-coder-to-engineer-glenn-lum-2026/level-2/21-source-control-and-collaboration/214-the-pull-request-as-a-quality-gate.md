@@ -101,4 +101,95 @@ A review process is working when it produces shared understanding with minimal l
 - Review latency beyond a few hours erodes value on both sides: authors lose context and resist substantive changes, reviewers give less attention to PRs perceived as stale.
 - A review process is healthy when approval means "I understand this change well enough to own it" — not "I looked at the diff and nothing jumped out."
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Many teams treat code review as a bug-catching checkpoint. That sounds sensible, but it creates a bad optimization target. If you believe review exists mainly to find defects, you end up measuring comment counts, requiring more approvals, and pushing reviewers to scan for mistakes in big diffs. The result is often slow delivery without much real protection: subtle bugs still escape, reviewers get overloaded, and PR approval becomes a ritual rather than a meaningful quality signal.
+
+What actually breaks is not just speed, but team coherence. Large or low-quality reviews let design problems slip through early, allow codebase conventions to drift, and fail to spread understanding beyond the author. Then later you pay for it in harder debugging, inconsistent patterns across the codebase, and a system that only a few people know how to change safely. If you do not understand what review is really for, you build a process that adds latency but does not reliably add understanding.
+
+---
+
+## What You Need To Know First
+
+**Pull request / PR**  
+A pull request is a proposed code change shown as a diff against the existing codebase. It is both a technical artifact and a workflow checkpoint: people inspect what changed before it merges. For this article, the important thing is that a PR is not the whole system in front of you — it is a partial view, which means review quality depends heavily on whether the reviewer can reconstruct the bigger picture from that partial view.
+
+**Diff**  
+A diff is the line-by-line representation of what was added, removed, or modified. It is useful, but it naturally pulls attention toward local edits rather than system behavior. That matters here because many review failures come from reviewers inspecting lines of code without building a model of how the change affects dependencies, invariants, or future changes.
+
+**Latency**  
+Latency here means waiting time in the review process: how long a PR sits before review, and how long feedback cycles take. This matters because review is not just about whether feedback happens, but whether it happens while author and reviewer still have enough context in their heads to reason well about the change.
+
+**Linters and automated checks**  
+Linters, formatters, tests, and static analysis tools automatically catch many shallow issues: style violations, obvious mistakes, missing imports, and some classes of correctness problems. You do not need a full taxonomy here; the key point is that if a machine can catch an issue cheaply and consistently, spending expensive human review time on that same class of issue is usually a poor trade.
+
+---
+
+## The Key Ideas, Connected
+
+**Code review is not primarily a bug detector.**  
+The article’s central claim is that teams mis-specify the purpose of review when they say its job is to catch bugs. Reviews do catch some defects, but mostly shallow ones: obvious edge cases, naming confusion, missing small fixes. The deep failures engineers worry about most — subtle logic flaws, concurrency bugs, security boundary mistakes — usually survive review because they require a stronger model of runtime behavior than a reviewer can build from a diff alone. Once you accept that, the natural next question is: if bug-catching is not the main value, what is?
+
+**The main value of review is keeping the team and codebase aligned.**  
+Review works reliably as a mechanism for consistency, design feedback, and knowledge distribution. A reviewer can often see that a change conflicts with existing conventions, duplicates an existing pattern, or introduces a design that will age badly. Also, if review is done seriously, at least one more person understands the change well enough to work on it later. This reframes review from “find mistakes in code” to “synchronize understanding around a codebase.” And if that is the real output, then review quality depends less on whether someone spotted a typo and more on whether someone truly understood the change.
+
+**For review to create understanding, the reviewer must be able to hold the change as a whole.**  
+A reviewer cannot meaningfully evaluate design or build shared context if they only understand isolated fragments of the diff. To notice a bad coupling, a broken assumption, or a future migration problem, they need a mental model of the whole change: what problem it solves, what components it touches, what invariants it depends on. That leads directly to the core constraint in the article: human attention is limited.
+
+**The size of the PR determines whether that understanding is even possible.**  
+This is the “physics” part. Small changes can be held in working memory: the reviewer can compare before and after, connect pieces across files, and reason about system impact. Large changes break that ability. Once a PR gets big enough, the reviewer shifts from comprehension to skimming. That is not laziness; it is what happens when the amount of information exceeds what someone can actively keep track of. And when that happens, review can still produce approvals and comments, but it no longer produces strong signal about design quality.
+
+**That is why small PRs are not etiquette; they are a structural requirement for useful review.**  
+Teams often talk about small PRs as a best practice or preference. The article argues something stronger: without small, focused changes, review cannot reliably perform its highest-value functions. In a 1,000-line PR, a reviewer might still catch local defects, but they cannot confidently see system-level interactions. So if you want review to detect design issues or spread understanding, the change must be sized so that understanding is feasible. Once you see that, latency becomes the next obvious constraint, because even a small PR loses value if review happens too late.
+
+**Review latency destroys context on both sides.**  
+When a PR waits too long, the author has mentally moved on and the reviewer approaches stale work with less urgency and less context. That changes the kind of interaction review becomes. Instead of jointly refining a design while it is still active in both minds, you get delayed comments that the author patches minimally just to get the PR through. The mechanism is simple: context decays over time, and rebuilding it is expensive. So useful review depends not only on size but on timing.
+
+**When size and latency are wrong, review becomes ceremony instead of signal.**  
+This is the article’s main distinction. Ceremony means the workflow artifact exists — PR opened, comments added, approval recorded — but the process did not generate new understanding or meaningful judgment. Signal means the reviewer actually engaged enough to say, in effect, “I understand what this does, why it does it, and whether the approach makes sense.” Oversized PRs, stale queues, and reviewers without domain context push teams toward ceremony because they make real comprehension too expensive. Once that happens, organizations often respond in the wrong way.
+
+**Adding more review requirements does not fix a structurally weak review process.**  
+If the real problems are PR size, reviewer mismatch, and undefined expectations, then adding a second approval or a checklist does not create better understanding. It just layers more waiting on top of the same weak signal. This is an important causal point: you cannot compensate for low-comprehension review by increasing the number of low-comprehension reviewers. More ceremony is still ceremony. That is why the article shifts from process volume to feedback quality.
+
+**Good review feedback makes its purpose and severity explicit.**  
+If review is about shared understanding and structural quality, comments need to help the author understand what kind of response is expected. A blocking issue means the reviewer sees a real risk or violation that must change. A suggestion means there may be a better approach, but it is not required for merge. A question means the reviewer cannot yet build the needed mental model. Without these distinctions, authors either overreact to every comment or ignore important ones. The mechanism here is trust: explicit severity reduces ambiguity, and reduced ambiguity makes review more efficient and less adversarial.
+
+**The highest-value comments are about design assumptions, not cosmetic details.**  
+Style and formatting are easy to comment on because they are local and legible. But that is exactly why they are low leverage for human reviewers and good candidates for automation. The comments that justify human review are the ones that expose system assumptions: ordering guarantees, data model constraints, coupling, performance implications, security boundaries. Those require context, which means they only appear when earlier conditions are met: small PRs, timely review, and reviewers with enough domain understanding. This closes the chain: the mechanics of attention determine whether review can produce the kind of feedback that actually improves the system.
+
+**So the right mental model is review as synchronization, not filtration.**  
+A filter is judged by what it catches before passage. A synchronization mechanism is judged by whether the system’s participants stay aligned. Code review is more like the second. Its best outcomes are coherent code evolution, distributed understanding, and earlier detection of structural problems while they are still cheap to fix. Bug detection is a side effect. Once you adopt this model, the metrics and design of the review process change naturally: you care about PR size, latency, reviewer fit, and depth of understanding rather than raw comment volume or approval count.
+
+---
+
+## Handles and Anchors
+
+**1. Code review is less like airport security and more like a team handoff.**  
+Airport security is a filter: its job is to catch prohibited items. A handoff is about making sure the next person understands the state of the work. If you think review is security, you ask “what bad thing did we catch?” If you think review is handoff, you ask “who else now understands this well enough to operate on it?”
+
+**2. Large PRs turn reading into scrolling.**  
+That is a useful test sentence. When a change is small, a reviewer reads. When it is large, they scroll. The moment review becomes scrolling, it stops being a strong quality signal no matter how many approvals you require.
+
+**3. Ask: after approval, could this reviewer debug or extend this change tomorrow?**  
+This is a practical litmus test for whether review generated real understanding. If the answer is no, the approval likely meant “nothing obviously wrong jumped out,” which is ceremony, not signal.
+
+---
+
+## What This Changes When You Build
+
+**An engineer who understands this will split work into reviewable units, not just implementation-convenient units, because review quality collapses once the change exceeds what a reviewer can mentally hold.**  
+The unaware engineer optimizes for their own local coding flow and opens a giant “complete feature” PR. That produces skim-based approvals and misses design feedback when it is cheapest to get. The aware engineer asks, “What is the smallest change that still makes sense to review?” and treats PR boundaries as part of the design process.
+
+**An engineer who understands this will push style and shallow correctness checks into automation because human review time is scarce and should be reserved for design and system reasoning.**  
+The unaware engineer tolerates review threads about formatting, naming, import order, and other low-leverage issues, then concludes that review is noisy and slow. The aware engineer configures linters, formatters, and CI so that humans spend review effort on things machines cannot judge well: assumptions, coupling, invariants, failure modes.
+
+**An engineer who understands this will choose reviewers based on context, not just availability, because the value of review depends on the reviewer being able to reason about the changed part of the system.**  
+The default behavior in many teams is “assign whoever is free” or “send everything to the same senior engineer.” That creates either shallow review or a bottleneck. The better approach is to select someone who knows the domain, and when needed pair that with a less-experienced reviewer so review spreads context instead of concentrating it.
+
+**An engineer who understands this will treat review turnaround as part of code quality, because delayed feedback degrades the author’s and reviewer’s ability to think clearly about the change.**  
+The unaware engineer sees review delay as an unfortunate but harmless queue. The aware engineer knows that after enough delay, the review interaction changes from collaborative reasoning to minimal patching. That leads them to optimize for short feedback loops on small PRs rather than batching many changes into one “efficient” review.
+
+**An engineer who understands this will label comments by severity and intent because ambiguity in feedback creates churn, resentment, and wasted cycles.**  
+Without explicit labels, authors guess whether a comment is mandatory, optional, or just a request for explanation. They often guess wrong. The engineer with a working model of review knows that unclear comment semantics weaken trust in the process, so they make review language explicit: blocking, suggestion, question.

@@ -106,4 +106,84 @@ Teams that handle bad releases well don't commit to one philosophy. They maintai
 
 - **The decision between rollback and roll forward should be pre-decided based on system properties, not made under pressure during an incident.** Document which paths are rollback-safe, which require roll forward, and what the criteria are for choosing — before you need to choose.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+When a release goes bad, teams often talk as if they have a clean emergency choice: “we’ll just roll back” or “we’ll fix it and roll forward.” In practice, that choice is often already constrained by the system itself. If the new version has written data the old version cannot read, rollback is no longer a simple deployment action. If the delivery pipeline takes forty minutes, roll forward may be too slow to stop user harm. The incident does not create these constraints; it reveals them.
+
+What breaks when engineers miss this is not just speed, but recovery itself. A rollback can fail because the old artifact is gone, because configuration drift makes it unstartable, or because shared data has already changed shape. A rushed roll forward can compound the outage by adding another hurried patch to an already unstable system. And in many real incidents, neither option repairs the damage already done to state: orders have been misprocessed, emails sent, charges submitted, events published. If you do not understand the mechanics behind rollback and roll forward, you discover your real options only after production is already on fire.
+
+## What You Need To Know First
+
+**Deployable artifact**  
+This is the thing you actually ship: a container image, binary, package, or build output. “Going back to the previous version” only works if that exact artifact still exists somewhere retrievable and your tooling knows how to deploy it. If your system rebuilds from source instead of storing artifacts, reproducing “the old version” may not be reliable.
+
+**Stateful vs stateless behavior**  
+A stateless component can handle a request without leaving behind meaningful memory of it. A stateful component changes something persistent: database rows, queue messages, cache entries, files, external side effects. This matters because rollback is easy when nothing durable changed; once the new version has changed state, rollback becomes a compatibility problem.
+
+**Backward and forward compatibility**  
+Backward compatibility means newer producers or formats do not break older consumers. Forward compatibility means older producers do not break newer consumers. For this article, the key idea is simple: can old code still function correctly when it encounters data, messages, or configuration produced by new code? If not, rollback has a short life.
+
+**Deployment strategy**  
+This is the way new code reaches production: blue/green, canary, rolling update, and so on. These strategies are not just release mechanics; they determine what rollback physically looks like. For example, blue/green can switch traffic fast, while rolling updates reverse more slowly and may leave a mixed-version fleet during recovery.
+
+## The Key Ideas, Connected
+
+**The choice between rollback and roll forward is mostly decided before the incident starts.**  
+It feels like an operational judgment call made under pressure, but the article’s point is that your architecture, pipeline, and compatibility rules have already limited what is possible. During the incident, you are usually not inventing a strategy; you are discovering which strategies remain mechanically viable. That leads directly to the next idea: if rollback is not guaranteed, what does it actually require?
+
+**Rollback requires much more than “the old code still exists.”**  
+To roll back successfully, you need the prior artifact available, deployable, and compatible with the environment as it exists now. Not the environment from last week, but current secrets, infrastructure, routing, and service dependencies. This matters because teams often reduce rollback to version selection, when in reality it is a claim about compatibility across several layers. Once you see rollback as a compatibility claim, the next question becomes obvious: compatible with what?
+
+**The hardest rollback constraint is compatibility with state created by the new version.**  
+The moment new code serves traffic, it may write data the old code does not understand. That can be explicit schema changes, but more often it is ordinary runtime behavior: new enum values, new JSON fields, changed message shapes, new cache formats, altered workflow states. The mechanism is simple: the new code starts producing outputs according to its own assumptions, and the old code later has to consume those outputs using older assumptions. If those assumptions differ, rollback can fail or silently corrupt behavior. That dependence on changing state leads to the next idea.
+
+**Because state accumulates over time, every deployment has a rollback window.**  
+At deployment time, rollback is easiest because little or no new-version state exists yet. As requests flow through the system, more state diverges from what the old version expects, so rollback becomes less safe or impossible. The window closes quickly for systems that write on nearly every request, and almost immediately for irreversible side effects like payment captures or outbound emails. This is not a policy choice; it is produced by the system’s data flow. Once rollback becomes time-sensitive, the alternative strategy matters more.
+
+**Roll forward works with the new state instead of trying to escape it.**  
+That is its structural advantage. If the new version has already written data in a new shape, a corrected newer version can usually be written to understand that shape, because it is moving in the same direction as the system’s current state. Rollback asks old code to interpret new reality; roll forward asks newer code to repair and continue from new reality. But that advantage creates a new dependency: if fixing forward is your plan, you must be able to ship a fix fast enough to matter.
+
+**Roll forward is limited by diagnosis time plus pipeline time.**  
+Even if roll forward is architecturally safer, it may be operationally useless if your pipeline is slow or your incident process blocks emergency changes. The mechanism here is straightforward: users continue experiencing the issue until you understand it, implement a fix, validate it enough to trust it, and get it into production. If that path takes too long, roll forward becomes more like delayed cleanup than active incident response. This leads to a sharper version of preparedness.
+
+**Feature flags are powerful because they turn some roll-forwards into configuration changes instead of deployments.**  
+If the bad behavior sits behind a pre-existing flag, you can disable it immediately without rebuilding or redeploying. That shrinks recovery from minutes to seconds. But the dependence is strict: flags only help if they were designed in before the problem occurred. You cannot use a flag as an emergency escape hatch for code that was never made switchable. This generalizes into a larger point about deployment design.
+
+**Deployment strategy shapes recovery mechanics, not just release mechanics.**  
+Blue/green enables very fast traffic reversal if the old environment is still intact, but that does not erase database writes or external side effects. Canary limits how much traffic sees the bad code, buying time and reducing impact, but the canary slice can still create incompatible state. Rolling updates can reverse, but reversal takes time and may preserve the same mixed-version condition that caused problems. So deployment strategy is not just about “how to release safely”; it also determines “what kind of failure state you can get out of quickly.”
+
+**Neither rollback nor roll forward repairs already-damaged state.**  
+This is where many teams get surprised. If a buggy job processed three thousand orders incorrectly, rolling back only stops more bad processing; rolling forward only fixes future processing. The already-processed orders remain wrong. That is a different class of work: remediation. The mechanism is that code deployment controls future behavior, while persistent state stores the past effects of prior behavior. Once you separate those two, the article’s main model becomes clear.
+
+**State is the variable that turns deployment problems into recovery problems.**  
+As long as a release has not changed durable state, rollback can look like simple version management. Once state changes, recovery is about compatibility and reconciliation. That is why the right question is not “do we prefer rollback or roll forward?” but “how quickly does this system create irreversible or incompatible state, and what prepared path do we have once that starts happening?” That question ties together artifact retention, schema design, feature flags, pipeline speed, and remediation planning into one operational model.
+
+## Handles and Anchors
+
+**Handle 1: Rollback is not a button; it is a compatibility claim.**  
+If you remember one sentence, make it this one. Saying “we can roll back” really means “the old version can still operate correctly against today’s data, config, dependencies, and side effects.” That is a much stronger statement than most teams realize.
+
+**Handle 2: New code starts painting the world in its own colors.**  
+The moment a release handles traffic, it changes records, emits messages, fills caches, and triggers workflows according to its own model of reality. Rolling back means asking old code to walk into that repainted world and still behave correctly. Sometimes it can. Often it cannot.
+
+**Handle 3: Ask, “How fast does our rollback window close?”**  
+This is a practical diagnostic question for any system. If the answer is “after a few writes,” “after a queue message,” or “immediately after we call an external API,” then rollback is much less available than your team may assume. If the answer is “this service is mostly stateless,” rollback may genuinely be easy.
+
+## What This Changes When You Build
+
+**An engineer who understands this will treat artifact retention as an incident-response dependency, not a housekeeping detail, because a missing prior artifact turns rollback from a plan into a fiction.**  
+The unaware engineer inherits default registry retention or rebuild-from-source behavior and assumes “previous version” is always recoverable. They discover during an outage that the exact old deployable no longer exists or cannot be reproduced reliably.
+
+**An engineer who understands this will design schema and message changes for compatibility over time, because rollback safety is mostly about whether old code can survive new state.**  
+The unaware engineer adds enum values, changes event formats, or updates cache serialization in ways that seem harmless in isolated code review. The consequence is that the rollback window closes almost immediately after deployment.
+
+**An engineer who understands this will evaluate deployment strategies partly by their recovery behavior, because blue/green, canary, and rolling update fail in different ways once bad code has touched state.**  
+The unaware engineer chooses a strategy based only on rollout convenience or infrastructure cost. Then they are surprised that tearing down blue removes instant rollback, that canary still polluted shared data, or that rolling back a rolling update recreates mixed-version incompatibilities.
+
+**An engineer who understands this will invest in pipeline speed and break-glass procedures if the team expects to roll forward during incidents, because a theoretically safe roll forward is useless if it takes too long to execute.**  
+The unaware engineer says “we’re a roll-forward team” while living with long CI, mandatory approvals, and no emergency path. During an outage, that philosophy collapses into delay.
+
+**An engineer who understands this will plan remediation for critical state transitions, because code recovery and state recovery are separate jobs.**  
+The unaware engineer thinks only in terms of “revert” or “fix.” When bad code has already sent emails, charged cards, or advanced workflows, they must invent cleanup scripts and operational procedures in the middle of the incident, when time and confidence are lowest.

@@ -122,4 +122,105 @@ The operational question is never "does this test sometimes catch real bugs?" It
 
 - The value of an individual test is not whether it can catch a bug in isolation, but whether it improves the composite signal quality of the suite as a whole — flaky tests fail this criterion by definition.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Teams usually notice flaky tests first as an irritation: builds fail, someone hits retry, and work continues. The reason this deserves more attention is that the failure is not just local to the flaky test. Once CI fails often enough for reasons unrelated to the change, engineers stop treating red as evidence. That means the whole pipeline stops functioning as a trustworthy decision system.
+
+What actually breaks is not “test quality” in the abstract. Concrete things break: developers merge after retries without understanding failures, intermittent real bugs get mislabeled as flakes, pipeline time and compute cost rise, and skipped or quarantined tests silently reduce coverage. Eventually the suite still exists and still runs, but it no longer answers the operational question it was supposed to answer: “is this change safe to ship?”
+
+The article is trying to replace a misleading intuition — “a few flaky tests make the suite slightly worse” — with the real one: at scale, small per-test unreliability combines into frequent suite-level false failures. Once that happens, trust collapses faster than most teams expect.
+
+---
+
+## What You Need To Know First
+
+### Determinism
+A deterministic process gives the same output when you give it the same input. For tests, that means if the code and setup are unchanged, the result should also be unchanged. If the same test sometimes passes and sometimes fails, something outside the intended input is affecting it.
+
+### CI as a gate, not just a runner
+Continuous Integration is not just a place where tests execute. In practice it is a decision point: should this code be merged or deployed? That means the important property is not only whether tests can catch bugs, but whether the overall pass/fail result is trustworthy enough to guide action.
+
+### False positives vs true positives
+A true positive is a failing test that correctly found a real problem. A false positive is a failing test when the code is actually fine. Engineers can tolerate some missed bugs and some noisy failures in isolation, but once false positives become common, people change their behavior: they stop investigating failures carefully.
+
+### Test isolation
+A good test should not depend on leftovers from other tests, machine-specific settings, current time, scheduling luck, or external systems behaving perfectly. Isolation means a test controls the conditions it relies on. Without isolation, test outcomes depend on hidden context, which is where many flakes come from.
+
+---
+
+## The Key Ideas, Connected
+
+### A flaky test is a test whose result depends on uncontrolled factors, not just the code under test.
+This is the foundation. If the same code can produce pass on one run and fail on another, the test is reading from some source of variation it does not control. That source might be leaked state, timing, environment, randomness, or a real intermittent bug. The important point is mechanical: the test result is no longer a clean measurement of the change being evaluated.
+
+Once you define flakiness this way, the next idea follows naturally: you cannot treat all flakes as one generic problem, because different uncontrolled factors produce different failure mechanisms.
+
+### Flakes come from a few distinct mechanisms, and the mechanism determines the fix.
+Shared mutable state causes order-dependent failures: one test leaves data behind, another test assumes a clean world, and parallelism or different ordering exposes the leak. Timing and concurrency cause schedule-dependent failures: the assertion happens before work finishes, or a rare race appears only under some thread interleavings. Environmental coupling causes machine- or infrastructure-dependent failures: network slowness, timezone differences, disk conditions, DNS behavior. Non-deterministic inputs cause value-dependent failures: current time, random numbers, generated IDs, architecture-sensitive numeric behavior.
+
+This matters because “rerun until green” treats all of these as if they were equivalent random noise. They are not. Some are broken test design, some are uncontrolled dependencies, and some are real product bugs that happen to appear intermittently. Once you see that, the next idea becomes clearer: even low rates of these failures matter much more than intuition suggests.
+
+### Small per-test flake rates become large suite-level failure rates because probabilities compound across many tests.
+A single test with a 1% chance of false failure sounds harmless. But a suite does not ask “will this one test flake?” It asks “will any test in this whole run flake?” With dozens or hundreds of flaky tests, the chance that at least one of them fails becomes high very quickly.
+
+The mechanism is simple: every flaky test is another chance to turn the whole build red. Even if each chance is individually small, the combined probability rises with scale. So the suite-level signal degrades nonlinearly. This is the key correction to the common intuition. The suite does not become “a bit noisy.” It becomes wrong often enough that developers must adapt their behavior to survive it.
+
+And once engineers adapt their behavior, the technical problem becomes an organizational one.
+
+### When CI is wrong often enough, engineers rationally stop trusting it.
+If many red builds are false alarms, investigating every failure becomes too expensive. So the team learns a new habit: retry first. That habit is locally rational — it gets work moving again — but it changes what a red build means. Red no longer means “there is likely a real problem.” It means “maybe a problem, maybe noise.”
+
+From there, the next stage follows by behavior, not policy. If retry is the default, people stop reading failure logs carefully. If reading logs stops, real failures that coexist with flakes get missed. If flaky tests keep causing friction, people skip or quarantine them. If enough of that accumulates, the suite still runs but no longer functions as a trusted gate.
+
+So the next idea is broader: the value of tests cannot be judged one by one in isolation.
+
+### The important unit is the suite’s composite signal, not the individual test.
+A test is not valuable only because it can sometimes catch a bug. It is valuable if its presence makes the overall decision system better. A flaky test may occasionally detect something real, but if it also produces false alarms, consumes retries, trains people to ignore failures, and masks intermittent real bugs, its net effect may be negative.
+
+This is why the article shifts mental models from “collection of checks” to “signal system.” In a signal system, noisy sensors are dangerous because operators and automation cannot reliably distinguish noise from truth. That framing then explains why common responses need to be judged by their effect on signal quality, not by whether they reduce visible annoyance.
+
+### Common responses like retries and quarantine are tradeoffs, not fixes.
+Automatic retries reduce immediate pain by hiding some false failures. Mechanically, they lower the visible red-build rate. But they do not remove the source of nondeterminism, and they reduce pressure to fix it. So the system can keep accumulating flakes while appearing temporarily healthier. You pay in compute, time, and long-term trust.
+
+Quarantine is better in one narrow sense: it protects the main suite’s gating signal by moving noisy tests out of the path to merge or deploy. But quarantined tests represent assertions you no longer enforce. Without ownership and a deadline, quarantine becomes permanent silent coverage loss.
+
+That leads to the article’s most uncomfortable conclusion.
+
+### A flaky test can be worse than no test, so deletion is sometimes the correct engineering move.
+Engineers often resist deleting tests because a deleted test feels like losing coverage. But a flaky test does not provide the clean protection people imagine. It introduces noise, wastes resources, and can hide real failures behind repeated reruns. An explicit known gap is operationally safer than a lying check that weakens the whole suite.
+
+This conclusion only makes sense after the earlier ideas are in place. If you think of tests individually, deletion looks irresponsible. If you think of the suite as a decision system, removing a noisy sensor can improve the system. The real goal is not “maximize number of tests.” It is “maximize trustworthy signal about deployment safety.”
+
+---
+
+## Handles and Anchors
+
+### 1. Think of CI as a smoke alarm system
+One alarm that randomly goes off once a year is annoying. Fifty alarms each with a tiny false-trigger rate means the building is constantly evacuating for no fire. At that point people stop reacting urgently to alarms, which is exactly when the real fire gets missed.
+
+### 2. The core question is not “Does this test ever catch bugs?”
+The better question is: “Does this test make the suite’s go/no-go decision more trustworthy or less trustworthy?” That sentence captures the whole shift from individual test value to system-level signal value.
+
+### 3. Ask: “What hidden variable could make this result change without a code change?”
+That is a practical diagnostic question. It forces you to look for the mechanism: shared state, time, scheduling, environment, randomness, or a real intermittent defect. If you can name the hidden variable, you are much closer to understanding and fixing the flake.
+
+---
+
+## What This Changes When You Build
+
+- **An engineer who understands this will treat flaky tests as signal corruption, not as test debt, because the main cost is loss of trust in CI rather than local annoyance.**  
+  The unaware engineer inherits the default behavior of “just rerun and move on.” The consequence is that retries become normal and real failures get filtered through the same habit.
+
+- **An engineer who understands this will debug a flake by first classifying its source — shared state, timing, environment, or nondeterministic input — because each category implies a different corrective action.**  
+  The unaware engineer often applies generic fixes like bigger sleeps, more retries, or looser assertions. Those may suppress symptoms while preserving the underlying nondeterminism.
+
+- **An engineer who understands this will design tests for isolation up front because they know suite scale amplifies small reliability defects.**  
+  In practice that means per-test data setup and teardown, controlled clocks and randomness, avoiding dependence on global mutable state, and minimizing reliance on external services in gating suites. The unaware engineer writes tests that “work on my machine” and only discovers the failure mode once the suite is parallelized or enlarged.
+
+- **An engineer who understands this will evaluate retries as a costed tradeoff, not a free reliability feature, because retries improve optics while often worsening incentives.**  
+  The default organizational move is to add automatic retries to get more green builds. The consequence is more compute, longer feedback cycles, and less urgency to remove flakes from the system.
+
+- **An engineer who understands this will sometimes delete or aggressively time-box quarantined tests because an honest coverage gap is safer than an untrusted check in a critical gate.**  
+  The unaware engineer keeps every flaky test around in some form because deleting tests feels wrong. The result is a growing graveyard of tests that consume attention or silently stop protecting anything important.

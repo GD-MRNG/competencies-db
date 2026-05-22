@@ -102,4 +102,107 @@ None of them answer the question "Is this code safe?" That question has no singl
 
 - SCA, SBOMs, and signing each close a different category of supply chain risk — no single tool covers the full attack surface, and mature supply chain security requires all three working together with operational processes behind them.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Modern software is mostly assembled, not written from scratch. A team may choose a handful of direct dependencies, but the build pulls in hundreds more transitively, and every one of those packages can execute in the context of the application. That means your system's security is partly determined by maintainers, registries, CI systems, and release processes you do not control. If you treat "dependency management" as just a package-install convenience problem, you miss the fact that it is also a trust delegation problem.
+
+What breaks in practice is not only "we shipped a vulnerable library." More often, teams get blindsided by cases their existing controls were never designed to catch: a malicious package with no CVE yet, a public package overriding a private one during resolution, a signed artifact built from a compromised pipeline, or a flood of scanner findings so noisy that engineers start ignoring them. The result is either silent compromise or defensive paralysis: you are either exposed without knowing it, or buried in signals you cannot act on.
+
+The point of understanding this topic is not to memorize acronyms like SCA, SBOM, Sigstore, or SLSA. It is to know what each mechanism actually proves, what it does not prove, and which class of failure appears when you rely on one tool to do another tool's job.
+
+---
+
+## What You Need To Know First
+
+**1. Dependency resolution**  
+When you add a package, your package manager does not stop there. It also fetches that package's dependencies, then their dependencies, until it has a full tree. The important part is that your application ends up running code you never explicitly selected. That is why a "dependency graph" becomes a security topic: the graph determines what code lands in your build.
+
+**2. Lock files vs version ranges**  
+A manifest often says something like "accept any 1.x version," but the lock file records the exact version that was actually resolved at build time. This matters because security tooling needs to know what you really built with, not the broad range you said you were willing to accept. Without a lock file, different machines can resolve different versions, and your scanner may inspect something different from what production runs.
+
+**3. Known vulnerability databases**  
+Databases like NVD, GHSA, and OSV record publicly identified vulnerabilities and the package versions they affect. A scanner compares your dependencies against those records. The key limitation: if a compromise has not yet been discovered and published, there is nothing for the scanner to match. That is why scanners are useful but inherently backward-looking.
+
+**4. Digital signatures in plain terms**  
+A signature lets a producer prove "this artifact came from whoever controls this signing identity, and it has not changed since they signed it." That tells you about integrity and origin, not whether the code is good. A malicious or compromised maintainer can still sign bad code, and the signature will verify correctly.
+
+---
+
+## The Key Ideas, Connected
+
+**1. Your dependency graph is really a trust graph.**  
+The article's starting point is that dependencies are not just reusable code units; they are trust relationships. If a package is present in your resolved tree, its code can run inside your application or build process. That means you are indirectly trusting the package maintainer, the account security around publication, the registry serving it, and the build path that produced it.  
+This matters because once you see dependencies as trust delegation, the next question becomes: how exactly does that trust get abused?
+
+**2. Supply chain attacks are a category of trust abuse, not one single attack pattern.**  
+Typosquatting, dependency confusion, maintainer takeover, and build-system compromise all attack different points in the chain. Typosquatting exploits human input. Dependency confusion exploits name resolution rules. Maintainer takeover exploits project governance and publish rights. Build compromise exploits the gap between source and artifact.  
+This distinction matters because different attacks violate trust in different ways. Once you know the attack points are mechanically different, you can see why a single defensive tool cannot cover them all.
+
+**3. SCA tools answer a narrow question: "Do any of my known components match known vulnerabilities?"**  
+An SCA tool first identifies what components are in your build, usually from manifests and lock files. Then it normalizes those components into identifiers like PURLs or CPEs. Then it checks vulnerability databases for published advisories affecting those versions.  
+That sequence explains both why SCA is valuable and why it misses things. It is good at matching known-bad versions, but it depends completely on correct component identification and on a vulnerability already existing in a database. Once you understand that, the next limitation becomes obvious: even a correct match may still not mean your app is actually exploitable.
+
+**4. A vulnerable dependency is not the same thing as a reachable exploit path.**  
+If a package contains vulnerable code but your application never calls that part of the package, the code is present but not reachable from your usage. Reachability analysis tries to answer this by tracing whether your application can flow into the vulnerable function or code path.  
+This matters operationally because without reachability, SCA produces many findings that are technically true but practically irrelevant. Too many such findings create alert fatigue. And once teams are fatigued, the scanner stops functioning as a real control because engineers learn to dismiss its output.
+
+**5. Even perfect SCA has a time blind spot: it only sees yesterday's known problems.**  
+A scanner cannot flag malicious code that has not yet been recognized as malicious and recorded somewhere. In a maintainer takeover or newly introduced backdoor, the package may look normal to the scanner for days or months.  
+This is the key reason SCA is only one layer. Once you understand that vulnerability matching cannot tell you everything, you need another mechanism that answers a different question: not "is this known vulnerable?" but "what exactly is inside this artifact?"
+
+**6. An SBOM is an inventory, not a verdict.**  
+An SBOM records the components present in an artifact: package names, versions, relationships, suppliers, and similar metadata. Its purpose is not to declare an artifact safe. Its purpose is to make the artifact inspectable and queryable later.  
+That distinction is crucial. The value of an SBOM shows up downstream: when a new CVE appears, you can search your fleet and identify affected artifacts quickly. So the next idea follows naturally: the usefulness of an SBOM depends less on generating it and more on whether some system actually consumes it.
+
+**7. SBOMs only matter when connected to decisions or incident response.**  
+If you produce SBOMs and store them somewhere no process reads, they are documentation, not defense. They become security controls only when they drive actions: rejecting an artifact, flagging affected services during a new CVE, enforcing policy on licenses or provenance, or answering "where are we running this component?" quickly.  
+Once you see SBOMs as inventory that supports policy and response, you can ask another missing question: even if I know what is in the artifact, how do I know the artifact I received is genuinely what the producer intended to release?
+
+**8. Signing proves integrity and attribution, not safety.**  
+A valid signature tells you the artifact has not been altered since signing and that it is associated with a signing identity. That protects against tampering in transit or substitution by an unrelated actor. But it does not tell you that the code is non-malicious. If a trusted maintainer signs a bad release, the signature still verifies.  
+This is why signing is necessary but insufficient. It secures the chain between signer and consumer, but not the quality or intent of what was signed. That naturally leads to provenance, which asks a more detailed question than simple origin.
+
+**9. Provenance asks how the artifact was produced, not just who signed it.**  
+A provenance attestation ties an artifact to a specific source, builder, and build context. Instead of merely saying "Alice signed this tarball," provenance says "this artifact was built from commit X, by builder Y, under process Z." Frameworks like SLSA increase confidence by moving build generation away from a developer laptop and into hardened, attestable build systems.  
+This matters because build compromise attacks work by changing the artifact without changing the visible source. Provenance is designed to detect exactly that kind of break in faithfulness between source and artifact. But it still does not prove the source itself is benign.
+
+**10. No single mechanism answers "is this code safe?" because each one closes a different gap.**  
+SCA covers known vulnerabilities. SBOMs make contents queryable. Signing proves integrity and identity. Provenance proves build lineage. None of them can independently guarantee safety because the attack surface spans different trust boundaries: package names, version resolution, maintainer control, build systems, and source intent.  
+That is the article's real model: supply chain security is evidence layering. You do not pick one "best" control. You combine controls so that one tool's blind spot is covered by another tool's evidence.
+
+---
+
+## Handles and Anchors
+
+**1. "Dependencies are outsourced code execution."**  
+If you remember one sentence, use this one. Adding a dependency is not just importing functionality; it is authorizing outside code to run in your environment. That framing makes the security stakes intuitive.
+
+**2. A simple question map:**  
+- SCA: "Is anything here known-bad?"  
+- SBOM: "What exactly is here?"  
+- Signing/provenance: "Where did this come from, and how was it built?"  
+If you can ask these three questions separately, you are much less likely to expect one tool to answer all of them.
+
+**3. Think of it like airport security with different checkpoints.**  
+An ID check proves who you are. A baggage scan shows what you are carrying. A sealed chain-of-custody tag shows whether the bag was tampered with. None of those proves the traveler is harmless by itself. Software supply chain controls work the same way: each check establishes a different kind of evidence.
+
+---
+
+## What This Changes When You Build
+
+**1. An engineer who understands this will treat lock files as security-critical build inputs, not disposable generated files, because the lock file defines the exact dependency set being trusted.**  
+The unaware default is to let dependency resolution vary across machines or environments, then scan against approximate versions. The consequence is drift: the thing you scanned may not be the thing you deployed.
+
+**2. An engineer who understands this will evaluate scanner output through reachability, exploitability, and ownership context, because raw CVE counts are a poor guide to actual risk.**  
+The unaware default is either "fix everything immediately" or "ignore the scanner because it always screams." Both fail. The first burns time on low-value work; the second normalizes ignoring real exposures.
+
+**3. An engineer who understands this will set explicit package source and namespace rules, especially for private packages, because dependency confusion is often enabled by default resolution behavior rather than an obvious mistake.**  
+The unaware default is to assume the package manager will "do the sensible thing." The consequence is that public packages can win resolution unexpectedly and execute attacker-controlled code in your build.
+
+**4. An engineer who understands this will build a process around SBOM consumption, not just SBOM generation, because inventory only changes outcomes when it is queried at the moment a new issue appears or enforced at a deployment boundary.**  
+The unaware default is to produce SBOMs for compliance and store them as artifacts no one uses. The consequence is that when the next Log4Shell-style event happens, the team still cannot answer "where are we affected?" quickly.
+
+**5. An engineer who understands this will enforce signature and provenance verification in artifact intake paths, because unsigned-or-unverified artifacts erase the value of producers doing the right thing upstream.**  
+The unaware default is to say "the ecosystem supports signing now, so we are covered." The consequence is security theater: protections exist in theory, but no policy actually blocks an untrusted or unverifiable artifact from entering the build or runtime path.

@@ -104,4 +104,118 @@ The decision of *how hermetic* to make your builds is a cost-benefit question, n
 
 - **The cost of hermeticity is real and ongoing**: verbose build declarations, dependency vendoring, developer friction, and tooling to manage pre-fetched resources — but this cost is the mechanism, not a side effect.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Builds are often treated as boring plumbing until the day you need to trust one. You check out an old commit to reproduce a production bug, rebuild it, and the binary behaves differently from what originally shipped. Or CI passes on one runner and fails on another. Or two engineers build “the same” source and get different artifacts, so caches miss, signatures change, and debugging turns into guesswork. Those are not abstract quality problems; they are direct consequences of hidden build inputs.
+
+The reason this topic matters is that modern builds do much more than compile source. They read package registries, inspect the machine they run on, embed timestamps, pick up environment variables, and inherit system tools and libraries. If you do not have a model for those hidden inputs, you can believe your build is controlled when it is only partially controlled. That false confidence is worse than knowing you have randomness, because it breaks debugging, release traceability, and supply-chain trust exactly when you most need them.
+
+---
+
+## What You Need To Know First
+
+### 1. Determinism
+A process is deterministic if the same inputs always produce the same outputs. For builds, that means if you run the build twice with the same declared inputs, you should get the same result. If something outside those inputs can influence the result, the build is non-deterministic.
+
+### 2. Dependency manifests vs lockfiles
+A manifest says what you want in broad terms, like “I need library X, version compatible with 2.x.” A lockfile records the exact versions that were chosen, including transitive dependencies. The important distinction is: a manifest expresses intent, while a lockfile captures one concrete resolution of that intent.
+
+### 3. Content hashes
+A content hash is a fingerprint of bytes. If the bytes change, the hash changes. Build systems use hashes to decide whether an input or output is “the same.” This matters because version numbers alone do not guarantee identical content, but hashes do.
+
+### 4. Sandboxing
+Sandboxing means running a build step in a restricted environment where it can only see specific files, tools, and settings. The point is not security first; the point is control. If the action cannot see undeclared inputs, it cannot accidentally depend on them.
+
+---
+
+## The Key Ideas, Connected
+
+### 1. A build is best understood as a function with many inputs.
+The article’s core move is to stop thinking of a build as “compile the code” and start thinking of it as a function that transforms inputs into an artifact. Source code is one input, but so are compiler versions, system libraries, timestamps, locale, environment variables, file ordering, and network-fetched content. That framing matters because once you call something a function, you can ask the right question: have I actually identified all the inputs?
+
+This leads directly to reproducibility, because reproducibility is just the statement that this function gives the same output for the same inputs. If outputs differ, either an input changed or you failed to notice one of the inputs.
+
+### 2. Reproducibility is the property; hidden inputs are what destroy it.
+A reproducible build means same inputs, same output, byte-for-byte if you are aiming for strict reproducibility. In practice, builds fail this test because they consume inputs that are real but undeclared. The article calls these implicit inputs. They are dangerous precisely because the build depends on them without making that dependence visible anywhere you manage.
+
+Once you see that hidden inputs are the cause, the failures in later sections stop looking unrelated. Timestamps, floating package sources, locale differences, and network access are all the same class of problem: the build is observing state that is not part of the declared input set.
+
+### 3. Time and metadata are common hidden inputs because tools capture them by default.
+Many artifact formats preserve metadata from the filesystem or inject build-time information. A JAR is a ZIP file, and ZIP entries carry timestamps. Tar archives do similar things. Some compilers or build scripts write build dates directly into outputs. So even if your source and dependencies are unchanged, the clock alone can make artifacts differ.
+
+This matters because it shows that non-determinism is often not a dramatic design mistake; it is default behavior in ordinary tools. That is why “just pin dependencies” is insufficient. Even with perfect package pinning, volatile metadata can still make outputs diverge.
+
+### 4. Dependency pinning helps, but it only controls part of the input space.
+A lockfile improves reproducibility because it turns “whatever satisfies this range today” into “these exact package versions.” That eliminates one source of drift. But lockfiles usually describe logical package identity, not every physical and environmental dependency involved in the build. If the registry allows the same version to point to different bytes, or if native libraries come from the host machine, your build can still change.
+
+This is why integrity hashes and system dependency control matter. Once you understand the boundary of a lockfile, you see why teams get surprised: they pinned the application-level packages and assumed the problem was solved, while the actual build also depended on mutable tarballs, system OpenSSL, or host compilers.
+
+### 5. The build environment itself is an input, even when nobody wrote it down.
+Compilers differ by version. Environment variables affect scripts. Locale changes sort order. Timezone changes formatting. Filesystem directory iteration can return entries in different orders. These are all ways the machine leaks into the output. The build is not just running on a machine; it is reading from that machine as though the machine were part of the source.
+
+This idea sets up hermeticity. If the environment is a hidden input source, then controlling builds means not merely documenting the machine but preventing the build from observing arbitrary parts of it.
+
+### 6. Network access is just environment contamination at larger scale.
+When a build can call out to the network, it depends on a mutable external system. A URL might return different bytes tomorrow. A package repository changes. A remote schema vanishes. So network access introduces both non-determinism and fragility: the same build may produce different outputs, or no output at all, for reasons unrelated to your repo.
+
+This strengthens the case for a stricter mechanism. If undeclared inputs can come from the local machine and the wider network, then reproducibility requires actively blocking those observation paths, not just hoping they stay stable.
+
+### 7. Hermeticity is the mechanism that blocks undeclared inputs.
+The article draws an important distinction: reproducibility is the desired property, hermeticity is the enforcement mechanism. A hermetic build is one that can only use declared inputs and cannot observe the outside environment. That means no ambient system libraries, no undeclared tools from PATH, no surprise environment data, no casual network fetches.
+
+This dependence matters mechanically: without hermeticity, reproducibility is mostly aspirational because the build still has access to hidden state. With hermeticity, undeclared inputs stop being possible, or at least become much harder. So hermeticity is not “extra purity”; it is how you make the build function actually behave like a function.
+
+### 8. Systems like Bazel and Nix enforce hermeticity in different ways, but for the same reason.
+Bazel constrains each action to declared inputs and keys actions by input content, so unchanged inputs can safely reuse cached outputs. Nix puts every dependency into a content-addressed store and constructs an environment from that exact closure, removing the ambient machine from the picture. Different implementation, same goal: if the action can only see declared, content-identified inputs, output stability becomes enforceable rather than assumed.
+
+This also explains why reproducibility and cache efficiency often come together. If the system can precisely identify the complete input set, it can both guarantee correctness and know when previous outputs are safe to reuse.
+
+### 9. Docker gives some control, but not hermeticity by default.
+Docker helps because it packages a filesystem view and can pin a base image. But unless you pin by digest, block network access, and control package installation carefully, the container still sees mutable upstream state. `apt-get update` today is not `apt-get update` next month. Docker layer caching also works from instruction text and prior layers, not from a full semantic model of all fetched content.
+
+This matters because many teams stop here. They containerize a build and mentally mark the problem solved. The article is warning that containers reduce some environmental variation, but they do not automatically eliminate hidden inputs.
+
+### 10. The most damaging failure mode is false confidence.
+The article argues that the worst case is not “we know our build is loose”; it is “we think our build is reproducible when it is not.” That belief corrupts debugging. If you rebuild an old commit to bisect behavior, you assume artifact differences come from source changes. But if the build itself drifted, the investigation starts from a false premise.
+
+That leads to the practical endpoint: reproducibility is not an ideological goal, it is about how much you can trust the mapping from commit to artifact. Once you see that, the cost-benefit tradeoff makes sense. Not every team needs byte-identical builds, but every team benefits from knowing which inputs they control and which they are still leaving ambient.
+
+### 11. The useful mental model is: every reproducibility bug is an undeclared input.
+This is the unifying model the article wants you to keep. Instead of memorizing a catalog of weird build bugs, treat them all as one pattern. A timestamp is undeclared time. A floating Docker tag is undeclared image content. `PATH` is undeclared tool selection. `curl` in a build script is undeclared remote state.
+
+That model is powerful because it gives you a debugging method. When a build differs unexpectedly, ask: what input changed that we failed to declare or isolate? That question turns a vague, frustrating problem into a systematic search.
+
+---
+
+## Handles and Anchors
+
+### 1. “A build is a lab experiment, not a recipe.”
+A recipe assumes the kitchen is mostly stable. A lab experiment assumes tiny environmental differences can change the result, so you control and record everything that matters. Reproducible builds are the lab mindset applied to software artifacts.
+
+### 2. “Reproducibility is what you want; hermeticity is how you stop cheating.”
+You can claim a build is reproducible, but if it can still read random host state or hit the network, it is effectively cheating. Hermeticity is how you force the build to show all the inputs it depends on.
+
+### 3. Ask this question of any build system:
+“What can this build observe that is not explicitly declared?”
+If you can answer: the system clock, `/usr/bin`, CI environment variables, package registries, remote URLs, floating image tags — you have found your reproducibility risks.
+
+---
+
+## What This Changes When You Build
+
+### 1. An engineer who understands this will treat build debugging as input debugging.
+Instead of comparing only source diffs, they will compare toolchain versions, environment variables, image digests, lockfiles, timestamps, and network-fetched resources, because they know behavior can change without source changes. The unaware engineer defaults to “the code must be different,” and can lose days chasing a regression introduced by environment drift.
+
+### 2. An engineer who understands this will pin more than package versions.
+They will pin compiler versions, base images by digest, system packages, and where possible the hashes of fetched artifacts, because they know lockfiles only cover part of the dependency story. The unaware engineer pins `package-lock.json`, leaves `FROM node:18`, runs `apt-get install`, and inherits silent drift from upstream images and repositories.
+
+### 3. An engineer who understands this will remove or normalize volatile metadata in artifacts.
+They will audit archive creation, build manifests, compiler flags, and macros like `__DATE__` and `__TIME__`, because they know time leaks into outputs through many small defaults. The unaware engineer assumes “nothing changed” and is confused when two builds differ only because file mtimes or build timestamps were embedded.
+
+### 4. An engineer who understands this will be suspicious of ambient machine state.
+They will explicitly set locale, timezone, PATH, and relevant environment variables, and they will sort file lists before consuming them, because they know the host environment is a real input channel. The unaware engineer inherits whatever the CI runner or developer laptop provides, and gets flaky, hard-to-reproduce cross-machine build behavior.
+
+### 5. An engineer who understands this will see network access during builds as a design choice, not a convenience.
+They will prefetch dependencies into controlled caches or artifact stores and make build steps consume those declared resources, because they know every live fetch trades reproducibility for convenience. The unaware engineer writes build steps that download data at execution time, then discovers later that rebuilds depend on third-party uptime and mutable remote content.

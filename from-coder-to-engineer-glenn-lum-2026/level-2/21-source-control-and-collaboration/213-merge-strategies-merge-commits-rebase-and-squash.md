@@ -126,4 +126,111 @@ The right choice depends on what you are integrating. It depends on how your tea
 
 - History is not a log to be kept tidy; it is a diagnostic instrument whose resolution is determined by the merge strategy you choose at integration time.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Teams often talk about Git merge strategy as if it were about how pretty the history looks. But the real issue shows up later, when production is broken, a revert goes sideways, or someone needs to answer “which exact change introduced this?” At that moment, your commit history stops being decoration and becomes instrumentation. The merge strategy you chose months earlier determines how much of that instrumentation still exists.
+
+When engineers do not understand the mechanics, they make choices that silently throw information away. Squash merging can collapse 15 useful commits into one opaque blob, so `git bisect` can no longer isolate the bug. Rebasing shared branches can rewrite commit identities other people are depending on, creating confusing divergence and duplicate-conflict situations. Using merge commits without understanding them can make reverts and later re-merges surprising. The failure mode is not “ugly history.” The failure mode is losing the ability to safely reason about what happened.
+
+---
+
+## What You Need To Know First
+
+### 1. A Git commit is an object with identity, not just a patch
+A commit is not “the set of file changes.” It also includes metadata like its parent commit(s), author/committer info, message, and timestamp. Git hashes all of that together to produce the commit SHA. So if the parent changes, the commit identity changes, even if the file diff looks identical.
+
+### 2. Git history is a graph, not a list
+Even though many tools display commits as a vertical timeline, Git actually stores history as a directed acyclic graph. Most commits have one parent; merge commits have multiple parents. Branches are just movable pointers into that graph. This matters because merge strategy changes the graph shape, and the graph shape determines what Git can infer later.
+
+### 3. Fast-forward vs true merge
+If branch A is simply ahead of branch B with no divergence, Git can “fast-forward” by moving the branch pointer forward—no new merge commit is needed. A true merge happens when histories diverged and Git creates a new commit tying the lines together. This distinction matters because rebase often turns a branch into something that can be fast-forwarded.
+
+### 4. Tools like `bisect`, `blame`, and `revert` operate on commits and ancestry
+These tools are not magical source-code analyzers. They use the commit graph. `git bisect` searches across commits, `git blame` attributes lines to commits, and `git revert` undoes commits relative to ancestry. If your merge strategy changes or removes commit structure, these tools lose resolution or behave differently.
+
+---
+
+## The Key Ideas, Connected
+
+### 1. Merge strategy is really a decision about commit-graph structure.
+The article’s core claim is that merge strategy is not an aesthetic preference; it is a choice about what graph Git will store after integration. That graph records parent relationships, branch convergence, and commit identity. Since Git’s later behavior depends on those relationships, different strategies preserve different kinds of information.
+
+Once you see merge strategy as graph-shaping rather than history-formatting, the next question becomes: what exactly changes in the graph for each strategy?
+
+### 2. Merge commits preserve the original commits and the fact that work happened on a branch.
+A merge commit adds a new commit with two parents: one pointing to the previous tip of the target branch, and one pointing to the tip of the feature branch. Importantly, the feature branch’s commits are not rewritten. Their SHAs stay the same, their parent chain stays the same, and the graph still shows that this work developed separately and then joined main.
+
+That matters because preserving branch topology means you retain two useful views of history at once. You can inspect the first-parent chain to see “what landed on main, feature by feature,” or inspect the full graph to see the detailed commits inside each feature. Since nothing was destroyed, tools can still traverse the feature’s internal history. That leads directly to the diagnostic advantage of merge commits.
+
+### 3. Preserved topology means diagnostic tools retain fine-grained resolution.
+Because the original commits still exist and are reachable from main, `git bisect` can test them individually. If a bug was introduced halfway through the feature branch, bisect can find that specific commit rather than merely telling you the whole feature is suspicious. `git blame` can attribute specific lines to the actual commits that changed them. You also retain evidence of grouping: these commits belonged to one branch and landed together.
+
+But this preservation comes with a cost: the graph is more complex. A more complex graph is not just visual clutter; it means some tools and humans must handle non-linear history. That tradeoff sets up the appeal of rebase.
+
+### 4. Rebase keeps the commit-level changes but rewrites their lineage.
+Rebase takes commits and replays them onto a different parent, creating new commits with new SHAs. Even if the diffs and commit messages are unchanged, Git treats them as entirely new objects because their parent pointers changed. So rebase preserves the logical sequence of code changes, but not the original identity or topology.
+
+This is why rebase produces a linear-looking history: the branch no longer appears to have diverged and merged; it appears to have been written directly on top of the current main branch. That linearity is what many teams call “clean.” But mechanically, the cleanliness comes from deleting evidence of the original branch shape. Once commit identity is rewritten, a new consequence appears: anything referring to the old commits is now referring to abandoned objects.
+
+### 5. Rewriting commit identity makes rebase dangerous on shared history.
+If someone else has based work on commit D, and you rebase D into D', their branch still points to old D. Git now sees two different histories containing similar or identical content but different commit identities. That is why rebasing a shared branch creates messy divergence and confusing conflict scenarios: Git is not being stubborn; it is faithfully responding to the fact that the shared commit identity was replaced.
+
+So the usual advice “don’t rebase public history” is not etiquette. It follows directly from how Git defines a commit. Rebase is safe and useful when you are cleaning up your own local unpublished branch, because no one else depends on those commit identities. Once work is shared, the rewrite becomes externally disruptive. That makes squash the next important comparison, because squash throws away even more structure.
+
+### 6. Squash merge preserves only the final combined diff, not the branch’s internal history.
+A squash merge creates one new commit on the target branch containing the cumulative effect of all the feature branch’s changes. It does not preserve the original commits on main, and it does not create ancestry connecting that final commit to the feature branch’s internal commit chain. Git sees “here is one new commit with these changes,” not “this commit represents those prior commits being integrated.”
+
+That makes squash the most lossy strategy. You keep the resulting code state, but lose the sequence of intermediate steps, individual authorship across those steps, and the graph-level fact that the feature branch was integrated. Because Git cannot see that ancestry relationship, future operations behave differently. This is why squash has hidden costs beyond just losing detail.
+
+### 7. Losing ancestry changes what Git can recognize later.
+Git reasons from commit ancestry, not from “these patches seem philosophically equivalent.” After a squash merge, main contains the code changes, but not the commit ancestry linking main to the feature branch. So if you later try to merge that same branch or a descendant of it, Git does not know the branch’s commits have effectively already been integrated. It may try to apply them again, often causing conflicts.
+
+This is the subtle but important distinction: squash does not merely make history coarser; it removes information Git uses to decide whether work is already merged. Once you understand that, the article’s discussion of diagnostic tools makes more sense: each tool is only as powerful as the graph information still available.
+
+### 8. `bisect`, `blame`, and `revert` work at the resolution your merge strategy leaves behind.
+With merge commits, the graph retains both integration boundaries and per-commit detail. With rebase, you still have per-commit detail, but the original branch structure and old SHAs are gone. With squash, the whole feature may become one indivisible commit from the perspective of main.
+
+So `git bisect` on a squashed feature cannot isolate the bad commit inside the feature; it can only land on the squashed blob. `git blame` on squashed code attributes many lines to one commit and one author, even if several people contributed distinct changes. `git revert` also changes character: reverting a squash is simple because there is one commit, but you lose the ability to target smaller constituent steps. Reverting merge commits is more subtle because merge ancestry matters, and future re-merges are affected by that ancestry.
+
+Once tools behave differently because of graph shape, a final conclusion follows: there is no universally correct merge strategy.
+
+### 9. The right merge strategy depends on what information you need your history to preserve.
+If a branch contains one trivial change, squashing may lose almost nothing and keep main easy to scan. If a branch contains meaningful intermediate commits—refactor, behavior change, tests, follow-up fix—squashing destroys diagnostic value. If a developer wants to clean up their own local branch before publishing, rebase can be excellent. If a team needs full recoverability of how a feature evolved and landed, merge commits preserve that structure.
+
+So the real decision is not “Which history looks nicest?” It is “Which information am I willing to throw away, and which future operations do I need to remain safe and informative?” That is the working model the article is trying to build.
+
+---
+
+## Handles and Anchors
+
+### 1. Think of merge strategies as image compression levels for history
+Merge commit is like lossless storage: you keep the full structure and can zoom in later. Rebase is like restructuring the folders while keeping the files: the contents are there, but original location and identity changed. Squash is like exporting everything into one PDF: easy to pass around, hard to inspect in detail later.
+
+### 2. Ask: “What will Git still be able to prove after this merge?”
+Not “what will the log look like,” but “will Git still know these commits were integrated, who changed which line, and which exact commit introduced the bug?” That question forces you to think in terms of retained information rather than aesthetics.
+
+### 3. One-sentence core tension
+A merge strategy trades simplicity now against recoverability later.
+
+---
+
+## What This Changes When You Build
+
+### 1. An engineer who understands this will choose merge strategy by branch type, because different branches carry different amounts of information worth preserving.
+A short-lived branch with one meaningful commit can be squashed with little loss. A multi-commit feature branch with carefully separated refactors and behavior changes should usually not be squashed, because that destroys the very structure that makes later debugging possible. The unaware engineer applies one repository-wide default everywhere and silently gets bad fits for non-trivial work.
+
+### 2. An engineer who understands this will avoid rebasing branches others may already depend on, because rebase rewrites commit identity rather than merely tidying history.
+They will happily rebase their own unpublished local work, but once a branch is shared, they will treat the existing SHAs as part of a social and technical contract. The unaware engineer thinks “same code, so no real harm,” then causes teammates to deal with duplicated commits, divergence, and confusing conflicts produced by rewritten ancestry.
+
+### 3. An engineer who understands this will invest in atomic commits only when the integration strategy will preserve their value, because atomicity only helps if those commits survive onto useful history.
+If the team squash-merges every PR, the practical diagnostic benefit of making 12 carefully structured commits may be lost on main. That may still be acceptable for review, but it changes what history can do later. The unaware engineer hears “make atomic commits for bisectability” while the team’s squash policy removes that bisectability at integration time.
+
+### 4. An engineer who understands this will interpret revert workflows more cautiously, because merge ancestry affects what can be re-merged later.
+When reverting a merge commit, they know Git will continue to remember the original branch as merged, which means re-merging the same branch later will not simply replay the changes. They will plan for revert-the-revert or branch recreation as needed. The unaware engineer expects revert to “reset history” and is surprised when later merge behavior does not match that mental model.
+
+### 5. An engineer who understands this will configure history views instead of discarding information for readability, because readability and preservation are not the same problem.
+They will use tools like `git log --first-parent` to get a clean integration view while still keeping full topology in the repository. The unaware engineer often chooses squash or forced-linear history mainly to make default log output look cleaner, sacrificing future diagnostic capability to solve what was really a tooling/view problem.
+
+---

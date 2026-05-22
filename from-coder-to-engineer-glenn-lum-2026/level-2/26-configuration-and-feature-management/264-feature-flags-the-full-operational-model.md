@@ -109,4 +109,100 @@ The critical conceptual shift is this: every active flag is a branch in your cod
 
 - Debugging user-reported issues requires knowing the flag state evaluated for that user at request time — if you aren't logging flag evaluations per-request, you are missing a dimension of observability that you will eventually need.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Feature flags are usually introduced as a safe way to ship: deploy code early, turn it on later, roll out gradually, and turn it off if something goes wrong. That promise is real, but it hides an important fact: once you adopt flags, you have added another production system that changes application behavior at runtime. If you treat flags as “just booleans,” you miss the mechanics that actually decide who sees what, when changes take effect, and what happens when the flag service is stale, slow, or misconfigured.
+
+That gap shows up in very concrete failures. A rule reorder silently changes which users get a feature. A client-side flag fetch arrives late, so the UI renders one version and then flips to another. Two harmless-looking flags interact and break a flow for a small cohort no one explicitly tested. During an incident, someone disables an old flag they think is unused and accidentally turns off a feature that has effectively become part of the product. These are not “feature flag problems” in the abstract; they are consequences of not understanding the runtime system behind the toggle.
+
+---
+
+## What You Need To Know First
+
+**1. Caching**  
+A cache is a local copy of data kept so you do not have to fetch it from the original source every time. In feature flags, server-side SDKs usually keep a local cached copy of flag rules in memory. That matters because most flag checks in backend code are not network calls; they are local evaluations against cached configuration. The catch is that cached data can become stale.
+
+**2. Eventual consistency**  
+Eventual consistency means different parts of a distributed system may temporarily disagree, but they are expected to converge later. When you change a flag in a dashboard, not every service instance sees that change at the same instant. Some update immediately, some after a polling interval, and some may keep using old data if disconnected. So “I flipped the flag” does not mean “the whole system changed at once.”
+
+**3. Deterministic hashing**  
+A hash function turns an input into a repeatable numeric output. Deterministic means the same input always gives the same result. Flag systems use this to assign users to rollout buckets: if a given user hashes into bucket 34, they stay in bucket 34 every time. That is what makes percentage rollouts stable instead of random on each request.
+
+**4. Evaluation context**  
+The evaluation context is just the set of attributes you provide when asking for a flag value: user ID, country, account tier, device type, and so on. The flag system can only make decisions based on what is in that context. If an attribute is missing, unstable, or wrong, the flag may evaluate differently than you expect.
+
+---
+
+## The Key Ideas, Connected
+
+**A feature flag check looks simple in code, but it is really a runtime decision made by a separate system.**  
+`is_enabled("new-checkout-flow", user_context)` looks like a local boolean function, which encourages people to think of it as a normal conditional. But the call is really asking a rules engine, “given this flag definition and this context, which variant should this user get?” That matters because the behavior now depends not just on source code, but on external configuration, update propagation, and evaluation rules.
+
+**Because the decision engine is external, how the SDK gets flag data determines latency and failure behavior.**  
+On the server side, the common pattern is: download flag definitions, cache them locally, and evaluate in-process. That keeps runtime checks fast. On the client side, you usually cannot expose the full ruleset, so the client fetches evaluated results or context-specific flag data over the network. That means backend flag checks are usually cheap local reads, while frontend checks often depend on initialization timing and network success. Once you see that difference, the next issue becomes obvious: these systems will not all have the same view of flag state at the same time.
+
+**Since SDKs rely on cached or fetched state, flag changes propagate with delay rather than atomically.**  
+A server SDK may update through streaming or polling; a client SDK may fetch once and then cache locally. So when a flag changes, one instance may apply the new rules immediately while another continues using old ones. This is not a bug in the implementation; it is a consequence of designing the system to keep working even if the flag service is unavailable. The system chooses availability over instant global agreement. Once you accept that, you can understand a key operational truth: a flag is not just on or off globally; it exists in a period of rollout and propagation across your fleet.
+
+**What gets evaluated during that propagation window is not just a toggle, but an ordered ruleset.**  
+A flag definition usually contains an enable/disable state, a list of targeting rules, and a default fallback. The important part is that rules are checked in order, and the first match wins. That means rule ordering is not presentation; it is executable logic. A specific allowlist rule placed above a broad regional rollout behaves differently from the same two rules in reverse order. This leads directly to the next idea: if order and context determine outcomes, then a flag is behaving more like code than like static config.
+
+**Because rules are ordered and context-dependent, flags are business logic expressed as data.**  
+They encode decisions like “internal testers first,” “premium users in Canada next,” “everyone else off.” That logic lives outside the application codebase, but it still controls application behavior. Bugs can therefore exist entirely in the flag configuration: wrong ordering, missing conditions, overly broad matches, bad defaults. And because the decision depends on the evaluation context, understanding what happened for a user means reconstructing both the rules and the attributes supplied at evaluation time. Once flags are understood as logic, percentage rollouts stop looking like magic and start looking like another rule type that needs a precise mechanism.
+
+**Percentage rollouts work by deterministic bucketing, not fresh randomness.**  
+If “20% of users get the new feature” were implemented by random choice on every request, users would bounce between experiences. Instead, the system hashes stable inputs such as the flag key and user ID into a bucket, then compares that bucket to a threshold. If your bucket is 34, you are out at 20% and in at 50%. Because the bucket does not change, the user experience stays sticky. This mechanism explains why percentage increases are monotonic: raising the threshold adds new users without removing old ones.
+
+**The hash includes the flag key so different flags do not accidentally choose the same users.**  
+If bucketing were based only on user ID, the same users would land in the “on” cohort for every 20% rollout. That would correlate experiments and make rollout effects hard to interpret. Including the flag key changes the hash input for each flag, so each flag produces a different cohort. This sounds like a detail, but it reveals something bigger: once you have many flags, each one creates its own axis of behavioral variation.
+
+**Many flags create a combinatorial configuration surface, and that is where interaction bugs come from.**  
+One flag doubles the number of possible application states. Fifteen flags create thousands of theoretical combinations. Most are never tested directly, yet real users can land in some of them because each flag is evaluated independently. That is why two individually safe rollouts can fail together: one assumption from flag A collides with one assumption from flag B in a small overlapping cohort. The mechanism is not mysterious complexity; it is simple multiplication of runtime branches across the system.
+
+**Because active flags multiply states, leaving old flags around is not harmless clutter.**  
+A stale flag still represents a live branch in your production behavior, even if everyone “knows” it should always be on. It adds cognitive load, preserves dead code paths, expands the possible state space, and creates a dangerous control surface: someone can still toggle it. The older and more normalized that flag becomes, the more damage an accidental change can cause, because the product has come to depend on the “temporary” branch being permanently enabled.
+
+**That is why flag management is an operational discipline, not just a coding convenience.**  
+You need ownership, expiration, flag type, removal expectations, and controls on who can change what. A release flag should age out quickly; a true kill switch may intentionally remain. Without lifecycle discipline, your flag inventory becomes an unreviewed production control plane full of hidden branches. And once flags are part of production control, the next consequence follows naturally: observability and change governance must include flag state, not just deployed code.
+
+**If flags alter runtime behavior outside deployments, debugging and change control must account for them explicitly.**  
+When a user reports a bug, “what version was deployed?” is no longer enough. You also need “which flag rules were active for this user on this request?” Without that, you are debugging an incomplete execution path. Similarly, if engineers can change flag behavior instantly through a dashboard, then that dashboard is effectively a deployment mechanism. Treating it with weaker approval, audit, and rollback controls than code deploys leaves a real operational gap.
+
+---
+
+## Handles and Anchors
+
+**1. “A feature flag is not an if-statement. It is a distributed rules engine hiding behind an if-statement.”**  
+Use this when you need to reset your own thinking or explain the idea quickly to someone else. It captures the core shift from syntax to mechanics.
+
+**2. Think of server-side flags like a local map with periodic updates, not live turn-by-turn directions.**  
+Each service instance has its own copy of the rules and may be reading a slightly different version for a while. That makes it easy to remember why propagation is delayed and why “I changed the flag” does not mean “everyone sees the change now.”
+
+**3. Ask this question of any flag system: “What exact inputs determine this user’s result, and can I reconstruct them later?”**  
+If you cannot answer that, you probably do not really understand how the flag behaves in production, and you will struggle to debug rollout issues.
+
+---
+
+## What This Changes When You Build
+
+**An engineer who understands this will design server-side and client-side flag use differently because the runtime costs are different.**  
+The aware engineer knows a backend flag check is usually a local cache lookup, while a frontend flag may depend on an initialization fetch. So they will avoid putting client-side flags in places where a delayed fetch causes visible flicker or layout shifts, or they will add SSR/loading strategies deliberately. The unaware engineer assumes all flag checks are equally cheap and ends up with UI flashes and inconsistent first-load behavior.
+
+**An engineer who understands this will treat rule order as executable logic because first-match-wins semantics make reordering behavior-changing.**  
+They will review targeting changes the way they review code logic, asking which cohorts are shadowed by earlier rules and what the fallback really catches. The unaware engineer treats rules as a list that can be tidied for readability, and accidentally changes who gets the feature.
+
+**An engineer who understands this will choose and validate stable identifiers for rollouts because stickiness depends on identifier stability.**  
+They will ask, “what identifier exists at this point in the flow?” and “does it persist across sessions or pre-login states?” If not, they will expect rebucketing and inconsistent experiences. The unaware engineer uses whatever identifier is handy, then gets mysterious reports that users seem to move in and out of the experiment.
+
+**An engineer who understands this will test around interacting user-facing surfaces, not just individual flags in isolation, because failures often live in intersections.**  
+They will explicitly identify flags that can combine on the same page or workflow and test those combinations, especially around shared assumptions and data contracts. The unaware engineer flips one flag on and off in tests, declares coverage adequate, and misses the 3% cohort where two rollouts collide.
+
+**An engineer who understands this will manage stale flags as operational risk because old release flags remain live control points.**  
+They will add owners, expiration dates, and removal work to normal delivery practice, and they will distinguish permanent kill switches from temporary rollout flags. The unaware engineer leaves flags at 100% forever, slowly building a hidden inventory of branches that can still be toggled during an incident.
+
+**An engineer who understands this will include flag state in observability because deployed code alone no longer explains runtime behavior.**  
+They will log evaluated flag values or make them reconstructable per request, especially for high-risk flows. The unaware engineer debugs only from version numbers and request traces, then cannot explain why a user hit a code path no one can reproduce locally.
+
+---

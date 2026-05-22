@@ -119,4 +119,149 @@ The teams that succeed with IaC long-term are not the ones that never experience
 - **Your IaC codebase is authoritative only to the extent that you enforce the discipline to keep it so.** The tool provides detection. The authority comes from organizational practice.
 
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Teams often adopt Infrastructure as Code with an implicit promise in mind: “once infra is in code, the code is the truth.” The real system is less comforting. Your cloud account is still just an API surface. Anyone or anything with credentials can change it directly. That means the live infrastructure can drift away from the code at any time, and your IaC tool does not stop that from happening.
+
+What breaks when engineers miss this is not just neatness or process hygiene. Emergency console edits get silently reverted later. Plans become full of changes nobody recognizes. Resources created outside IaC run for months without anyone noticing. Eventually the plan output becomes so noisy and uncertain that nobody trusts it enough to apply it. At that point, IaC has stopped being a control mechanism and has become a stale document.
+
+So this topic matters because drift is how IaC loses authority in real teams. If you do not understand how drift is detected, what the tool can actually see, and where its blind spots are, you will mistake “we have Terraform” for “our infrastructure is under control,” and those are not the same thing.
+
+---
+
+## What You Need To Know First
+
+**1. Infrastructure as Code state**
+IaC tools usually keep some record of what resources they believe they manage. In Terraform this is the state file. It contains resource identities and last-known attributes. The important thing is: this is not the infrastructure itself, and it is not guaranteed to be current. It is just the tool’s memory of reality from the last time it checked or applied.
+
+**2. Cloud provider APIs**
+AWS, Azure, and GCP expose APIs for creating, reading, updating, and deleting resources. The console, CLI, SDKs, Terraform, incident scripts, and internal automation all use those same APIs underneath. So from the cloud provider’s point of view, Terraform is not special; it is just one more API client among many.
+
+**3. Terraform plan/apply as separate steps**
+A plan is not a change. It is a proposed set of actions based on comparing what exists to what your code says should exist. Apply is the step that actually calls the provider APIs and makes the changes. This matters because drift detection mostly happens during planning, not magically in the background.
+
+**4. Managed vs unmanaged resources**
+A managed resource is one your IaC tool knows about and tracks in state. An unmanaged resource exists in the account but is not tracked by the tool. The distinction matters because IaC can only reason about what it knows exists. If a resource is unmanaged, it may be completely invisible to drift detection.
+
+---
+
+## The Key Ideas, Connected
+
+**IaC does not prevent drift; it only lets you detect and correct it later.**
+
+That means the existence of code does not block out-of-band changes. A developer can change a security group in the console, a script can alter an IAM policy, or an incident responder can resize a database at 3 AM. Those changes succeed because the cloud provider accepts API calls from any authorized client, not just your IaC tool.
+
+Once you accept that drift can happen at any time, the next question becomes: how does the IaC tool even know drift exists?
+
+**Drift detection works by comparing three different representations of infrastructure.**
+
+The three are: desired state in code, stored state in the tool, and actual state in the cloud provider. Desired state is your intent. Actual state is reality. Stored state is the bridge between them: it tells the tool which real resource corresponds to which declaration in code.
+
+That mapping role is crucial. Without stored state, the tool would have trouble answering basic questions like “which actual AWS security group is this `aws_security_group.web` block supposed to refer to?” So once you understand the three-way model, you can understand why planning is not just “compare code to cloud.”
+
+**The stored state exists because code alone is not enough to identify real resources.**
+
+A code block describes a resource shape, but the live cloud object has provider-specific IDs and metadata. The stored state holds those IDs. That is how the tool knows which objects to query during refresh and which objects it intends to update during apply.
+
+Because the stored state is only a snapshot from some earlier interaction, it may be stale. That makes the next step necessary: the tool has to refresh its understanding of reality before it can produce a trustworthy plan.
+
+**A normal plan includes a refresh phase so the tool can replace stale assumptions with current reality.**
+
+In Terraform, planning starts by reading code and state, then asking the provider API for the current attributes of every tracked resource. This is the refresh phase. After that, Terraform has the actual current values in memory and can compare those values against the code.
+
+This matters because without refresh, the tool would be planning against its old memory, not against the system as it exists now. And that leads directly to the next idea.
+
+**Skipping refresh makes plans faster by accepting stale knowledge, which means you can become blind to drift.**
+
+`terraform plan -refresh=false` compares code only against stored state. That saves API calls, which can be a big performance win in large estates. But the cost is that the tool stops checking whether reality has changed since the last apply or refresh.
+
+Mechanically, this means the plan can be wrong in a very specific way: it can propose actions based on outdated assumptions about the current resource shape. So speed is bought by widening your detection gap. Once you see that, you can also see that drift detection quality depends on what the tool is actually able to inspect.
+
+**Drift detection only covers resources and attributes the tool can see.**
+
+If a resource is not in state, the tool does not know to ask the provider about it. No state entry means no refresh call, no comparison, and no plan output mentioning it. That is why a manually created EC2 instance can sit in your account forever without appearing in Terraform.
+
+Even for managed resources, coverage is uneven. The tool depends on what the provider API returns. If an API omits or inconsistently reports some nested setting, the IaC tool cannot reliably compare it. So “managed” does not always mean “fully observable.”
+
+That boundary matters because it explains why some forms of drift are visible and others are silently absent.
+
+**Unmanaged resources and ignored attributes are not edge cases; they are explicit blind spots.**
+
+An unmanaged resource is invisible because the tool has no mapping to it. An ignored attribute is invisible because you told the tool not to care about it. For example, `ignore_changes = [tags]` is effectively a contract that says: changes to tags may happen outside code, and this tool should not report or reconcile them.
+
+This is sometimes the right choice. External autoscaling systems, policy remediators, and tagging tools may need to mutate infrastructure independently. But the mechanism is important: every ignore rule narrows the set of things for which your code is authoritative. Once enough of those exceptions accumulate, your “source of truth” becomes partial rather than total.
+
+That leads naturally to where drift comes from in practice.
+
+**Drift enters through ordinary operational paths, not just mistakes.**
+
+Console edits during incidents are the obvious case: someone makes a fast production fix and forgets to codify it. Parallel automation is subtler: another sanctioned system also edits infrastructure through the same APIs. Partial adoption creates ambiguity about what is managed by code and what is not. Bad imports create mismatches from the beginning.
+
+The common mechanism across all of these is the same: real infrastructure is being modified by actors other than the IaC workflow, while the code and state are not being updated in sync. Once that happens repeatedly, the problem changes shape.
+
+**The most dangerous property of drift is that it accumulates until plans stop being trustworthy.**
+
+One drifted security group rule is usually easy to interpret. Fifty differences across many resources are not. The plan output becomes a mixed bundle of intended changes, unintended drift corrections, and maybe reversions of legitimate emergency fixes. Because the tool does not label which is which, the human reviewer has to reconstruct that context manually.
+
+At small scale, that is manageable. At larger scale, it becomes cognitively expensive and risky. Teams start postponing applies because they cannot confidently predict the outcome. Then they make more direct console changes because the IaC path feels blocked. This is the drift spiral: drift reduces trust, reduced trust reduces IaC usage, reduced IaC usage creates more drift.
+
+Once drift is detected, the next problem is not technical comparison but judgment.
+
+**Detection and remediation are different problems because a difference does not tell you which side is correct.**
+
+If the live database size differs from code, you still have to answer: was the console change an unauthorized deviation that should be reverted, or was it a legitimate production fix that the code should adopt? The plan only shows mismatch; it does not tell you intent.
+
+That is why reconciliation has two directions. You can push reality back toward code, or you can update code and state to accept reality as the new baseline. Neither is automatically safe. Reverting a valid incident change can break production; accepting an unauthorized change can normalize bad config.
+
+Because this judgment is easier when the change set is small and recent, the next idea follows directly.
+
+**Continuous drift detection is valuable because it turns a growing unknown into a small, fresh operational signal.**
+
+If drift is only discovered when a human happens to run plan, then the detection interval is random and often long. During that gap, more changes can pile up. Scheduled plans shrink the time between drift entering the system and drift becoming visible.
+
+The mechanism here is simple: shorter detection intervals mean fewer unknown changes per investigation. That keeps plans understandable, keeps reconciliation decisions local and timely, and prevents the trust collapse that comes from giant surprise diffs.
+
+All of this supports the article’s core mental model.
+
+**Your IaC system is not a control plane; it is a declaration of intent plus a periodically run comparison mechanism.**
+
+It does not continuously enforce. It does not automatically know about every resource. It does not prevent others from changing infrastructure. Its authority comes from practice: keeping resources under management, running detection often, and reconciling drift before it compounds.
+
+Once you hold that model, the rest of the article makes sense. Drift is not an exception to IaC. It is the normal consequence of managing infrastructure in an environment where multiple actors can mutate the same system.
+
+---
+
+## Handles and Anchors
+
+**1. “Terraform is not a lock; it is a ledger plus an inspection.”**  
+A lock prevents change. Terraform does not. It records what it thinks exists and, when asked, inspects reality to find differences. If you remember that, you will stop expecting prevention from a tool that only offers comparison and correction.
+
+**2. Think of drift detection like reconciling accounting books against a bank account.**  
+Your code is what you intended to spend. Your state file is your last recorded balance. The cloud provider is the bank statement. If someone made transactions outside your bookkeeping, your books are wrong until you reconcile. And if you skip reconciliation for months, the problem becomes much harder to untangle.
+
+**3. Ask this question of any IaC setup: “What can change this infrastructure without this tool noticing immediately?”**  
+That question reveals the real detection gaps: console access, other automation, unmanaged resources, ignored attributes, infrequent plans, skipped refresh. It is a practical way to test whether IaC is actually authoritative or only aspirational.
+
+---
+
+## What This Changes When You Build
+
+**An engineer who understands this will treat scheduled plan runs as an operational control, not a convenience, because drift gets harder to reason about as detection latency increases.**  
+The unaware engineer runs plan only when they are already making a change. That means drift is discovered late, bundled together with new work, and harder to review safely.
+
+**An engineer who understands this will be cautious with `-refresh=false` because they know they are trading correctness for speed, not just skipping a harmless extra step.**  
+The unaware engineer reaches for it when plans are slow and assumes the output is still a trustworthy view of reality. In practice they are now planning against stale memory, which can produce misleading or dangerous change proposals.
+
+**An engineer who understands this will inventory unmanaged resources and import or explicitly exclude them, because invisible infrastructure is more dangerous than visible drift.**  
+The unaware engineer assumes “if Terraform doesn’t mention it, it probably doesn’t matter.” The consequence is orphaned infrastructure, hidden security exposure, and systems that exist outside any review or reconciliation process.
+
+**An engineer who understands this will review every `ignore_changes` as a governance decision, because it defines where code stops being authoritative.**  
+The unaware engineer uses ignore rules as a quick way to silence noisy diffs. The result is that the team gradually teaches the tool not to report meaningful changes, widening the gap between declared and actual state.
+
+**An engineer who understands this will separate “difference detected” from “safe to apply,” because plan output merges intentional changes with drift correction.**  
+The unaware engineer treats a non-empty plan as a straightforward to-do list. The better approach is to ask, for each drifted item: who changed this, why, and should code or reality win? That is how you avoid reverting valid emergency changes or legitimizing bad manual edits.
+
+**An engineer who understands this will design incident processes that include post-incident codification, because emergency fixes made outside IaC are not complete until the code reflects them.**  
+The unaware engineer considers the incident over once production is stable. The consequence is that the next apply may undo the fix, or the drift may sit around and contribute to a larger future reconciliation mess.

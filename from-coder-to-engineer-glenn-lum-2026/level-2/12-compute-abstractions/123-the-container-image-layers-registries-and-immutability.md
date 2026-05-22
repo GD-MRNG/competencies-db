@@ -158,4 +158,109 @@ The consequence for CI/CD is this: **the image digest is the unit of trust.** It
 - `FROM <image>:<tag>` introduces silent base image drift between builds; pinning by digest guarantees reproducibility but requires manual updates for security patches.
 - The image digest is the only reliable unit of trust across a CI/CD pipeline — every system that references a tag instead of a digest introduces a point where the deployed artifact can silently diverge from what was tested.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Container images sit in the middle of build, test, deploy, and runtime, so small misunderstandings about how they work turn into very practical failures. If you treat an image as "basically a tarball with a tag," you miss why builds get slow, why image size stays huge even after you "remove" packages, and why a deployment can change without any YAML changing at all.
+
+The dangerous part is that the terminology sounds reassuring. "Immutable image" suggests safety. "Delete the file in a later layer" sounds like removal. "Tag the release as `v1.2.3`" sounds pinned. But the actual mechanics are stricter and stranger: layers are append-only diffs, deletions are just hide markers, and tags are mutable pointers. If you don't hold that model, you will make choices that look correct while quietly producing security leaks, cache misses, drift between environments, and non-reproducible deployments.
+
+---
+
+## What You Need To Know First
+
+### 1. Hashes and content-addressing
+A hash like SHA256 is a function that turns content into a fixed identifier. If the content changes, the hash changes. "Content-addressed" means you fetch something by the hash of what it is, not by a human name. This matters here because layers, configs, and manifests are identified by their contents, which is what gives them immutability.
+
+### 2. Filesystem diffs versus full snapshots
+A snapshot is a complete copy of the filesystem at a point in time. A diff is only the changes relative to what came before: files added, changed, or marked as removed. Image layers are diffs, not full snapshots. That single fact explains both caching behavior and why deletions don't erase old bytes from earlier layers.
+
+### 3. Read-only vs read-write filesystem layers
+A read-only layer can be shared safely because nothing can modify it. A read-write layer is where changes happen. Containers run by stacking many read-only image layers under one thin writable layer. That is why many containers can share the same image data without interfering with one another.
+
+### 4. Tags as names versus digests as identities
+A tag is a label humans use, like `node:18` or `myapp:v1.2.3`. A digest is the hash of the actual image manifest. Tags are convenient but can be moved to point at different content later. Digests are inconvenient but exact. You need this distinction to understand where image "immutability" is real and where it is not.
+
+---
+
+## The Key Ideas, Connected
+
+### 1. A container image is built from ordered filesystem diffs, not from complete filesystem copies.
+Each Dockerfile instruction that changes files creates a layer describing what changed relative to the state below it. That means the image is cumulative: layer 4 only makes sense when applied on top of layers 1 through 3. This sets up everything else, because once layers are diffs, they can be stacked, reused, and cached — but they also become dependent on what is beneath them.
+
+Because a layer is defined relative to lower layers, you cannot think of it as an independent mini-filesystem. If the lower state changes, the meaning of the upper diff changes too. That is why the next idea — immutable stacking — matters so much.
+
+### 2. Layers are immutable, so changes above cannot rewrite what exists below.
+Once a layer exists, its content hash identifies it forever. If you could edit that layer in place, its hash would no longer match its content, and content-addressing would break. So the model forbids mutation: later layers can only add new diffs on top.
+
+This directly explains why deletion is weird. If a file was introduced in layer 2, layer 5 cannot truly remove bytes from layer 2, because that would mutate an immutable object. The only option is to add information in layer 5 saying "hide this path." That leads to whiteouts and to the important realization that "gone from view" is not the same as "gone from the image."
+
+### 3. At runtime, a union filesystem makes many read-only layers look like one filesystem.
+The container runtime mounts the layers as a stack and presents a merged view. When a process reads `/app/config.yaml`, the filesystem checks the top layer first, then lower ones, until it finds the first visible version. So the running container feels like it has one filesystem, even though it is really reading through an ordered stack of diffs.
+
+This merged view is what makes whiteouts and copy-on-write meaningful. Without a union mount, the stack would just be a list of archives. With it, the system can treat "hide this lower file" and "copy this lower file upward before editing it" as normal filesystem behavior. So once the stack is mounted this way, write behavior becomes the next key mechanism.
+
+### 4. Runtime writes go to a separate top layer through copy-on-write.
+Image layers are read-only, so when a running container modifies an existing file from a lower layer, the runtime first copies that file into the container's writable layer and then changes the copy. The original lower-layer file remains untouched.
+
+This is why hundreds of containers can share the same image safely: they all read the same lower data, but each container forks off its own modified copies only when needed. It also reinforces the append-only model. Neither build-time layers nor runtime image data are edited in place. Once you see that, the registry design starts to make sense: immutable pieces can be stored and shared independently.
+
+### 5. An image is really a manifest that points to separately stored blobs.
+What people casually call "the image" is not one big file in the registry. It is a manifest document listing the ordered layer digests and a config digest. The config contains runtime metadata like environment variables, entrypoint, and working directory. The manifest itself is also hashed.
+
+This structure matters because it means the real identity of the image is the manifest digest: that digest fixes both the exact layer list and the exact config. If any layer changes, or the config changes, the manifest changes, and so does its digest. That gives us a precise answer to "what artifact is this?" — and sets up the distinction between immutable identity and mutable naming.
+
+### 6. Registries store blobs by digest and only use tags as movable references.
+A registry stores layer blobs, config blobs, and manifests independently, keyed by hash. During push and pull, client and registry check which digests already exist so they only transfer missing content. That is why layer reuse and deduplication work naturally: if two images share a base layer digest, they share the exact same stored blob.
+
+But human workflows want names, not hashes, so registries also map tags to manifest digests. That mapping is the weak point. The digest is immutable because changing content changes the hash. The tag is mutable because it is only a registry pointer. Once this is clear, "image immutability" becomes conditional: content blobs are immutable, but the name you use to reach them may not be.
+
+### 7. Tags are convenience names; digests are the actual trust boundary.
+If you deploy `myapp:v1.2.3`, you are trusting the registry's current mapping from that tag to some manifest digest. If someone overwrites the tag, the name stays the same while the artifact changes. Nothing in the tag itself prevents that.
+
+If you deploy `myapp@sha256:...`, you are naming the exact manifest content. That reference cannot silently drift, because any different manifest would have a different digest. This is why the article says the digest is the unit of trust. Once your pipeline moves from build to test to deploy using digests, each stage is talking about the same artifact. If one stage uses a tag instead, you've reopened the possibility of invisible substitution.
+
+### 8. Build caching works per layer, so cache invalidation cascades upward.
+Since each layer is based on the cumulative state below it, the build tool can only reuse a cached result for instruction N if both the instruction and the lower state match what was seen before. For `COPY`, the input files also matter. If a lower layer changes, every later layer loses its foundation and must be rebuilt.
+
+This is why Dockerfile order affects performance. Put expensive dependency installation after `COPY . /app`, and every source edit changes the copied content, invalidates that layer, and forces the install step to rerun. Put stable inputs first — like `requirements.txt` alone — and the expensive step can stay cached across most code changes. The mechanism is not "Docker is picky"; it's "a diff against a changed base is a different diff."
+
+### 9. The append-only layer model creates specific failure modes: hidden secrets, fake deletion, drift, and bloat.
+If a secret is copied into a layer during build, later `rm` commands only hide it in higher layers. The bytes remain in the earlier layer blob. If build tools or auditors extract the image, the secret is still recoverable. The failure comes directly from immutable lower layers plus whiteout-based deletion.
+
+The same mechanism explains image bloat: installing large tooling in one layer and removing it later does not reduce shipped bytes, because the install layer still exists in full. And the same naming model explains deployment drift: tags can be repointed, and base image tags like `node:18` can resolve to new content on later builds. These are not separate gotchas; they are all consequences of the same underlying design: content-addressed immutable blobs combined through append-only layering, with mutable names placed on top for convenience.
+
+---
+
+## Handles and Anchors
+
+### 1. Think of an image as "Git commits for a filesystem, plus a movable branch name."
+Each layer is like a commit recording changes from what came before. The manifest is like the specific commit you want. A tag is like a branch name: useful, readable, and movable. A digest is like a commit hash: ugly, but exact.
+
+### 2. "Delete in a later layer" means "put tape over it," not "shred it."
+If a lower layer contains a file, a higher layer cannot destroy it. It can only hide it from the merged view. This is the right mental shortcut for understanding both secret leakage and image size surprises.
+
+### 3. Ask: "What exactly is stable here — the content, or just the name?"
+Use this on any image reference, deployment spec, or base image. If the answer is "just the tag," then you do not have reproducibility, even if the workflow sounds versioned.
+
+---
+
+## What This Changes When You Build
+
+### 1. An engineer who understands this will order Dockerfile instructions to preserve cache reuse, because cache keys depend on both the instruction and the state below it.
+The unaware engineer often does `COPY . .` early because it feels simple. The consequence is that tiny source changes invalidate expensive later steps like dependency installation. The aware engineer separates stable inputs from frequently changing ones so rebuilds stay fast.
+
+### 2. An engineer who understands this will never handle secrets by copying them into the build context and deleting them later, because deletion cannot remove bytes from an earlier layer.
+The unaware engineer sees `RUN rm secret.file` and assumes the secret is gone. The result is a shipped image with recoverable credentials embedded in history. The aware engineer uses secret mounts, external credentials injection, or multi-stage builds that keep secret-bearing stages out of the final artifact.
+
+### 3. An engineer who understands this will pin deployments by digest when reproducibility matters, because tags are mutable registry pointers rather than immutable artifact identities.
+The unaware engineer writes `myapp:v1.2.3` and assumes that is a fixed artifact. The consequence is that a retag, compromised push path, or CI mistake can change production content without any deployment spec changing. The aware engineer records and deploys the manifest digest that came out of the build.
+
+### 4. An engineer who understands this will treat `FROM image:tag` as a policy choice about drift, not as a neutral default, because base tags can resolve to different content over time.
+The unaware engineer inherits silent base updates and only notices when a rebuild behaves differently weeks later. The aware engineer decides explicitly between digest pinning for reproducibility and tag tracking for automatic updates, then puts a process around whichever tradeoff they choose.
+
+### 5. An engineer who understands this will reduce final image size by avoiding add-then-remove patterns across separate layers, because hidden files still count toward transfer and storage.
+The unaware engineer installs build tooling, compiles, then removes the tooling in a later step and expects a slim image. The result is an image that looks clean when inspected from inside the container but still transfers hundreds of unnecessary megabytes. The aware engineer combines related work into one layer or uses multi-stage builds so the final manifest references only the minimal runtime content.
+
+---

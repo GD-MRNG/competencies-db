@@ -109,4 +109,100 @@ The mistake is treating pricing model selection as a finance exercise. It is an 
 - The most expensive failure mode at scale is not choosing the wrong pricing model — it is choosing none, defaulting to on-demand, and never revisiting the decision as usage patterns become clear.
 - Pricing model selection is an architectural decision that should be made alongside decisions about fault tolerance, statefulness, and scaling strategy — not after the system is already in production.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Cloud pricing models look deceptively simple: the same VM, three different prices. That mental model leads teams to optimize for the sticker price instead of the contract. Then the real system pushes back. A team buys reservations, changes instance types six months later, and keeps paying for capacity they no longer use. Another team moves production workers to spot to save money, then learns during an interruption event that “cheap” also meant “can disappear in two minutes.”
+
+What breaks is not just the bill. Architecture decisions get made under false assumptions. If you think reserved means “my instance is guaranteed,” you may misunderstand what protection you actually bought. If you think spot is just discounted compute, you may deploy stateful or interruption-intolerant workloads onto something the provider is explicitly allowed to reclaim. And if you never move past on-demand, you silently accept the most expensive contract forever, often because nobody translated usage predictability into an engineering decision.
+
+The core reason to care is this: these pricing models encode different failure modes and different obligations for your system. If you don’t understand the mechanics, you either overpay for flexibility you don’t need, or you buy a discount whose conditions your architecture cannot survive.
+
+---
+
+## What You Need To Know First
+
+**1. Capacity utilization**  
+Cloud providers run huge fleets of physical servers, and idle hardware is expensive. If a machine is powered, cooled, and depreciating but not earning revenue, that is wasted capacity. Many pricing decisions make more sense once you see that the provider is trying to keep hardware busy while still preserving enough headroom for unpredictable demand.
+
+**2. Stateless vs. stateful workloads**  
+A stateless workload can be stopped and restarted somewhere else without losing important in-memory data; the durable state lives outside the instance, like in a database or object store. A stateful workload keeps important live state on the node itself, so interruption is much more dangerous. This matters because spot only works well when losing a machine does not mean losing the system.
+
+**3. Horizontal scaling**  
+Horizontal scaling means handling more work by adding more instances rather than making one machine bigger. A horizontally scaled service can often survive one node disappearing because other nodes keep serving traffic or processing jobs. That makes interruption-tolerant pricing models much more usable.
+
+**4. Billing construct vs. resource allocation**  
+A billing construct changes how usage is charged; it does not necessarily correspond to a specific machine being physically set aside for you. This distinction is crucial for reserved pricing. If you miss it, you will think you bought guaranteed infrastructure when you actually bought discounted billing for matching usage.
+
+---
+
+## The Key Ideas, Connected
+
+**The three pricing models are different contracts, not different price tags for the same thing.**  
+What changes between on-demand, reserved, and spot is not the CPU or memory itself. What changes is the agreement between you and the provider: how predictable your demand is, whether you commit in advance, and whether the provider can interrupt you. Once you see them as contracts, price differences stop looking arbitrary and start looking like payment for different kinds of flexibility and risk. That leads directly to the next question: why does the provider value those contract differences enough to charge so differently?
+
+**The provider is optimizing for predictability and utilization of its hardware fleet.**  
+The provider’s problem is not “how do I sell VMs?” but “how do I keep expensive hardware busy without failing demand spikes?” Unpredictable customers force the provider to keep buffer capacity idle just in case. Predictable customers let the provider plan. Interruption-tolerant customers let the provider monetize surplus that would otherwise sit unused. So the discount exists because the customer is helping solve the provider’s utilization problem. Once that is clear, each pricing model becomes understandable as a different way of reducing provider uncertainty.
+
+**On-demand is expensive because you are buying maximum optionality.**  
+With on-demand, you can start now, stop anytime, and make no promise about future usage. That freedom is valuable to you, but costly to the provider because they must be ready for uncertain demand patterns. The higher price is effectively the cost of the provider holding flexible inventory available for customers who refuse to commit. This means on-demand is the baseline model: least restrictive architecturally, but most expensive financially. Once you understand that, the logic of reserved pricing becomes clearer: if you remove some of that uncertainty, the provider can price lower.
+
+**Reserved pricing is a discount in exchange for demand commitment, not a dedicated server waiting for you.**  
+A reservation does not usually mean “this exact machine is mine.” It means “I commit to paying for a matching amount of usage over time, and qualifying usage gets billed at a lower rate.” Mechanically, that means the reservation lives in billing, not in your infrastructure topology. The provider likes it because your commitment makes future demand more legible; you like it because steady usage becomes cheaper. But this billing-based nature creates the next crucial implication: the risk is not interruption, it is mismatch.
+
+**The failure mode of reserved pricing is unused commitment.**  
+Because you are committing financially, not just accepting a runtime behavior, the danger is paying for usage that no longer exists or no longer matches the reservation. If you reserve one instance family and later migrate to another, your old commitment can keep billing while your actual runtime usage goes back to on-demand rates. This is why “reserved is cheaper” is only true when the workload remains stable enough to consume the commitment. That makes flexibility within the reservation itself important, which is where Savings Plans enter.
+
+**Savings Plans exist because infrastructure changes faster than long-term financial commitments.**  
+Traditional reserved instances can be too tightly coupled to specific shapes, regions, or scopes. But real systems evolve: services are containerized, instance families are upgraded, workloads move regions. Savings Plans relax the match rules by committing to a spend level rather than one precise infrastructure shape. Mechanically, this means the financial commitment survives more architectural change. That matters because it reduces the mismatch risk introduced by the previous idea. Once you have commitment handled, the other major discount path is not predictability but interruption tolerance.
+
+**Spot pricing is cheap because you are agreeing to consume capacity the provider may reclaim.**  
+Spot uses leftover or reclaimable capacity. The provider can sell it cheaply because they are not promising long-term availability; they keep the right to take it back when higher-priority demand appears. So the discount comes from accepting preemption risk. The machine behaves like a normal instance until the contract condition activates: interruption. That means the real question is no longer “is the compute good enough?” but “what happens to my workload when this node disappears?” That pushes us into architecture.
+
+**Spot only works when the workload is designed so interruption is survivable.**  
+If an instance can vanish with minimal notice, then the workload cannot depend on that instance being uniquely important. It must either be stateless, checkpoint progress externally, retry failed work, or spread work across many interchangeable nodes. The architecture must turn machine loss from a system failure into a routine event. Without that design work, spot savings are fake because they are paid back as incidents, dropped jobs, or data loss. Once interruption is accepted as a normal operating condition, the next problem is correlated interruption.
+
+**Diversifying spot instance types reduces the chance that one supply shortage takes out everything at once.**  
+Spot reclamation is tied to supply and demand in specific capacity pools: instance type plus location. If you depend on one narrow pool, a shortage there can wipe out your fleet. If your workload can run on several equivalent shapes, you can spread requests across multiple pools and lower the chance of simultaneous loss. The mechanism is simple: failures become less correlated because your fleet is no longer dependent on one constrained market. That leads to the broader framing that connects all three models.
+
+**The real decision space is two-dimensional: commitment over time and tolerance for interruption.**  
+Reserved asks, “How sure are you that you will keep needing this amount of compute?” Spot asks, “How okay are you with the provider taking nodes away?” On-demand sits at the corner where you commit to nothing and accept no interruption contract, so it costs the most. Reserved trades away future flexibility for lower price. Spot trades away runtime reliability for lower price. This framing matters because it shows pricing choice is downstream of workload behavior: if the workload is predictable, commitment becomes available; if it is interruption-tolerant, spot becomes available. That is why the article’s final conclusion follows naturally.
+
+**Pricing model selection is an architectural choice because the contract changes what your system must tolerate.**  
+A team does not merely “pick the cheapest option.” It chooses what risks are carried by the bill and what risks must be absorbed by the architecture. Reserved pushes risk into planning and lifecycle management. Spot pushes risk into runtime fault tolerance. On-demand pushes risk into ongoing cost. Once you see the mechanics this way, pricing stops being a procurement afterthought and becomes part of system design.
+
+---
+
+## Handles and Anchors
+
+**1. Think of the provider as selling different promises, not different servers.**  
+On-demand promises availability without commitment. Reserved promises lower pricing if you commit. Spot promises low pricing but no permanence. Same compute, different promises.
+
+**2. One sentence to hold the tradeoff:**  
+**Reserved saves money if your future is predictable; spot saves money if failure is routine.**
+
+**3. A practical diagnostic question:**  
+When looking at any workload, ask: **“If this instance disappeared in two minutes, what would actually happen?”**  
+If the answer is “nothing important,” spot may fit. If the answer is “we’d lose live state or drop the service,” spot does not fit without redesign.
+
+---
+
+## What This Changes When You Build
+
+**An engineer who understands this will separate baseline capacity from burst capacity because those two behave differently over time.**  
+The steady portion of a workload is a candidate for reservations or Savings Plans because it is likely to exist next month and next year. The bursty portion is not, because committing to temporary peaks turns into unused reservation spend. The unaware engineer often reserves based on current total usage rather than stable minimum usage, then overcommits and carries dead spend after traffic patterns change.
+
+**An engineer who understands this will evaluate reserved purchases against expected infrastructure change, not just today’s utilization graph.**  
+If a service is likely to migrate instance families, move regions, or get folded into Kubernetes over the next year, a rigid reserved instance may be the wrong commitment even if today’s usage is stable. A more flexible Savings Plan may preserve most of the discount while surviving that change. The unaware engineer sees a larger discount percentage on a narrow reservation and takes it, only to invalidate it during the next platform migration.
+
+**An engineer who understands this will design interruption handling before moving workloads onto spot.**  
+They will add signal handling, draining from load balancers, checkpointing, retry semantics, and externalized state because the spot contract guarantees interruption is possible. The unaware engineer flips a node group to spot first and discovers during the first reclaim event that jobs were not idempotent, requests were dropped, or local disk state vanished.
+
+**An engineer who understands this will diversify acceptable instance types and zones for spot fleets because interruption risk is pool-specific.**  
+Instead of demanding one exact shape, they define a set of equivalent capacities the scheduler can choose from. That reduces correlated reclamation and improves spot availability. The unaware engineer pins to one popular instance type in one busy zone and concludes that “spot is unreliable,” when the real problem was concentration in a fragile pool.
+
+**An engineer who understands this will assign ownership for commitment management because reserved savings decay without active maintenance.**  
+Someone must review utilization, watch for orphaned reservations, and compare actual usage against committed spend. Otherwise the organization drifts: old commitments continue billing while workloads evolve. The unaware engineer assumes reservations are a one-time optimization, but reserved pricing is only efficient when continuously matched to live usage.
+
+---

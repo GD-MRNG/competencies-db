@@ -111,4 +111,90 @@ This is not a binary. Every production system needs both. You need monitoring fo
 
 - Every production system needs both monitoring (for known failure modes and real-time alerting) and observability (for novel failures and interactive investigation). Treating them as competing approaches rather than complementary layers is a common and costly mistake.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Modern systems fail in ways that don't line up neatly with the dashboards we planned ahead of time. A latency spike might only affect one tenant, one build version, one region, and one feature-flag combination. If your telemetry only shows fleet-wide averages and a few predefined breakdowns, you can confirm that "something is wrong" without being able to answer the question that matters under pressure: what exactly is different about the failing requests?
+
+That is the engineering problem observability is trying to solve. Without a working model of it, teams often spend heavily on "observability" tools but still operate in a monitoring mindset: more dashboards, more alerts, more graphs, same blind spots. The result is slow incident response, long log-grep sessions, and a recurring pattern where novel failures are discovered first by customers rather than by the system itself.
+
+The practical risk is not theoretical. If you don't understand the mechanical difference between monitoring and observability, you make bad instrumentation choices early: you pre-aggregate away the dimensions you'll later need, overload metrics stores with high-cardinality labels, or ship context-poor logs into an expensive backend and call it observability. Then, when production gets weird, your tools cannot support the questions the incident demands.
+
+## What You Need To Know First
+
+**1. Metrics and time series**  
+A metric is a number recorded over time, like request count, latency, or error rate. A time-series database stores many such streams, often distinguished by labels like `service=checkout` or `status=500`. This is great when the set of labels is small and predictable, because the system can pre-organize data for fast reads.
+
+**2. Aggregation**  
+Aggregation means combining many raw measurements into summaries: average latency, p99 latency, total errors per minute, and so on. Aggregation makes storage and queries cheaper, but it throws away detail. Once you've combined many requests into one summary, you can no longer recover every property of the individual requests that went into it.
+
+**3. Cardinality**  
+Cardinality is just "how many distinct values can this field have?" `status_code` has low cardinality; `user_id` has very high cardinality. High-cardinality fields are often exactly the ones you need when debugging, but they are expensive for systems that organize data around every unique label combination.
+
+**4. Schema-on-write vs schema-on-read**  
+Schema-on-write means you decide the important structure of the data when you emit it: which metrics exist, which labels matter, what gets precomputed. Schema-on-read means you store richer raw records and decide how to interpret and group them later, during querying. The first is efficient but rigid; the second is flexible but more expensive.
+
+## The Key Ideas, Connected
+
+**Monitoring answers questions you thought of before the incident.**  
+In plain terms, monitoring works by turning anticipated failure modes into predefined telemetry: metrics, thresholds, alerts, dashboards. You decide in advance that CPU, error rate, disk space, request latency, and dependency health are worth watching. That works very well when the failure looks like something you already know how to name. The important consequence is that monitoring depends on preselection: you only get good answers to questions you designed the system to ask.
+
+**That preselection becomes a real limitation when failures are novel.**  
+Production systems, especially distributed ones, don't only fail in familiar ways. They also fail through specific interactions: a new deployment plus one downstream behavior plus one customer segment plus one data shape. When that happens, the usual dashboards often show only a smeared-out symptom. Maybe p99 is up, but only for some requests. Maybe error rate is elevated, but only on one build and one provider path. Since monitoring summarizes along dimensions chosen ahead of time, it cannot easily reveal a dimension you didn't predict would matter.
+
+**So observability changes the moment when the question gets decided.**  
+Instead of encoding all important questions up front, observability preserves enough raw detail that you can form new questions after the symptom appears. That is the core shift: not better charts, but a different epistemic model. You don't ask, "Did one of my expected failure modes happen?" You ask, "What distinguishes the bad requests from the good ones?" Once that is the goal, your data needs to support arbitrary regrouping and filtering later.
+
+**Arbitrary questioning requires keeping dimensions that monitoring systems struggle with.**  
+The reason this isn't just "monitoring with nicer UX" is that the useful debugging dimensions are often high-cardinality: `user_id`, `tenant_id`, `build_id`, `trace_id`, `shard`, `feature_flag_set`. These fields take on many distinct values, sometimes millions. During an incident, these are often the first things you want to split by because failures are frequently localized to exactly such dimensions. So once you commit to post-hoc investigation, you are forced to care about high cardinality.
+
+**High cardinality breaks the storage model that ordinary metrics systems rely on.**  
+Time-series monitoring systems usually store data as one series per metric-plus-label-combination. That is efficient when there are few combinations. But if you add a label like `user_id`, the number of combinations explodes. The system is no longer storing a modest set of counters and histograms; it is trying to maintain an enormous number of distinct series. This is why cardinality is the fork in the road: the architecture used for monitoring becomes structurally unsuitable for the kinds of dimensions observability needs.
+
+**So observability uses a different unit of data: the individual event.**  
+Rather than pre-aggregating measurements into many low-cardinality time series, observability stores records of individual units of work: one request, one job, one task, one span, one meaningful event. Each event carries many fields describing context and outcome. This preserves the dimensions instead of collapsing them away. Once you do that, you can later ask: filter to enterprise tenants, group by build, compute p99 duration, then split by payment provider. That query is possible because the original event retained all those fields together.
+
+**Those events need to be wide, not just present.**  
+A wide event is a structured record with lots of contextual fields attached to one unit of work. The width matters because every field is a possible future debugging dimension. If the event includes only timestamp, severity, and message, then there is almost nothing useful to decompose by. If it includes build ID, region, tenant, feature flags, dependency timings, shard, provider, and trace ID, then you can explore many hypotheses interactively. This is why the article insists that instrumentation, not the vendor, is the real investment.
+
+**Once events are wide, the query model shifts from precomputed answers to on-the-fly analysis.**  
+Monitoring systems are optimized to answer a known set of questions quickly because they computed and organized the summaries ahead of time. Event-based observability systems instead compute answers at query time: scan the matching events, group them, aggregate the chosen numeric fields, and return the result. Mechanically, that means cost moves. Monitoring pays more in advance through constrained structure; observability pays more during exploration in exchange for flexibility.
+
+**That cost shift explains both the power and the tradeoffs.**  
+Because observability preserves raw dimensionality, storage is heavier and querying is harder. You are retaining many detailed events instead of a compact summary. Query engines must scan and aggregate rather than simply fetch a prebuilt series. Sampling often becomes necessary, which introduces a new problem: the rare events you most want during debugging are also the easiest to drop. So observability is not "strictly better telemetry"; it is a different design point that buys investigative power by accepting higher cost and complexity.
+
+**This different data model also changes how debugging actually works.**  
+In monitoring-first debugging, you inspect predefined views and then often jump to logs, manual correlation, and educated guessing. In observability-first debugging, you iteratively decompose: start from the symptom, then group by one field, then filter and group again, progressively separating the broken slice from the healthy population. That workflow depends on every request carrying enough context to support arbitrary regrouping. The mechanics of the data model produce the mechanics of the incident workflow.
+
+**That is why observability supplements monitoring instead of replacing it.**  
+Known failure modes still benefit from metrics and alerts. If you want to know immediately whether overall error rate crossed 1%, pre-aggregated metrics are cheap and excellent. But once the alert fires and the cause is not obvious, you need the event-rich, high-cardinality, query-time-flexible system. Monitoring is for detecting expected classes of problems quickly. Observability is for investigating unexpected problems deeply. The systems coexist because they optimize for different moments in the failure lifecycle.
+
+## Handles and Anchors
+
+**1. Monitoring is a questionnaire; observability is a case file.**  
+A questionnaire only gives answers to questions you wrote down beforehand. A case file preserves enough evidence that an investigator can ask new questions later. That is the cleanest way to remember the difference.
+
+**2. The core tradeoff: precompute for speed, or preserve detail for discovery.**  
+Monitoring says, "We'll summarize early so common questions are cheap." Observability says, "We'll keep more raw context so uncommon questions remain possible." If you remember that tradeoff, most design decisions in this space make sense.
+
+**3. Ask this test question of any telemetry setup:**  
+"If a failure only affects one tenant on one build using one provider in one region, can I discover that from the data I already have, without redeploying instrumentation?"  
+If the answer is no, you have monitoring coverage, not strong observability.
+
+## What This Changes When You Build
+
+**An engineer who understands this will instrument units of work with business and execution context, not just technical symptoms, because root causes often hide in high-cardinality dimensions.**  
+The default unaware behavior is to emit request count, latency, status code, and a few logs, assuming infrastructure metrics will be enough. The consequence is that incidents become "some users are broken" with no way to slice by tenant, plan, build, flag set, or dependency choice.
+
+**An engineer who understands this will avoid stuffing high-cardinality fields into ordinary metrics labels because they know this breaks the metrics storage model rather than improving visibility.**  
+The default unaware behavior is to add `user_id`, `request_id`, or `trace_id` to Prometheus labels in the hope of making debugging easier. The consequence is cardinality explosions, expensive and unstable metrics systems, and still-poor investigative workflows.
+
+**An engineer who understands this will treat monitoring and observability as two layers with different jobs because alerting and investigation optimize for different storage/query patterns.**  
+The default unaware behavior is to try to make one system do everything: either using dashboards to debug novel issues, or using an event store for every simple alert. The consequence is either blind incidents or unnecessarily expensive, slow operational feedback loops.
+
+**An engineer who understands this will design event schemas deliberately, because the future debugging power comes from field width and consistency.**  
+That means asking at implementation time: what dimensions would separate healthy from unhealthy requests here? build ID, tenant, region, feature flags, provider, shard, retry count, downstream latencies. The default unaware behavior is ad hoc logging with inconsistent field names and sparse context. The consequence is an expensive pile of records that cannot be grouped meaningfully during incidents.
+
+**An engineer who understands this will think carefully about sampling strategy, because naive random sampling disproportionately loses the rare slices that explain novel failures.**  
+The default unaware behavior is to sample uniformly to cut cost. The consequence is that common healthy traffic is retained while rare failing combinations disappear. A more aware engineer will bias retention toward errors, unusual combinations, or sparse cohorts because those are the events with the highest debugging value.

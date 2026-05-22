@@ -108,4 +108,121 @@ This is why the choice of metric type is not a cosmetic or stylistic decision. I
 
 - **Cardinality is the primary cost of histograms.** Every label you add to a histogram multiplies its storage and query cost by the number of distinct values that label takes. High-cardinality labels on histograms are the most common way engineers accidentally destabilize their monitoring infrastructure.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Monitoring fails in a particularly dangerous way: it often fails by showing numbers that look reasonable. That is worse than no data, because it gives you false confidence. If you record latency in a way that only preserves averages, your dashboard can say “45ms” while a meaningful slice of users is timing out. If you record percentiles in a way that cannot be combined across instances, your fleet-wide dashboard can show a mathematically meaningless p99 and still look polished and authoritative.
+
+The engineering problem here is that metric types are not just storage formats; they determine what truth survives collection and aggregation. Once data has been collapsed the wrong way, you cannot recover what was lost later in a query. That means incidents become harder to diagnose, regressions hide in the tail, and scaling the monitoring system itself becomes painful because the “fix” for better visibility often multiplies cardinality until Prometheus struggles or falls over.
+
+If you do not have a working model of these mechanics, you inherit defaults without realizing it: gauges for things that should be counters, summaries for fleet metrics, histograms with bad buckets, labels that explode time series count. The result is a monitoring system that answers easy questions and fails on the ones you actually need during an outage.
+
+---
+
+## What You Need To Know First
+
+### 1. Scraping
+In systems like Prometheus, the monitoring system usually does not receive every event directly. Instead, it periodically asks each service for its current metric values — for example every 15 seconds. That means your monitoring data is a sequence of samples, not a perfect recording of everything that happened between them.
+
+### 2. Time series and labels
+A metric is not just one line on a graph. Every unique label combination becomes its own time series. So `http_requests_total{method="GET",status="200"}` and `http_requests_total{method="POST",status="500"}` are different series. This matters because storage and query cost scale with the number of series, not just the number of metric names.
+
+### 3. Aggregation
+Aggregation means combining data across time or across instances. Summing request counts across pods is aggregation. Computing fleet-wide latency from all instances is aggregation too. The crucial question is: does the metric type preserve enough information for that aggregation to still mean what you think it means?
+
+### 4. Percentiles
+A percentile tells you where a given fraction of observations fall. p99 latency means 99% of requests were at or below that latency, and 1% were slower. Percentiles are useful because they describe tail behavior, which averages hide. But they are only valid if computed from the underlying distribution, not from already-computed per-instance percentile values.
+
+---
+
+## The Key Ideas, Connected
+
+### 1. Metric type selection is really a choice about what questions you will be able to answer later.
+The article’s core point is that metric types are not cosmetic categories. They are different ways of preserving or discarding information. A counter preserves cumulative change, a gauge preserves a snapshot, a histogram preserves an approximate distribution, and a summary preserves per-process quantiles. Once you choose one, that choice limits what later queries can reconstruct.
+
+That leads directly to counters, because counters are the simplest example of preserving data in a way that remains useful after imperfect collection.
+
+### 2. A counter stores cumulative totals so that rates can be reconstructed even when scrapes are imperfect.
+A counter only goes up: total requests, total errors, total bytes. The raw number is rarely useful by itself, because “14 million requests since startup” does not tell you what is happening now. What you usually want is the slope: requests per second, errors per minute.
+
+The reason this works well is mechanical. If Prometheus misses one scrape, the next scrape still contains the total accumulated work. Since the total did not forget the missed interval, the query layer can estimate the average rate over time. That makes counters resilient to collection gaps in a way a directly-recorded “current requests/sec” gauge would not be. This naturally brings us to gauges, which behave differently because they do not accumulate history.
+
+### 3. A gauge stores only the value at the instant of observation, so anything between scrapes can disappear.
+A gauge can move up or down freely: memory usage, queue depth, active connections. Unlike counters, the sampled value is the data. There is no preserved cumulative history between samples.
+
+The failure mode follows from that. If a queue spikes for 3 seconds and your scrape interval is 15 seconds, that spike may never be observed. Nothing in the gauge encodes “something bad happened between these two samples.” This is temporal aliasing: the system changed faster than your sampling could see. Once you understand that some metric types preserve missed intervals and others do not, histograms make more sense: they are built to preserve more structure than a single point value.
+
+### 4. A histogram preserves an approximate distribution by turning observations into bucket counters.
+A histogram does not keep each request latency individually. Instead, it counts how many requests were at or below each bucket boundary. If a request takes 73ms, every bucket with boundary greater than or equal to 73ms increments. That is why the buckets are cumulative.
+
+This matters because bucket counts are counters. They inherit the good aggregation properties of counters: they can be summed across instances and across time windows in mathematically valid ways. Histograms also expose `_sum` and `_count`, which let you compute means, but the more important feature is that they preserve enough distribution shape to estimate percentiles later. That leads to the next crucial idea: percentile estimation depends on bucket design.
+
+### 5. Histogram percentiles are only as accurate as the bucket boundaries allow.
+When you compute p99 from histogram buckets, you are not reading an exact stored p99. You are finding the bucket where the 99th percentile lands and estimating its position within that bucket. If the relevant bucket spans 100ms to 250ms, your answer cannot be more precise than the assumptions you make inside that range.
+
+So the approximation error is not some incidental implementation detail. It is a direct consequence of how much resolution your buckets preserve. Wide buckets throw away detail; narrow buckets preserve more but cost more series. Once that is clear, the value of histograms becomes sharper: despite approximation error, they preserve something summaries do not preserve at all — aggregatability.
+
+### 6. Histograms are useful at fleet level because bucket counts can be added together without breaking their meaning.
+If instance A saw 4,500 requests under 100ms and instance B saw 3,200 requests under 100ms, the combined fleet saw 7,700 requests under 100ms. That statement remains true after summation because bucket counts are counts. You are combining compatible pieces of the same distribution representation.
+
+This is the key mechanical reason histograms work for multi-instance systems. You can sum all buckets from all instances, then compute p99 from the combined result, and that percentile corresponds to the fleet’s request population. That naturally sets up the contrast with summaries, which compute percentiles too early.
+
+### 7. A summary gives precise per-process quantiles by discarding the very information needed for fleet-wide aggregation.
+A summary computes quantiles inside the application process over a sliding window. For one instance, that can be more accurate than histogram estimation because it does not rely on coarse buckets.
+
+But that precision comes from collapsing the observation stream into a few outputs like p50, p95, and p99. Once that collapse happens, the underlying distribution shape is gone. You no longer know how many requests were around each latency band; you only know a few cut points. That is why per-instance summaries cannot be combined into a valid global percentile. The issue is not lack of a clever formula. The information required has been thrown away.
+
+### 8. The real distinction between metric types is what aggregation preserves and what it destroys.
+This is the deepest connective idea in the article. Counters preserve additive totals, so rates can be derived and instances can be summed. Gauges preserve instantaneous state, but not what happened between samples. Histograms preserve an approximate distribution, so percentiles can be estimated after aggregation. Summaries preserve local quantiles, but destroy the distribution needed for global quantiles.
+
+Once you see metric types through that lens, common monitoring mistakes become obvious. Averaging per-instance p99 values is wrong not because it is “bad practice,” but because percentiles are not additive and the per-instance distributions are already gone. The same reasoning explains why averages are safe to aggregate yet often operationally misleading.
+
+### 9. Means aggregate correctly, but they hide tail behavior because they collapse the distribution too aggressively.
+If you know sum and count, you can compute a correct mean for one instance or many. Weighted averaging works because means derive from additive quantities. So from a pure math perspective, averages aggregate nicely.
+
+But they answer a weaker question. A mean tells you central tendency, not spread or tail pain. A service where almost everyone sees 40ms and another where most users see 5ms while a minority see 8-second stalls can share the same average. So “correctly aggregatable” does not mean “operationally sufficient.” This is why engineers reach for histograms specifically for latency and similar metrics where the tail matters.
+
+### 10. Histograms solve the visibility problem by paying with cardinality.
+Every histogram bucket is its own time series, plus `_sum` and `_count`. Add labels and you multiply all of those series across each label combination. That means histograms are not free visibility; they are visibility bought with storage, memory, and query cost.
+
+This tradeoff is not accidental. To preserve enough structure for later percentile estimation and aggregation, the system must store more pieces. If you then add a high-cardinality label like `user_id`, you multiply that cost catastrophically. So the final practical insight follows: bucket choices and label choices are not tuning details; they are part of the correctness and survivability of your monitoring design.
+
+### 11. Bucket boundaries are an instrumentation-time commitment about the precision you will have later.
+Because percentiles are estimated from bucket counts, your bucket layout defines the resolution of your future questions. If your latency buckets are shaped for HTTP requests but you apply them to microsecond cache lookups or multi-minute batch jobs, the resulting percentiles will be too coarse to trust or too expensive to justify.
+
+You cannot fully repair that later in query logic. The monitoring system can only answer with the detail you chose to preserve at instrumentation time. That closes the chain back to the first idea: metric design is deciding, in advance, what truths your system will still be able to tell you during an incident.
+
+---
+
+## Handles and Anchors
+
+### 1. “Metric types are compression formats for reality.”
+Each metric type keeps some information and throws some away. Counter: keeps cumulative total. Gauge: keeps current snapshot. Histogram: keeps approximate shape. Summary: keeps local quantiles. If you remember them as compression formats, the right question becomes: “What information will I regret losing later?”
+
+### 2. “Can I add these across machines and still mean the same thing?”
+This is a strong test question. Request counts: yes. Histogram buckets: yes. Per-instance p99s: no. If the answer is no, then a fleet-wide dashboard built from that value is probably lying or at least claiming more than the math supports.
+
+### 3. Histograms are like a vote tally by range, not a list of every vote.
+You do not know every individual latency, but you know how many fell under 10ms, 25ms, 50ms, and so on. Because counts from different polling stations can be added, you can reconstruct the overall shape well enough to answer percentile questions. Summaries are like each station reporting only “our 99th-percentile voter wait time,” which sounds useful but cannot be combined into a national p99.
+
+---
+
+## What This Changes When You Build
+
+### 1. An engineer who understands this will instrument request volume and errors as counters, not gauges, because missed scrapes do not erase cumulative work.
+The unaware engineer often records “current requests/sec” or similar instantaneous rates directly. That inherits sampling gaps: if scrapes fail, the system loses what happened during the gap. With counters, the total survives and rate can be derived later with acceptable accuracy.
+
+### 2. An engineer who understands this will treat gauges with suspicion for short-lived spikes because a flat graph may only mean “we did not sample at the right instant.”
+The unaware engineer sees a smooth queue-depth graph and concludes the queue never spiked. The informed engineer asks whether the queue can fill and drain faster than the scrape interval. If yes, they may add counters for enqueues/dequeues, shorten the scrape interval, or instrument the event differently.
+
+### 3. An engineer who understands this will choose histograms for latency they need to reason about across a fleet, because summaries cannot produce a valid global percentile.
+The unaware engineer may expose per-pod p99 latency and then average it in Grafana, producing a number that looks legitimate. The informed engineer knows that this dashboard is mathematically invalid, and instead instruments latency with histogram buckets so the fleet-wide distribution can be reconstructed.
+
+### 4. An engineer who understands this will design histogram buckets around the expected latency range, because bucket layout directly sets percentile precision.
+The unaware engineer accepts library defaults everywhere. That can make sub-millisecond systems look artificially coarse or long-running jobs collapse into top buckets with no useful discrimination. The informed engineer asks: “Where are the operational thresholds? Where do I need detail?” and places buckets accordingly.
+
+### 5. An engineer who understands this will be much stricter about labels on histograms than on simple counters, because every extra label multiplies every bucket series.
+The unaware engineer may add `endpoint`, `tenant_id`, or worse `user_id` to a latency histogram to make dashboards “more detailed,” and then discover memory blowups, slow queries, and an overloaded Prometheus. The informed engineer keeps high-cardinality dimensions out of histograms, or moves that analysis to logs/traces where per-entity detail is a better fit.
+
+---

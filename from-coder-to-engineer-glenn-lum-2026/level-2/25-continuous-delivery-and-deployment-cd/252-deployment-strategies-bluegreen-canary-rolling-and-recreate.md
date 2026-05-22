@@ -102,4 +102,95 @@ No strategy eliminates risk. Each one moves risk to a different place. Your job 
 
 - The safety ceiling of any deployment strategy is set by your observability, not by the strategy itself — a health check that returns 200 while the application serves incorrect results will not prevent a bad rollout from completing.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Deployment strategy sounds like a release-process choice, but it is really a failure-shaping choice. The hard part is not “how do I get new code into production.” The hard part is “what exactly happens while production is between versions, and what happens if the new version is wrong.” If you do not have a concrete model of that transition period, you make deployments that look safe on diagrams but fail in real systems.
+
+What actually goes wrong is very mechanical. Old and new versions may both talk to the same database and disagree about schema or data format. A rollout may appear healthy because `/health` returns 200 while the app is silently corrupting data. A rollback may be “fast” for traffic routing but useless for undoing writes already made by the bad version. Engineers who only know the names — rolling, blue/green, canary, recreate — often miss that each strategy changes three real things: how long versions coexist, how much traffic the new code sees, and how long it takes to retreat.
+
+If you do not understand those mechanics, you inherit hidden choices. You accidentally accept long mixed-version windows, uncontrolled exposure, or slow rollback paths without meaning to. Then when a deploy fails, the surprise is not that the code had a bug; the surprise is where the system allowed that bug to spread.
+
+## What You Need To Know First
+
+**Load balancer / traffic router**  
+This is the component that decides which app instance receives a request. It can send traffic to any instance it considers healthy, and in some systems it can send weighted percentages to different versions. You need this idea because deployment strategies are mostly about changing where traffic goes over time.
+
+**Readiness / health checks**  
+A health check is how the platform decides whether a new instance is safe to receive traffic. A readiness check usually means “this instance is prepared to serve requests now.” The important limit is that health checks only prove what they test. If they only test “process is up,” they do not prove the app is correct.
+
+**Shared data layer**  
+This means multiple app versions use the same database, cache, or queue during deployment. That shared layer is where many deployment problems come from, because even if traffic routing is elegant, both versions still need to read and write data the other can understand.
+
+**Backward compatibility in data changes**  
+A change is backward-compatible when old and new versions can both operate correctly during the transition. For example, adding a new nullable column is usually easier than renaming an existing one immediately. You need this because every strategy except recreate usually creates a period where both versions exist at once.
+
+## The Key Ideas, Connected
+
+**A deployment strategy is really a way of controlling the transition between version N and version N+1.**  
+The article’s main move is to stop treating strategies as labels and start treating them as transition mechanics. A deployment is not just “before” and “after.” There is an in-between state where production may contain both versions, partial traffic shifts, and possible retreat paths. That in-between state is where the strategy matters, so the next step is to describe the dimensions that define it.
+
+**Those transition mechanics can be understood on three axes: version coexistence, traffic exposure, and rollback mechanics.**  
+Version coexistence asks whether old and new run at the same time, and for how long. Traffic exposure asks how much real production traffic hits the new version at each moment. Rollback mechanics ask what you physically do to return to safety, and how long that takes. These axes matter because every named strategy is just a different combination of those three properties. Once you see that, you can analyze each strategy without memorizing four separate stories.
+
+**Recreate is the only strategy that removes coexistence entirely, and that changes the compatibility requirement.**  
+In recreate, you stop all old instances and then start all new ones. Because there is never a moment when both versions are active together, you avoid mixed-version interaction with shared systems. That means breaking schema or serialization changes can work here in a way they cannot safely work in rolling, blue/green, or canary. But removing coexistence creates downtime, and rollback is slow because recovery is just another full redeploy in reverse. So recreate trades availability for simplicity and compatibility freedom. That naturally sets up the next strategy, where you keep availability by allowing coexistence.
+
+**Rolling updates keep the service available by replacing instances gradually, which makes coexistence the default state.**  
+Instead of stopping everything, rolling updates swap instances in batches or one by one. That preserves service continuity, but now old and new versions serve real traffic at the same time for the full rollout duration. This is not a side detail; it is the defining mechanic. Because the load balancer sends requests to all healthy instances, some users hit old code and some hit new code, often with no explicit control over which. That means compatibility problems are no longer hypothetical edge cases — they are guaranteed to matter if your versions disagree about data formats, API responses, or queue messages. Once you accept that coexistence is long-lived, rollback also becomes slow, because rollback is just another rolling replacement.
+
+**In rolling updates, traffic exposure is implicit, not directly controlled.**  
+If 5 of 20 instances have been updated, roughly 25% of traffic lands on the new version. The exposure curve follows instance replacement progress. That means your blast radius is shaped by rollout speed and batch size, not by an explicit traffic policy. This leads to two consequences. First, rollout tuning parameters like `maxSurge` and `maxUnavailable` are not just performance knobs; they directly shape how long you live in a mixed-version world and how much traffic sees the new code. Second, because exposure is indirect, rolling updates are weaker when you want careful experimental release behavior. That gap leads to blue/green and canary, which control the transition more explicitly.
+
+**Blue/green separates “new version is running” from “new version receives traffic,” allowing an atomic traffic switch.**  
+Here you stand up a full green environment with N+1 while blue continues serving N. That means validation of the new environment can happen before the cutover. Then traffic switching happens at the routing layer in one step: all traffic goes from blue to green. From the user’s perspective, there is no long mixed-traffic period like there is in rolling. This gives the strategy its major strength: rollback is just switching traffic back, which is fast because the old environment is still alive and warm. But atomic traffic switching does not mean atomic system switching, because the database is usually still shared.
+
+**Blue/green avoids mixed traffic for the app tier, but not mixed compatibility requirements for the data tier.**  
+This is one of the most important corrections to the simplified mental model. People often think blue/green avoids compatibility problems because traffic only points to one environment at a time. But both environments usually depend on the same persistent state. If green writes data blue cannot read, then switching back to blue may fail even though the rollback itself is fast. So blue/green improves rollback latency at the routing layer, but it does not remove the need for backward-compatible data evolution. That observation makes a broader point: rollback speed and recovery speed are not the same thing.
+
+**Fast rollback of traffic does not mean restoration of system state.**  
+If bad code wrote corrupt records, charged users incorrectly, or emitted broken events, switching traffic back only stops further damage through that code path. It does not erase the damage already written into shared systems. This is why the article distinguishes code rollback from full recovery. Once you understand that, you stop over-crediting deployment strategies for solving problems they do not solve. That opens the door to canary, whose goal is not instant rollback alone but limiting how much bad traffic ever reaches the new version before you decide.
+
+**Canary makes traffic exposure the primary control surface.**  
+Unlike rolling updates, where exposure follows instance replacement, canary starts with a small chosen percentage of production traffic sent to the new version. The key idea is control: 1%, 5%, 10% are deliberate exposure limits, not side effects. This lets you bound blast radius explicitly. If the canary is bad, only the canary share was affected before you cut it off. Mechanically, this depends on routing infrastructure that can split traffic by weight, not just by whichever instances happen to exist.
+
+**The value of canary depends on observability, because controlled exposure only helps if you can detect badness within that exposure.**  
+A canary is not magic. Sending 5% of traffic to the new version is only useful if you have a way to compare its behavior against the stable version and decide whether to continue. If your checks only say “instance is alive,” then a canary can happily continue while producing wrong business outcomes. If your metrics are strong — error rates, latency tails, resource saturation, business counters — then canary becomes a real feedback loop. This is why progressive delivery matters: it automates the observe-decide-promote/abort cycle. But this introduces another constraint: enough traffic must reach the canary to make the observations meaningful.
+
+**A canary with too little traffic can produce false confidence instead of safety.**  
+If 1% of your traffic means one request per minute, then your “experiment” may be statistically useless. Low traffic means slow learning, weak signal, and a serious risk of promoting bad code because nothing obvious happened in a tiny sample. So canary is not automatically safer; its safety depends on sample size, bake time, and measurement quality. This reinforces the article’s broader claim that a strategy’s safety ceiling is set by observability and system mechanics, not by the name of the strategy.
+
+**Across all strategies except recreate, the shared data layer is the universal complication.**  
+This is the deepest unifying mechanism. If old and new versions coexist against shared storage or messaging, they must be able to understand each other’s outputs. That is why expand-and-contract migrations are a correctness requirement, not just a style preference. Renaming a column in one move breaks old readers the moment the schema changes. The exact routing strategy changes how traffic moves and how quickly you can back out, but it does not remove the coexistence problem at the data layer.
+
+**So the real model is: each strategy moves risk, rather than eliminating it.**  
+Recreate moves risk into downtime. Rolling moves risk into long coexistence windows and slow rollback. Blue/green moves risk into infrastructure cost and shared-data rollback limits. Canary moves risk into observability quality and statistical validity. This is the model to carry forward: ask where coexistence lives, how exposure grows, and how retreat actually works. Once you do that, deployment strategies stop being names on a slide and become operational tradeoffs you can reason about.
+
+## Handles and Anchors
+
+**1. “Deployment strategy is risk routing.”**  
+Not “how do I ship code,” but “where does the risk go during transition?” Downtime, mixed-version compatibility, all-at-once cutover, or controlled partial exposure. If you can say where the risk sits, you understand the strategy.
+
+**2. Think of the database as the part that does not switch cleanly.**  
+Traffic can switch instantly. Containers can be replaced gradually. But shared data persists across all of it. If you remember only one failure source, remember this: the data layer is where old and new versions are forced to coexist even when your app routing looks neat.
+
+**3. Ask this question of any rollout plan: “While old and new both exist, what must both versions successfully understand?”**  
+That question immediately exposes hidden schema, cache, serialization, and queue compatibility assumptions. It is a practical test for whether the strategy’s transition state is actually safe.
+
+## What This Changes When You Build
+
+**An engineer who understands this will approach schema changes differently because deployment strategy does not protect shared data compatibility.**  
+The aware engineer uses additive, backward-compatible migrations first, then code rollout, then cleanup later. The unaware engineer renames columns or changes message formats in one step because “we’re doing blue/green” or “Kubernetes will roll it safely,” and old instances fail as soon as they encounter new data.
+
+**An engineer who understands this will treat rollback planning as a separate design problem from code deployment because code rollback does not restore data state.**  
+They ask, “If this version writes bad data for three minutes, what is the remediation path?” The unaware engineer assumes blue/green means safe rollback and discovers too late that the old version cannot cope with records written by the new one.
+
+**An engineer who understands this will configure rolling updates based on coexistence risk, not just cluster convenience, because rollout duration is exposure duration.**  
+They see `maxSurge` and `maxUnavailable` as knobs that shape how long mixed-version behavior exists and how much capacity cushion they have. The unaware engineer leaves defaults in place, creating unnecessarily long rollouts and extended vulnerability windows.
+
+**An engineer who understands this will invest in health signals that measure correctness, not just liveness, because rollout gates only stop on what they can detect.**  
+They add canary analysis on error rates, latency distributions, and business metrics like failed checkouts or malformed writes. The unaware engineer relies on `/health == 200` and is surprised when a rollout completes successfully while serving wrong results.
+
+**An engineer who understands this will choose canary only when they can support meaningful observation, because partial traffic without signal is theater.**  
+They check whether the service has enough traffic volume, whether weighted routing exists, and whether they can compare stable versus canary behavior over a valid bake time. The unaware engineer copies canary from a high-traffic service to a low-traffic internal API and gains false confidence from meaningless sample sizes.

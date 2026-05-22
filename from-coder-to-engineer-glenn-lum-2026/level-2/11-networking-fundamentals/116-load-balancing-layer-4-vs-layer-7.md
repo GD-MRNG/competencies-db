@@ -104,4 +104,94 @@ This means the decision is not really "L4 or L7." It is: does your architecture 
 
 - The load balancing layer decision is not a preference — it is determined by whether your architecture requires the load balancer to understand the application protocol, and getting this wrong produces failures that are obvious in retrospect but difficult to diagnose in the moment.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Load balancers sit in the path of production traffic, so when you misunderstand what kind of load balancer you are using, you do not get a small theoretical mistake — you get very concrete operational failures. A team puts gRPC behind an L4 balancer and one backend ends up overloaded while the rest sit mostly idle. Another team chooses L7 for convenience, then discovers the load balancer itself becomes the bottleneck during a traffic spike because it is terminating TLS and buffering requests for everyone. These are not edge cases; they fall directly out of how the two models work.
+
+The reason this topic matters is that "L4 vs L7" is often taught as a routing-criteria distinction, which is true but misses the operational heart of the decision. The real question is whether your load balancer is merely steering packets or actually acting as a proxy. If you do not hold that model clearly, you will make bad choices around protocol support, health checks, observability, scaling, draining, and failure handling — and those choices usually fail under pressure, not in a clean test environment.
+
+Health checks make this even more consequential. Engineers often treat them as harmless safety features, but they are really a control loop that decides who receives production traffic. Misconfigure them and the load balancer can amplify a partial failure into a total outage by removing healthy-enough backends faster than the system can recover.
+
+## What You Need To Know First
+
+**TCP connection**  
+A TCP connection is a long-lived conversation between two endpoints, not a single request. Once established, many bytes can flow over it in both directions until one side closes it. This matters because an L4 load balancer makes a decision for the whole connection, while an L7 load balancer can make decisions for individual requests carried inside that connection.
+
+**NAT / address rewriting**  
+Network Address Translation means changing packet addresses as traffic passes through a device. In load balancing, this usually means the load balancer rewrites where traffic is going so packets end up at the chosen backend, then rewrites return traffic so the client thinks it is still talking to one service address. You do not need all the variants here; just hold the idea that packets can be redirected without the client or backend seeing the full original picture.
+
+**Proxy vs pass-through device**  
+A pass-through device forwards traffic onward without becoming one endpoint of the application conversation. A proxy actually accepts the connection from the client and then creates a separate connection to the backend. That distinction is the core of this topic: L4 behaves more like traffic steering, L7 behaves like a proxy.
+
+**HTTP/2 or gRPC multiplexing**  
+HTTP/2 allows many requests or streams to share one TCP connection at the same time. gRPC usually runs on top of this. This matters because if routing happens once per TCP connection, then many logically separate requests get stuck together and all land on one backend.
+
+## The Key Ideas, Connected
+
+**Layer 4 load balancing routes a connection once and then sticks with that choice.**  
+At L4, the load balancer looks at transport-level information like IPs, ports, and protocol when the connection starts. It picks a backend for that flow, records the mapping, and sends all packets for that connection to the same place. The important part is not just what fields it inspects; it is that the decision is made at connection start and persists for the whole life of the connection. That sets up the next idea: because it only needs to steer packets, it does not need to become part of the conversation.
+
+**Because L4 only steers packets, it does not terminate or understand the application protocol.**  
+The backend is still the real TCP endpoint from the application's point of view, even if addresses are rewritten along the way. The load balancer keeps enough state to know which packets belong to which flow, but it is not maintaining request buffers, parsing HTTP, or tracking TLS session details the way a proxy does. That is why L4 can be extremely fast and cheap per connection. But that same "step aside after choosing" behavior creates a hard limit: if you never parse the conversation, you cannot make decisions based on anything inside it.
+
+**Once the load balancer does not understand the conversation, routing is unavoidably per-connection rather than per-request.**  
+This is the mechanism behind the usual L4 limitations. If ten HTTP requests travel over one TCP connection, L4 sees one flow, not ten units of work. If one long-lived gRPC channel carries hundreds of RPCs, L4 still sees one connection and sends all of it to one backend. So the failure mode with multiplexed protocols is not accidental misbehavior; it is the natural consequence of making a one-time routing decision for a transport connection that may carry many application requests.
+
+**Layer 7 load balancing changes the model completely by terminating the client connection.**  
+An L7 load balancer is not just reading more fields. It accepts the client's TCP connection itself, often terminates TLS too, decrypts the traffic, and parses the HTTP-level request. Then it opens or reuses a separate connection to a backend and forwards the request. This means there are now two connections: client-to-LB and LB-to-backend. That split is the key mechanical difference, and it is what makes the next capability possible.
+
+**Once the load balancer is a proxy, the unit of routing becomes the request instead of the connection.**  
+Because the L7 balancer can see where one request begins and ends, it can make backend choices request by request. One client connection can send multiple requests, and the load balancer can distribute them across the fleet. With HTTP/2 and gRPC, this is especially important because many streams share one TCP connection; L7 can still spread those streams around because it understands the framing above TCP. So the move from L4 to L7 is really a move from flow distribution to work distribution.
+
+**Being a proxy also allows the load balancer to transform and manage traffic, not just route it.**  
+Once the LB is parsing requests, it can add headers, rewrite paths, remove sensitive information, and attach client identity information like `X-Forwarded-For`. It can also retry a failed request on another backend in cases where doing so is safe, because it knows what a request is and can tell whether one failed before completion. L4 cannot do this, not because the feature is missing, but because it lacks the application boundaries needed to know what should be retried or modified.
+
+**Those extra powers come from real work, so L7 has a fundamentally heavier resource profile.**  
+Terminating TCP and TLS, parsing bytes, buffering data, holding state for both sides of the proxy, and managing many open sockets all consume CPU and memory. This is not implementation sloppiness; it is the cost of participating in every conversation. So L7 solves classes of problems L4 cannot solve, but in exchange the load balancer itself becomes a meaningful compute component that can saturate, run out of memory, or exhaust file descriptors.
+
+**Because L7 owns backend-side connections, it can pool them and change the backend’s load shape.**  
+A proxy can keep a smaller set of persistent connections open to backends and reuse them across many client requests. That means backends do not need to manage one connection per client. This can materially reduce connection churn, handshake overhead, and socket pressure on backend services. This is an underappreciated effect: choosing L7 is not only about richer routing; it can also simplify backend connection management.
+
+**Health checks turn a load balancer from a distributor into a control system.**  
+Without health checks, the load balancer just spreads traffic. With them, it continuously decides who is eligible to receive work. Active checks probe on a schedule; passive checks infer health from real traffic outcomes. The important mechanism is that these checks operate with delay and thresholds. A backend is not removed instantly when it fails; it is removed only after enough evidence accumulates. That means some bad traffic is unavoidable before detection.
+
+**The health-check settings create a built-in tradeoff between fast detection and false ejection.**  
+If checks are frequent and thresholds low, failures are detected sooner, but transient blips can cause healthy backends to be removed. If checks are conservative, healthy backends stay in rotation through minor issues, but truly dead backends continue receiving traffic longer. This is not a tuning puzzle with one best answer. It is a balance between two kinds of harm: sending traffic to broken nodes versus shrinking healthy capacity too aggressively.
+
+**Deep health checks can create system-wide coupling that turns partial dependency trouble into full outage.**  
+A shallow check asks "is this process alive and responsive?" A deep check asks "can this service do useful work right now, including its dependencies?" Deep checks seem smarter, but if every backend depends on the same database and that database slows down, then every backend may fail the same deep check together. The load balancer then removes the whole fleet, even though some requests might still have succeeded or degraded gracefully. The outage is amplified by the health policy, not just caused by the dependency problem.
+
+**So the real design question is whether you need the load balancer to understand the protocol and own request boundaries.**  
+If you need raw TCP pass-through, TLS passthrough, very high connection counts, or support for protocols the load balancer does not speak, L4 is often exactly right. If you need per-request routing, HTTP-aware behavior, request-level observability, gRPC balancing, header manipulation, or clean request draining, L7 is not optional. The layer choice is really a choice about how much application responsibility the load balancer should take on.
+
+## Handles and Anchors
+
+**1. Traffic cop vs interpreter**  
+L4 is a traffic cop waving an entire car onto one road and then ignoring what happens inside. L7 is an interpreter sitting in every conversation, listening to each sentence and deciding what to do next. If you need decisions per sentence, a traffic cop cannot help you.
+
+**2. Ask: "What is the unit of work my system cares about?"**  
+If your system cares about TCP connections, L4 may fit. If your system cares about HTTP requests, RPCs, paths, headers, or per-request retries, you already need L7 behavior whether you say so explicitly or not.
+
+**3. Core tension sentence**  
+L4 is cheap because it stays ignorant; L7 is powerful because it stops being ignorant.  
+That single sentence captures both the capability difference and the resource tradeoff.
+
+## What This Changes When You Build
+
+**An engineer who understands this will choose load-balancing layer based on routing unit, not feature checklist, because the real question is whether traffic should be distributed per connection or per request.**  
+The unaware engineer often inherits the cloud default or chooses "simpler/faster" L4 for everything. That works until HTTP/2 or gRPC creates hot backends from long-lived client connections. The aware engineer asks early: "Will many requests share one connection, and do I need those requests spread across the fleet?"
+
+**An engineer who understands this will capacity-plan an L7 load balancer like an active service component, because it terminates TLS, parses traffic, buffers data, and can become the bottleneck before backends do.**  
+The unaware engineer treats the LB as lightweight network plumbing and scales only the application fleet. Then a surge hits, backend CPU remains available, but the proxy tier exhausts CPU, memory, or file descriptors first. The aware engineer monitors and scales the LB tier separately and includes handshake and buffering cost in performance tests.
+
+**An engineer who understands this will design observability differently because L4 cannot provide request-level visibility.**  
+The unaware engineer expects latency histograms, status code counts, or request error rates from an L4 layer and discovers too late that only connection metrics are available. The aware engineer either uses L7 where that observability is needed or deliberately builds instrumentation into the application and sidecars instead of assuming the load balancer can see requests.
+
+**An engineer who understands this will treat health checks as failure-policy design, not boilerplate config, because interval, timeout, and thresholds determine both detection delay and the risk of false ejection.**  
+The unaware engineer copies a health-check config from another service and calls it done. The aware engineer computes what those settings mean in wall-clock time, asks how many failed requests they are willing to tolerate before removal, and asks what kinds of transient issues should not cause ejection.
+
+**An engineer who understands this will separate readiness from liveness and keep ongoing liveness checks shallow, because deep checks against shared dependencies can remove the whole fleet during partial degradation.**  
+The unaware engineer makes `/healthz` verify database, cache, downstream APIs, and anything else "important," then wonders why a dependency slowdown caused every backend to disappear from rotation at once. The aware engineer uses readiness to block traffic until a node is truly able to start serving, but uses shallow ongoing checks so the load balancer does not turn dependency turbulence into a self-inflicted full outage.
+

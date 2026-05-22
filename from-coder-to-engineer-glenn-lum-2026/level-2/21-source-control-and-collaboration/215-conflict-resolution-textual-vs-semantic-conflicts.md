@@ -118,4 +118,84 @@ This means there are two entirely separate categories of merge risk, and they re
 - Large refactors that change widely-used contracts are disproportionate sources of semantic conflicts and should land on the trunk as quickly as possible to minimize the window of divergence.
 - A merge that completes without conflict markers provides no information about semantic correctness — post-merge CI, not merge cleanliness, is your actual safety signal.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+Many engineers learn to fear the red, noisy kind of merge problem: Git stops, shows conflict markers, and forces a decision. But that visible interruption is usually the safer case. The more expensive failures are the quiet ones: the merge succeeds, CI is weak or skipped, the code still runs, and a contract mismatch or broken assumption leaks into production. Those bugs are hard to trace because the merge itself looked normal.
+
+If you do not have a clear model of what Git is actually checking during a merge, you will treat “merged cleanly” as evidence of safety when it is not. That leads teams to trust the wrong signal, underestimate long-lived branch risk, and miss why post-merge validation exists at all. In practice, this shows up as regressions after refactors, features that worked on each branch but break together, and production defects that seem to come from nowhere because no explicit merge conflict ever appeared.
+
+## What You Need To Know First
+
+**1. A Git commit is a snapshot, not a list of edits.**  
+Git stores the state of the project at a point in time. When you merge, Git is comparing snapshots and inferring changes between them. That matters because merge behavior is based on differences between versions of files, not on your intent while editing them.
+
+**2. A branch is just a line of commits that diverged from another line.**  
+When two branches split, each can evolve independently. The longer they stay apart, the more each branch accumulates changes made without knowledge of the other. Merging is the act of reconciling those two histories back into one codebase.
+
+**3. A function or interface has a contract.**  
+A contract is the behavior other code relies on: what a function returns, what arguments it expects, what a config field means, what shape some data has. Code in different places can be tightly connected through that contract even if the text is far apart.
+
+**4. CI, compilers, type checkers, and tests are different kinds of validation.**  
+Git answers a narrow question: can these text changes be combined? A compiler checks whether the combined program is structurally valid. A type checker catches some interface mismatches. Tests check behavior for the cases they cover. These are separate layers, and they catch different failure modes.
+
+## The Key Ideas, Connected
+
+**Git does not merge “two branches”; it merges two branch tips relative to a shared base.**  
+The core mechanism is a three-way merge. Git looks at the most recent common ancestor of the branches, then asks: what changed from that base to branch A, and what changed from that base to branch B? It then tries to apply both sets of changes to the base result. This matters because merge behavior depends on how each branch changed relative to the shared starting point, not just on how the two branch tips differ from each other.
+
+**Because Git works from diffs against the base, it can auto-resolve many cases without asking a human.**  
+If only one branch changed a given region, Git can safely take that change. If neither changed it, Git keeps the base version. The only time Git must stop is when both branches changed the same region and Git cannot choose one without discarding the other. That is what creates the familiar textual conflict. This leads directly to the next idea: what counts as “the same region” is much narrower than many engineers assume.
+
+**Git’s notion of conflict is textual, not semantic.**  
+Git operates on lines and hunks of text. It does not know that two files participate in the same workflow, that one function calls another, or that a return value changed meaning. So when we say Git found no conflict, we mean only that the two sets of text edits did not overlap in a way the merge algorithm considers ambiguous. Once you see that, an important consequence follows: a clean merge says nothing about whether the combined program still makes sense.
+
+**Textual conflicts are the safe failure mode because Git is refusing to guess when line-level edits overlap.**  
+When Git inserts conflict markers, it is signaling the boundary of its competence. It found overlapping edits and stopped before silently choosing a result. That is annoying for flow, but good for correctness, because a human is forced to inspect the code at the exact point where automatic line-based merging became unreliable. This sets up the contrast with the more dangerous case: problems Git cannot even see.
+
+**Semantic conflicts happen when the text merges cleanly but the meaning of the program breaks.**  
+Suppose one branch changes what a function returns, and another branch adds a new caller written against the old behavior. The edits may be in different files, so Git merges them happily. But the caller is now using the function under the wrong assumptions. The breakage comes from a mismatch in meaning, not an overlap in lines. This is why semantic conflicts are often silent: the merge tool never had enough information to flag them.
+
+**Semantic conflicts exist because code is coupled by behavior, not by file position.**  
+A function and its callers are related through call graphs and contracts. A config schema and the code that reads it are related through shared interpretation. A database field and the business logic using it are related through meaning. Those relationships are real in the running system, but invisible to a text merge algorithm. Therefore two changes can be strongly connected in the program while being far apart in the source tree. Once you understand that, it becomes clear why many of the worst merge bugs involve different files, not the same lines.
+
+**Whether a semantic conflict is caught depends on what validation runs after the merge.**  
+Some semantic conflicts become compile errors: a renamed function, a changed type, a removed field. Statically typed languages catch more of these because the type system turns some meaning changes into structural failures. Other semantic conflicts only show up in tests, and only if the tests exercise the exact cross-branch interaction that broke. And some pass everything and fail only in production. This means the real safety system is downstream of Git: compiler, type checker, integration tests, runtime observation.
+
+**That is why a clean merge is not a safe merge; it is merely an unresolved merge that produced text successfully.**  
+If Git only guarantees textual consistency, then the absence of conflict markers is not evidence of semantic correctness. The merge result still needs to be validated as a program. This shifts where confidence should come from: not from “Git accepted it,” but from “the merged commit was built, checked, and exercised.” That naturally leads to why branch lifetime matters so much.
+
+**Long-lived branches increase semantic conflict risk because they increase the number of unseen interactions.**  
+A short-lived branch only has to reconcile with a small amount of concurrent change. A long-lived branch must reconcile with everything that landed while it was away. More importantly, the number of possible interactions between your branch’s contract changes, new consumers, refactors, and other teams’ changes grows quickly as the divergence window expands. The pain feels disproportionate because it is: each additional day can add many new possible combinations, not just one more change to read through.
+
+**Refactors are especially risky because they change shared contracts many parts of the system depend on.**  
+If a refactor changes the meaning of a function, renames widely used symbols, or reshapes shared data, it creates many opportunities for other in-flight work to be written against the old world. Git will not connect those consumers to the changed contract unless they touch the same lines. So large refactors on long-lived branches are strong generators of semantic conflict. The practical consequence is that refactors are safer when landed quickly and centrally, with as little divergence window as possible.
+
+## Handles and Anchors
+
+**1. Git is a text traffic cop, not a program reasoner.**  
+It can tell when two cars are trying to occupy the same lane at the same spot. It cannot tell whether both cars are driving toward a bridge that is out. “No collision at the intersection” is not the same as “the trip is safe.”
+
+**2. A clean merge means “the edits fit together on the page,” not “the behaviors fit together in the system.”**  
+If you remember one sentence, remember that one. It captures the core mismatch between what Git validates and what engineers often assume it validates.
+
+**3. Ask this question after any merge-sensitive change: “What else depends on the meaning of this, even if it lives somewhere else?”**  
+That question pulls your attention away from file locality and toward contracts, callers, schema consumers, and hidden coupling—the places semantic conflicts actually come from.
+
+## What This Changes When You Build
+
+**An engineer who understands this will treat post-merge CI as the real safety check, because Git only proves textual mergeability.**  
+The unaware engineer sees “merged cleanly” and may skip or weaken validation, especially for low-drama changes. The consequence is that semantic conflicts survive until staging or production. The aware engineer insists on building and testing the merged commit itself, not just the branch in isolation.
+
+**An engineer who understands this will prefer shorter-lived branches because branch lifetime increases the number of unseen semantic interactions.**  
+The unaware engineer thinks long-lived branches are mainly a convenience tradeoff with an occasional painful rebase. The aware engineer sees them as semantic risk multipliers: every extra day increases the chance that some contract, schema, or shared assumption changed elsewhere.
+
+**An engineer who understands this will be cautious with refactors that change contracts, because the danger is in downstream consumers Git cannot see.**  
+The default move is to perform a broad refactor on an isolated branch for days, then merge when “everything on the branch passes.” The consequence is a high chance of silently breaking concurrent work written against the old contract. The better approach is to land contract changes quickly, stage compatibility where possible, and communicate the migration window clearly.
+
+**An engineer who understands this will design tests around interactions, not only around individual changes.**  
+The unaware engineer writes tests that prove “my branch works against the world as I branched from.” That misses cross-branch combinations. The aware engineer asks: what existing callers, flows, integrations, or assumptions could this change invalidate after merge? That leads to more integration tests and fewer mocks around the exact seams where semantic conflicts tend to hide.
+
+**An engineer who understands this will read “no conflict” as absence of one class of problem, not as evidence that no problem exists.**  
+The default interpretation of a smooth merge is confidence. The better interpretation is narrower: Git found no overlapping line edits requiring human arbitration. That mental shift changes review behavior, release confidence, and how teams talk about merge risk.

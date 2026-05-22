@@ -79,4 +79,110 @@ The mental model is this: before you can right-size a workload, you must first i
 - **The GC death spiral is a cross-resource failure mode.** Memory pressure increases garbage collection, which consumes CPU; CPU throttling slows garbage collection, which increases memory pressure. Diagnosing this requires looking at CPU and memory together.
 - **Resource configuration is not a one-time decision.** Traffic patterns change, code changes, and dependency performance changes. Resource profiles must be observed continuously, not set at deploy time and forgotten.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+A lot of production performance work goes wrong because engineers talk about “resources” as if CPU, memory, and I/O are interchangeable knobs. They are not. When you run out of CPU, your service usually gets slower. When you run out of memory, something gets killed. When you are blocked on I/O, the CPU may look mostly idle even though the system is already saturated. If you do not distinguish those cases, you end up applying the wrong fix: adding CPU to a service that is waiting on the network, tightening memory limits until pods crash-loop, or chasing “high latency” without noticing the real cause is CPU throttling.
+
+This matters because modern infrastructure makes it easy to set numbers without understanding mechanics. A Kubernetes request or limit looks like a harmless config field, but those numbers directly shape scheduler behavior, kernel enforcement, and failure modes. The result is a common pattern: systems look fine under average load, then fail under bursts in ways that feel mysterious only because the underlying resource model was never made explicit.
+
+The practical cost is real: tail latency spikes with no errors, OOM kills that wipe in-flight work, noisy-neighbor effects on shared disks, and expensive overprovisioning because nobody knows which constraint is actually binding. If you can tell whether a process is running but starved, occupying memory dangerously, or blocked on an external dependency, debugging and capacity planning become much more concrete.
+
+## What You Need To Know First
+
+**1. The operating system scheduler**  
+The OS cannot run every runnable process at once on a finite number of CPU cores, so it takes turns. The scheduler decides who gets CPU time and for how long. That means “having CPU” really means “being allowed to run now.” If many processes want CPU at once, some wait.
+
+**2. Containers and cgroups**  
+A container is not a separate machine; it is a process isolated and constrained by kernel features. Cgroups are the mechanism Linux uses to track and limit a group of processes. CPU limits, memory limits, and the counters that show throttling or memory usage are enforced at this level.
+
+**3. Requests vs limits in orchestrators**  
+A request is mainly a scheduling hint: “place me on a node that can reasonably fit this.” A limit is an enforcement boundary: “do not let me go past this.” Those are different jobs. Confusing them leads to bad mental models, especially when a workload can burst above its request but is hard-stopped at its limit.
+
+**4. Throughput, latency, and saturation**  
+Throughput is how much work gets done per unit time. Latency is how long one unit of work takes. Saturation means a resource is fully occupied, so extra work starts queueing or failing. A system can have acceptable average latency while its p99 gets terrible, which often happens when a resource is near saturation and bursts push requests into queues or throttling windows.
+
+## The Key Ideas, Connected
+
+**1. CPU, memory, and I/O are different constraints with different behaviors when they get tight.**  
+The article’s core point is that these are not three versions of the same shortage. They produce different symptoms because the underlying mechanics are different. CPU is about time on a processor, memory is about finite space in RAM, and I/O is about waiting for something outside the CPU to deliver data. Once you accept that the resource types behave differently, it follows that “resource tuning” cannot be one generic activity. You need a separate mental model for each one.
+
+**2. CPU is a time-shared resource, so contention usually means slowdown rather than immediate failure.**  
+A process that wants CPU can often just wait a little longer for its turn. The work is still possible; it is delayed. That is why CPU is called compressible in the article: when demand exceeds supply, execution stretches out in time instead of crashing on the spot. This explains why CPU problems often show up first as increased latency, especially at the tail, not as explicit application errors.  
+Because CPU is time-shared, the next question becomes: who decides how that time is divided?
+
+**3. On Linux, CPU sharing and limiting happen through scheduler weights and quotas, and those are different mechanisms.**  
+A CPU request affects relative share during contention: if two containers compete, the one with the larger request gets more scheduling weight. But a CPU limit is not just a lower weight; it is a quota enforced over a time window. That distinction matters. A request says “my fair share when crowded.” A limit says “you may not exceed this ceiling, even if spare CPU exists.”  
+Once you see that, the article’s warning about throttling makes sense: the scheduler can pause your workload because it used up its quota for the current period, not because the machine is globally out of CPU.
+
+**4. CPU throttling creates latency spikes because runnable work is forcibly paused mid-burst.**  
+This is the mechanism behind the “mysterious” p99 jump. If several requests arrive together, the container may burn through its CPU quota quickly. After that, its threads are paused until the next quota period begins. The important detail is that these requests are not blocked on a database or sleeping by choice—they are ready to run but forbidden from doing so. That is why the service appears healthy at the application level while users experience slowness.  
+This leads to an important diagnostic distinction: if the process has work to do and latency rises while CPU is near its limit or throttling counters rise, the bottleneck is CPU.
+
+**5. Memory is different because it is not time-shared in the same forgiving way; it is finite occupancy.**  
+RAM is not something your process can usually “use half as fast.” If the bytes you need are not available, the system must reclaim space somehow. That is why memory is called incompressible in the article. The kernel may reclaim cache, swap, or ultimately kill a process, but there is no equivalent of “just wait your turn” that preserves behavior gracefully.  
+This is why the next idea is a cliff: once memory accounting reaches the enforced boundary, the system has to take destructive action.
+
+**6. Memory limits fail by hard enforcement, typically via OOM kills, not gradual degradation.**  
+A memory limit on a container is an absolute boundary. If the cgroup exceeds it, the kernel selects a victim and kills it. From the application’s point of view, this is abrupt. In-flight requests vanish, warm state is lost, and the service may restart repeatedly. That is a totally different failure shape than CPU contention.  
+The mechanism also explains why engineers get surprised when they size memory from only one application-visible pool, like the JVM heap. The kernel accounts total memory use in the cgroup, not just the heap you configured. So thread stacks, native allocations, runtime metadata, page cache effects, and other off-heap memory still count. If your mental model is “heap size equals memory usage,” you will set limits too low and create predictable OOM events.
+
+**7. The asymmetry between CPU and memory means you should treat their limits differently.**  
+Because CPU pressure usually degrades and memory pressure often kills, the cost of being wrong is not symmetric. Tight CPU limits may be acceptable if your system can tolerate latency degradation during spikes. Tight memory limits are riskier because they turn estimation error into immediate availability incidents.  
+Once that asymmetry is clear, it becomes easier to see why “right-sizing” is not just minimizing unused capacity. The acceptable safety margin depends on the failure mode of the resource.
+
+**8. I/O-bound systems are constrained not by doing work on the CPU, but by waiting for external operations to complete.**  
+This is the third major category. A thread can be alive, requests can be piling up, and users can be waiting—while CPU usage stays low. That happens because the bottleneck is outside the processor: disk, network, downstream services, sockets, or storage devices. In this state the process is often blocked, not runnable.  
+This matters because low CPU is easy to misread as spare capacity. But if all workers are waiting on slow I/O, adding more CPU changes nothing. The system is saturated in a place your usual CPU dashboard does not reveal.
+
+**9. I/O saturation often hides in queues, latencies, and wait times rather than obvious CPU or memory metrics.**  
+If a disk can only serve so many IOPS, or a downstream service has a 50ms p99, requests accumulate in queues. The process spends wall-clock time waiting for reads, writes, or responses. That is why the article emphasizes iowait, disk latency, throughput, IOPS, and socket or network queue depth. These metrics expose where time is actually going.  
+This also explains the distinction between throughput-bound and latency-bound disk workloads: large sequential transfers stress bandwidth, while many tiny random operations stress operation count. Same broad resource category, different inner mechanism.
+
+**10. Real systems shift bottlenecks as load changes, so a single resource classification is often temporary.**  
+A service might start out I/O-bound because every request hits a database. With more traffic, cache hit rates improve, reducing I/O wait. Now the CPU spends more time parsing, serializing, and executing application logic, so CPU becomes the bottleneck. Push further and the number of in-flight requests or cached objects raises memory pressure, which introduces GC costs or OOM risk.  
+This is why static sizing from one benchmark is unreliable: the system’s dominant constraint can move as the workload shape changes. The bottleneck is not a permanent label on the service; it is a state produced by current demand and current architecture.
+
+**11. Cross-resource interactions create failure modes that are invisible if you inspect each resource in isolation.**  
+The GC death spiral is the clearest example. Memory pressure causes more garbage collection. Garbage collection uses CPU. Tight CPU limits throttle the collector, so memory is freed more slowly. That increases memory pressure further, which causes more GC. The visible symptom might be latency first and OOM later, but the mechanism is a loop between memory and CPU.  
+This idea generalizes: one constrained resource can transform demand on another. That means diagnosis has to trace causal links, not just spot a high metric.
+
+**12. The practical model is: identify the binding resource under realistic load, then reason from its mechanics to its failure mode and fix.**  
+That is the article’s endpoint. Before choosing instance sizes, setting limits, or interpreting latency spikes, ask: is the process runnable and waiting for CPU, occupying dangerous amounts of memory, or blocked on I/O? The answer tells you what metrics matter, what failure to expect, and what interventions are plausible.  
+Without that model, engineers tune configs by folklore. With it, resource settings become hypotheses about system behavior that can be tested against the right signals.
+
+## Handles and Anchors
+
+**1. CPU, memory, and I/O fail like traffic, storage, and delivery.**  
+CPU is like lane access on a highway: if too many cars want in, traffic slows.  
+Memory is like parking spaces: when they are full, incoming cars cannot just “go slower”; something must be turned away or removed.  
+I/O is like waiting for shipments: your workers may be standing around ready, but work cannot continue until the truck arrives.
+
+**2. Ask: “Is the process busy, full, or waiting?”**  
+Busy = CPU-bound.  
+Full = memory-bound.  
+Waiting = I/O-bound.  
+That question is simple enough to use in live debugging and strong enough to steer you toward the right metrics.
+
+**3. One-sentence tension:**  
+“CPU pressure stretches time, memory pressure hits a wall, and I/O pressure hides in queues.”
+
+## What This Changes When You Build
+
+**1. An engineer who understands this will set CPU limits more cautiously because a CPU limit is not just a budget, it is a throttle.**  
+The unaware engineer sees `limit: 500m` as “half a core should be enough on average.” In reality, under bursty concurrency that limit can create artificial pauses that blow up p99 latency even if average CPU usage looks fine. The aware engineer checks throttling metrics, tests burst behavior, and may avoid strict CPU limits on latency-sensitive services.
+
+**2. An engineer who understands this will size memory from total process footprint, not just application-configured heap or cache size, because the kernel kills based on cgroup usage, not language-level abstractions.**  
+The unaware engineer says, “Java heap is 512MB, so a 600MB limit is safe.” The consequence is a restart loop when metaspace, thread stacks, native buffers, and GC overhead push real usage above the limit. The aware engineer measures RSS and runtime-specific overhead, leaves headroom, and treats memory limits as safety-critical boundaries.
+
+**3. An engineer who understands this will not treat low CPU utilization as proof of headroom because blocked systems can be saturated while mostly idle on the CPU.**  
+The unaware engineer sees 15% CPU and reaches for a bigger instance only when traffic grows. Meanwhile request latency keeps rising because threads are stuck on disk or downstream calls. The aware engineer looks at dependency latency, queue depth, I/O wait, connection pools, and storage characteristics before deciding where capacity is actually constrained.
+
+**4. An engineer who understands this will test systems across multiple load levels because the bottleneck can move as traffic changes.**  
+The unaware engineer runs one load test at a moderate rate, declares the service “CPU-light,” and sizes it accordingly. In production, higher concurrency changes cache behavior, memory footprint, and GC frequency, and the failure mode looks unrelated to the original test. The aware engineer expects phase changes: low-load bottlenecks and high-load bottlenecks may be different problems.
+
+**5. An engineer who understands this will treat right-sizing as ongoing observation rather than one-time configuration because resource behavior depends on workload shape, code changes, and neighbor contention.**  
+The unaware engineer inherits old requests and limits forever, paying for idle reservation or suffering intermittent failures during peaks. The aware engineer revisits resource settings with real production telemetry, separates scheduling needs from enforcement needs, and recognizes that shared-node I/O contention may require architectural or placement changes, not just new CPU and memory numbers.
+
+---

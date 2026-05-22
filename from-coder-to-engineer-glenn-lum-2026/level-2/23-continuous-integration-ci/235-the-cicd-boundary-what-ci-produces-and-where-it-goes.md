@@ -121,4 +121,109 @@ If you can draw a clean line in your system at the registry — CI writes to it,
 
 - **If you cannot answer "what exact artifact is running in production right now?" from the registry alone, your CI/CD boundary is missing or broken.**
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+A lot of teams say they have “CI/CD,” but in practice they have one long automation script that builds, tests, and deploys in a blur. That works until you need to answer operational questions under pressure: What exactly is running in production? Can we roll back right now? Did staging and production run the same thing? If the answer depends on reading old pipeline logs, re-running a build, or trusting a mutable tag like `latest`, the system is already more fragile than it looks.
+
+The reason this matters is that build systems and deployment systems solve different problems, and when you blur them together, you inherit specific failure modes. Rollbacks silently produce new binaries instead of redeploying old ones. Environment-specific settings get baked into images, so “the same code” behaves differently across environments. A pipeline failure tells you only “something went wrong,” not whether the code failed verification or the cluster rejected a deploy. These are not naming issues; they are mechanical issues that affect reliability, traceability, and incident response.
+
+This topic exists because once software is deployed repeatedly across multiple environments, you need a trustworthy handoff between “we built and verified something” and “we chose to run that thing here.” Without that handoff, you lose control over artifact identity, promotion, and rollback — exactly the things you need most when production is on fire.
+
+---
+
+## What You Need To Know First
+
+### 1. Artifact
+An artifact is the built output of your code: a Docker image, binary, JAR, tarball, and so on. It is not the source repository and not the idea of “version 1.2”; it is the concrete thing produced by a specific build. The article assumes that deployment should happen from this built object, not by rebuilding from source every time.
+
+### 2. Immutable vs mutable identity
+Immutable means “this exact thing cannot change”; mutable means “this label can point to different things over time.” A SHA256 digest is immutable: it identifies one exact image. A tag like `latest` or even `v1.2.3` is mutable: someone can retag it later. You need this distinction to understand why the article insists that the digest, not the tag, is the artifact’s real identity.
+
+### 3. Environment-specific configuration
+The same application often needs different values in different places: database URLs, secrets, feature flags, resource limits, certificates. Configuration is those varying inputs. The key prerequisite is that code can stay the same while configuration changes at deploy time; if config is baked into the build, you no longer have one artifact moving through environments.
+
+### 4. Promotion
+Promotion means taking the same built artifact and advancing it from one environment to another as it earns more trust. For example: build once, deploy to dev, then staging, then production. Promotion is not “rebuild with production settings”; it is “apply more evidence and then deploy the same artifact again.”
+
+---
+
+## The Key Ideas, Connected
+
+### 1. CI does not just give you a pass/fail result; it should also produce the deployable artifact.
+The familiar output of CI is the green checkmark: tests passed, lint passed, build succeeded. But the more important output is the actual thing those checks were performed on — the built artifact. If CI only tells you “this commit passed” without preserving the exact built output, then deployment later depends on rebuilding, and that rebuild may not produce the same result.
+
+That matters because deployment needs something concrete to move around. CD cannot reliably deploy “a commit” or “whatever source was on main at that time”; it needs a stable object. Once you accept that CI must produce and preserve that object, the next question becomes: where does that object live so CD can use it later?
+
+### 2. The real boundary between CI and CD is the artifact registry.
+The article’s main structural claim is that the handoff is not a stage label in a YAML pipeline. It is a storage boundary: CI writes the artifact to a durable registry, and CD reads it from there. That registry is what separates “building and verifying” from “choosing where to run.”
+
+This separation matters because it breaks coupling. If deployment can only happen inside the same pipeline run that built the image, then building and deploying are one operation in practice, even if you call them different stages. But once the artifact is stored durably, CD can happen later, with different tooling, different permissions, and different approval logic. That makes rollback and promotion possible as independent actions. Once the registry becomes the boundary, artifact identity and traceability become critical, which leads to the next idea.
+
+### 3. The artifact has to be traceable and identified immutably.
+If CI writes an artifact into a registry, you need to know exactly what that artifact is and where it came from. That means metadata: commit SHA, build ID, digest, maybe test results and signatures. The digest matters most because it is the immutable identity of the artifact.
+
+This is the mechanism that makes traceability real instead of aspirational. If production is running `sha256:9f3e...`, you can ask: which commit produced this, which pipeline built it, and which checks were run against it? If instead production is running `myservice:latest`, you have only a mutable label, not a trustworthy answer. Once artifact identity is stable, you can start making stronger claims about moving that same artifact through environments rather than rebuilding it each time.
+
+### 4. “CI passed” and “this is deployable to production” are different claims.
+A passing CI run tells you that the artifact met a certain set of integration checks at build time. That is useful, but limited. It does not prove the artifact behaves correctly with production-like config, production infrastructure, external dependencies, real traffic patterns, or operational constraints.
+
+So another stage of decision-making becomes necessary: promotion. Promotion exists because the evidence required for “mergeable” is weaker than the evidence required for “safe to run in production.” Once you separate these claims, CD is no longer just “automatically deploy what CI built”; it becomes the process of applying further checks and approvals to the same artifact as it moves through environments. That “same artifact” part is essential, which is why the next idea exists.
+
+### 5. Promotion only means something if the artifact stays the same across environments.
+If you build once for dev, rebuild for staging, and rebuild again for prod, you are not promoting one artifact — you are testing one thing and deploying another. That destroys the chain of evidence. The whole point of promotion is that confidence accumulates around a fixed object.
+
+Mechanically, that means the binary or image must not change between environments. The digest in dev should be the digest in staging and the digest in prod. If it changes, any claim like “it passed staging” applies only to the staging-built artifact, not the production one. But environments do need to differ somehow, so the system needs another channel for those differences. That requirement leads directly to configuration separation.
+
+### 6. Environment differences must come from configuration, not from rebuilding the artifact.
+Applications behave differently in dev, staging, and production because the context changes: database endpoints, secrets, feature flags, CPU limits, certificates, and so on. If you tried to encode those differences by changing the artifact itself, you would need a separate build per environment. That would violate build-once-deploy-many.
+
+So configuration has to be injected externally at deploy time. The artifact carries code and dependencies; configuration tells that code which environment it is in and what resources to use there. This is the only way to have one immutable artifact and still get environment-specific behavior. Once you see config as a separate channel, CD’s job becomes clearer: it is binding one artifact identity to the right environment-specific configuration. That also explains a major class of failure.
+
+### 7. When configuration leaks into the build, you no longer have one tested artifact.
+A team may think they are deploying the same service everywhere because the source code is the same. But if they bake different env vars, config files, dependency versions, or base-image resolutions into each build, then each environment is running a different artifact. The build has become environment-sensitive.
+
+This is why the failure mode is so deceptive. Engineers say, “it worked in staging, but failed in prod even though it was the same code.” The mechanism is that it was not the same artifact. The configuration leak broke immutability. Once you understand that, the article’s criticism of coupled pipelines becomes easier to see: if building and deploying are one uninterrupted flow, you make these leaks and couplings much easier to create and much harder to detect.
+
+### 8. A coupled build-and-deploy pipeline removes important operational capabilities.
+When one workflow builds and immediately deploys, you lose the clean handoff. You cannot redeploy an old known-good artifact without rerunning old build logic. If dependencies or tooling changed since then, the “same” build may now produce something different. You also mix two distinct failure domains: build failures and deployment failures.
+
+That coupling is not just inconvenient; it changes what operations are possible. Rollback becomes “rebuild an old commit and hope,” not “redeploy a known artifact.” Deploying to a new environment means editing build logic. Investigating incidents means piecing together what happened from pipeline history rather than asking the registry. This also explains why “deploy on green” is a deliberate tradeoff rather than an automatic best practice.
+
+### 9. Deploy-on-green collapses verification and promotion into one decision.
+If every green CI run on main goes straight to production, then you have chosen to treat “passed integration checks” as sufficient evidence for “should receive production traffic.” Sometimes that is acceptable — small systems, excellent tests, low blast radius. But it is still a choice to remove the promotion boundary.
+
+The reason this is risky is that production readiness often depends on more than CI can know: rollout timing, partner dependencies, migration sequencing, canary results, human review, or environment-specific smoke tests. If you eliminate the boundary, you eliminate the place where those judgments can happen. This brings the whole model together: CI builds and verifies an artifact, the registry preserves and identifies it, CD promotes that same artifact through environments with separate configuration, and operational safety depends on keeping those boundaries real.
+
+---
+
+## Handles and Anchors
+
+### 1. Factory and logistics
+CI is a factory: it manufactures a specific item and stamps it with identity and quality checks. CD is logistics: it moves that already-manufactured item to different destinations. If the warehouse cannot tell you exactly which package was shipped, the problem is not shipping speed — it is loss of control over inventory.
+
+### 2. “Test the object, then move the object.”
+This is the core sentence. Not: test the code, then rebuild it elsewhere. Not: test a commit, then hope a later build matches. Test the object, then move the object. If the object changes, your evidence no longer applies.
+
+### 3. Diagnostic question
+Ask of any pipeline: “Can I tell, from the registry alone, exactly what artifact is running in production and redeploy it without rebuilding?” If the answer is no, the CI/CD boundary is either missing or too weak to trust under pressure.
+
+---
+
+## What This Changes When You Build
+
+### 1. An engineer who understands this will pin deployments by digest, not by tag, because tags are labels and digests are identity.
+The unaware engineer writes `image: myservice:latest` or `:main` because it is convenient and human-readable. The consequence is that nobody can prove which image actually ran when that tag was resolved. The aware engineer treats tags as pointers for people and digests as the contract for systems.
+
+### 2. An engineer who understands this will design CI to publish artifacts into a registry and stop there, because deployment needs a durable handoff point.
+The default inherited design is a single workflow that builds, tests, and deploys in sequence. That feels simpler initially, but it couples rollback, promotion, and deployment topology to the build system. The aware engineer creates a point where CI finishes after producing a traceable artifact, allowing CD to operate later and independently.
+
+### 3. An engineer who understands this will treat rollback as redeploying a previous artifact, not rebuilding an old commit, because reproducibility matters most during incidents.
+The unaware engineer reaches for “rerun the old pipeline” or “checkout the old SHA and rebuild.” That can silently produce a different result if dependencies, base images, or tooling changed. The aware engineer keeps prior artifacts available and rollback-ready in the registry, so rollback is selecting an old digest, not rerunning history.
+
+### 4. An engineer who understands this will keep configuration outside the artifact, because per-environment rebuilds destroy the meaning of promotion.
+The default mistake is to inject env-specific files or variables during image build, often because it seems easier at first. That produces different images for dev, staging, and prod, even if the codebase is the same. The aware engineer separates code from runtime configuration, so the same artifact can be promoted while only config changes per environment.
+
+### 5. An engineer who understands this will create a distinct promotion step between “passed CI” and “goes to production,” because those are different assertions backed by different evidence.
+The unaware engineer often lets a green build auto-deploy everywhere by default, inheriting the assumption that integration checks equal production readiness. The aware engineer decides explicitly whether that tradeoff is acceptable for this system’s blast radius, test confidence, and operational constraints, and introduces staging checks, approvals, or canary gates when it is not.

@@ -106,4 +106,132 @@ Every link in that chain must be present. An SLI without an SLO is a metric with
 
 - The complete framework is a closed loop — SLI to SLO to error budget to burn-rate alert to error budget policy to team action — and removing any link breaks the loop.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+A lot of teams adopt SLOs because they want a better way to manage reliability, but they end up with dashboards instead of decisions. They can name the parts — SLI, SLO, error budget — yet still fail to answer the practical questions that matter during real work: what exactly counts as a bad user experience, how much unreliability can we afford right now, and when should we slow down feature delivery to protect the system? When those mechanics are vague, the framework has no force. It becomes reporting.
+
+What actually goes wrong is concrete. Teams measure the wrong thing and declare success while users are failing. They choose ambitious targets with no understanding of cost, then discover they have effectively outlawed change because every deploy threatens the budget. Or they set a target, never attach alerting or policy to it, and learn about reliability problems only after a monthly review — long after action would have mattered. The result is a system that is either over-engineered, under-protected, or impossible to steer.
+
+This topic matters because SLOs are supposed to create an operating mechanism for the reliability/velocity tradeoff. If you do not understand how the pieces connect mechanically, you will inherit the tradeoff blindly: either shipping too aggressively and burning users, or moving too cautiously without knowing whether the caution is buying anything.
+
+---
+
+## What You Need To Know First
+
+### 1. Metrics vs. specifications
+
+A metric is a number you can already observe, like HTTP 5xx rate or p95 latency. A specification is a statement of what you intend to consider “good” or “bad.” The article depends on this distinction because an SLI starts as a specification of user experience, not as whatever metric happens to be easy to graph.
+
+### 2. Request/response paths and measurement points
+
+A user action usually passes through several layers: client, network, load balancer, application, database, downstream services. You can measure success at different points along that path, and each point sees different failures. This matters because the same user interaction can look healthy at one layer and broken at another.
+
+### 3. Time windows
+
+A percentage only means something over a defined window: last 5 minutes, last 30 days, calendar month, rolling month. Without the window, “99.9% availability” is underspecified. The article builds on this because error budgets only become concrete when tied to a period over which failures accumulate.
+
+### 4. Dependencies
+
+Most services do not succeed on their own; they rely on databases, queues, auth providers, payment systems, and other internal or external services. If those dependencies fail, your service often fails too unless you have built protection around them. This is necessary background for understanding why your SLO target is constrained by the systems beneath it.
+
+---
+
+## The Key Ideas, Connected
+
+### 1. An SLI is first a definition of acceptable user experience, not a dashboard metric.
+
+What this means is that you do not begin with “what can Prometheus already tell me?” You begin with “what does a user believe should have happened?” For checkout, that might be: the order was accepted and confirmation arrived within 2 seconds. That statement is the real starting point because it defines the success boundary in user terms.
+
+That leads directly to the next idea, because once you have defined success, you still need to decide how to observe it in a real system. The user experience definition does not measure itself.
+
+### 2. The implementation of an SLI is an approximation, and where you measure determines which failures you can see.
+
+A load balancer can see status codes and timing up to its own boundary, but not whether the client rendered the page or whether a “successful” response actually hid a business failure. Application logs can see internal success logic, but not whether the packet reached the browser. Client-side telemetry sees more of the real user experience, but includes noise from client conditions and is harder to collect reliably.
+
+This matters because the gap between SLI specification and implementation is where teams accidentally lie to themselves. If the measurement point cannot observe an important failure mode, the SLO can look green while users suffer. Once you understand that the measurement is only a proxy, the next necessary question is: what are we promising against that proxy, and over what period?
+
+### 3. An SLO turns that SLI into a target over a time window.
+
+An SLO is not just “99.9%.” It is “99.9% of eligible events must be good over the last 30 days” or “during this calendar month.” The window is not administrative detail; it defines the accounting system. Without it, you cannot know whether a brief spike is harmless or whether you are steadily drifting toward failure.
+
+Once you define the target over a window, the abstract percentage becomes something spendable. That is why the next concept exists: the error budget is the operational form of the SLO.
+
+### 4. The error budget is the amount of failure you are allowed to consume during that window.
+
+If your service sees 10 million requests in a month and your SLO is 99.9%, then 0.1% may be bad, which is 10,000 bad requests. That is no longer a slogan about reliability; it is a finite allowance. You can burn it gradually through small issues or quickly through a major incident, but either way you are consuming a limited resource.
+
+That finite-resource framing changes the conversation from “are we reliable?” to “how quickly are we spending our allowed unreliability?” And that creates the next problem: knowing the remaining budget is too slow to run operations in real time.
+
+### 5. Remaining error budget is useful for planning, but not sufficient for alerting.
+
+If you wait until the budget is gone, you have discovered the problem after the damage is done. But if you alert on every momentary drop in success rate, you get noise from harmless blips that do not threaten the overall objective. So neither “budget exhausted” nor “instantaneous dip” gives a practical signal for intervention.
+
+That is exactly why burn rate becomes necessary. Burn rate answers not just whether failure exists, but whether it is consuming budget fast enough to matter operationally.
+
+### 6. Burn rate measures how fast you are consuming the error budget relative to the sustainable pace.
+
+A burn rate of 1x means you are failing at exactly the level that would use up the whole budget by the end of the window. Above 1x means you are overspending; below 1x means you are within tolerance. This makes the SLO actionable in the present. Instead of asking “are errors happening?” you ask “is the current level of badness dangerous relative to our commitment?”
+
+That becomes operationally strong when paired with multiple windows. A short window tells you the problem is happening now. A longer window tells you it is sustained enough to matter. Combining them filters out both stale incidents and tiny transients. Once you can detect meaningful overspend in real time, the framework is finally capable of changing behavior. But it still will not, unless you decide what behavior should change.
+
+### 7. An error budget only matters if specific team actions are tied to its state.
+
+This is the difference between SLOs as reporting and SLOs as control. If 80% of the budget is gone and nothing changes — deploys continue, priorities stay the same, incident posture does not tighten — then the framework has not influenced engineering. It has merely described events after the fact.
+
+So teams need a policy: what happens at 50%, 80%, 100%, or at a severe burn-rate alert? Review recent changes, slow rollout, freeze non-critical deploys, redirect capacity to reliability work. The point is not the exact thresholds; the point is that the measurement must trigger predefined decisions. Once you have this loop, target-setting starts to matter in a very practical way, because the target determines how often the policy will constrain the team.
+
+### 8. The SLO target is an economic choice, not a moral statement about engineering quality.
+
+A higher SLO means a smaller error budget, and each additional nine usually costs disproportionately more to achieve. That is because preventing the next class of failures requires more architecture, more redundancy, more fallback logic, more operational complexity, and more constraints on future change. The cost curve is not linear.
+
+This means “set the highest number possible” is usually wrong. If users do not meaningfully distinguish 99.95% from 99.99%, then paying the engineering cost for the extra strictness is waste. Worse, if you set the target equal to your best-case performance, you leave no room for deploys, experiments, or normal variance. The target must reflect user tolerance and business consequences, because it directly controls how much risk the team is allowed to take. But even a well-chosen target can still be mechanically impossible if the system depends on unreliable components.
+
+### 9. Your achievable SLO is bounded by your dependencies unless you deliberately break that coupling.
+
+If your service needs three downstream systems to succeed on every request, your success probability is constrained by theirs. Even if each one is individually “pretty reliable,” the composition can be noticeably worse. The mechanics are simple: a request only succeeds if each required dependency behaves well enough for your interaction to complete.
+
+So if you want an SLO better than your dependency chain naturally permits, you need resilience mechanisms that alter the dependency relationship: retries, caches, fallbacks, graceful degradation, asynchronous workflows, partial results. Those are not abstract “best practices”; they are the engineering moves that create room between your promise to users and the raw behavior of the systems you rely on. That closes the full model: SLOs work only when the measurement matches reality, the budget is tracked over time, burn rate exposes dangerous consumption, policy changes team behavior, and architecture supports the promise being made.
+
+---
+
+## Handles and Anchors
+
+### 1. Think of the SLI/SLO/error-budget system as a spending control, not a scorecard.
+
+The SLI says what counts as a charge. The SLO sets the monthly limit. The error budget is how much you can still spend. Burn rate is how fast the card is being charged right now. The policy is what happens when spending gets too high. If there is no policy, you do not have a control system — you just have a statement.
+
+### 2. Ask: “Where can this measurement lie to me?”
+
+That is a practical test for any SLI. If you measure at the load balancer, what user-visible failures are invisible there? If you measure in the app, what transport failures are hidden? This question helps surface the gap between user experience and instrumentation.
+
+### 3. Core tension: “Reliability targets buy user trust by spending engineering freedom.”
+
+A stricter SLO can improve user experience, but it also shrinks the safe room for deploys, experiments, and ordinary mistakes. That sentence captures why SLO-setting is not just about aspiration; it is about choosing how much flexibility the team keeps.
+
+---
+
+## What This Changes When You Build
+
+### 1. An engineer who understands this will define “good” from the user interaction backward, because existing metrics are often measuring the wrong boundary.
+
+The unaware engineer starts from whatever is already easy to instrument — often load balancer 2xx/5xx rates. The consequence is a success metric that may miss business-logic failures, hidden errors in response bodies, or failures after the response leaves the server. The aware engineer writes the success condition first, then picks the least-wrong measurement point and documents what it cannot see.
+
+### 2. An engineer who understands this will design alerting around burn rate, because instantaneous error rate and remaining monthly budget answer the wrong operational questions.
+
+The unaware engineer either pages on brief spikes and burns out the on-call rotation, or waits for budget exhaustion and reacts too late. The aware engineer uses fast-burn and slow-burn conditions to distinguish urgent active breakage from tolerable noise, so alerts correspond to threats to the actual reliability objective.
+
+### 3. An engineer who understands this will choose SLO targets based on user tolerance and system economics, because each extra nine creates real architectural and operational cost.
+
+The unaware engineer often picks 99.9% or 99.99% because it sounds respectable or because leadership likes the number. The consequence is either chronic violation, permanent deployment friction, or expensive reliability work with little user benefit. The aware engineer asks what level users actually need, what SLA buffer is required, and what engineering mechanisms would be necessary to support the chosen target.
+
+### 4. An engineer who understands this will attach explicit actions to budget consumption, because measurement without policy does not change system behavior.
+
+The unaware engineer ships an SLO dashboard and assumes the organization is now “doing SLOs.” Nothing changes during incidents or release decisions. The aware engineer defines thresholds and actions in advance: when to inspect recent changes, when to slow rollouts, when to freeze non-critical deploys, and when reliability work overrides roadmap work.
+
+### 5. An engineer who understands this will evaluate dependencies as part of SLO design, because promises to users are only credible if the architecture can absorb dependency failure.
+
+The unaware engineer sets an availability target for the service in isolation and only later discovers that auth, storage, or payments make the target unattainable. The aware engineer asks early: which dependencies are on the critical path, what reliability do they provide, and what fallback mechanisms would let our service keep meeting its own objective when they degrade.
+
+---

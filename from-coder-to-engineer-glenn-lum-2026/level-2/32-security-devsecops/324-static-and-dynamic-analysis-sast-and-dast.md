@@ -112,4 +112,94 @@ Neither tool is a superset of the other. They are not redundant, and they are no
 - The two tools cover fundamentally different attack surfaces — running both without tuning either produces compliance artifacts, not security; running one well-tuned tool produces more security value than running both poorly.
 - The real cost of these tools is not licensing — it is the engineering time required to tune rules, triage findings, integrate results into developer workflows, and maintain coverage as the application evolves.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+A lot of teams talk about SAST and DAST as if they are just two security scanners at different stages of the pipeline: one before deploy, one after deploy. That sounds reasonable, but it leads to bad decisions. If you believe they are interchangeable, you will expect one to catch problems it literally cannot observe. Then you get surprised when obvious vulnerabilities reach production, or when a tool produces lots of findings but very little security value.
+
+What actually breaks is coverage and trust. Teams run SAST, get buried in false positives, and stop reading the results. Or they run DAST against a staging app with poor auth setup and limited crawling, get a clean report, and assume the system is safe even though most of the real attack surface was never tested. In both cases, the failure is not “the scanner missed something” in a vague sense. The failure is misunderstanding what each tool can see, what it cannot see, and what kind of work is required to make its output usable.
+
+Once you understand that SAST and DAST inspect different representations of the system, the practical questions change. You stop asking “which scanner should we buy?” and start asking “which blind spot is hurting us right now, and what effort are we prepared to invest to reduce it?”
+
+---
+
+## What You Need To Know First
+
+**1. Source code is not the same thing as running behavior.**  
+A program as written in files and a program as actually running in an environment are related, but not identical. Source code tells you what the application could do. Running behavior includes configuration, network topology, deployment settings, real HTTP traffic, authentication state, and interactions with other systems. This distinction matters because SAST sees the first and DAST sees the second.
+
+**2. Data flow matters more than syntax for many vulnerabilities.**  
+A vulnerability like SQL injection is usually not about a single dangerous line in isolation. It is about untrusted input entering the system, moving through variables and functions, and eventually reaching something sensitive like a database query. That movement is called data flow. If you do not track the flow, you miss how a harmless-looking input becomes dangerous later.
+
+**3. Attack surface means “what an attacker can touch.”**  
+An attack surface is the set of reachable inputs and behaviors exposed by a system: URLs, APIs, form fields, headers, cookies, file uploads, admin endpoints, and so on. DAST depends heavily on discovering this surface. If it cannot find or access part of it, that part effectively does not exist to the scanner.
+
+**4. A tool can fail by being noisy, not just by being blind.**  
+Engineers often think a security tool fails only when it misses real issues. In practice, it can also fail by flooding teams with findings they cannot act on. A tool that reports too many non-issues trains people to ignore it. So usefulness depends not only on theoretical detection power, but also on tuning and triage.
+
+---
+
+## The Key Ideas, Connected
+
+**SAST and DAST are not the same kind of scanner used at different times; they inspect different forms of the application.**  
+This is the foundation. SAST looks at source code without executing it. DAST interacts with a running application from the outside. That means they are not merely different pipeline stages of one technique; they are different ways of knowing. Once you see that, it follows that their strengths and weaknesses come from what representation they have access to.
+
+**Because SAST sees code rather than execution, it works by building models of possible program behavior.**  
+A serious SAST tool does not just grep for bad strings. It parses code into structures like an AST, then derives models such as control flow, data flow, and call graphs. Those models let it ask questions like: “Can data from this request parameter eventually reach this SQL execution function?” The key point is that SAST reasons about possible paths through the program, including paths that may not happen often in real use. That model-based approach is what enables the next idea: taint analysis.
+
+**Taint analysis is the main mechanism SAST uses to detect input-driven vulnerabilities.**  
+The tool marks certain inputs as untrusted sources, marks dangerous operations as sinks, and checks whether data can flow from source to sink without passing through a recognized sanitizer. In the SQL injection example, user input enters from the HTTP request, is concatenated into a query string, and reaches `execute()`. The vulnerability is not “string concatenation is bad” in the abstract. It is specifically that untrusted input traveled into a SQL execution sink unsafely. Once you understand this mechanism, you can also see why SAST quality varies so much.
+
+**SAST becomes much harder when data moves across function, module, and framework boundaries.**  
+Within one small function, tracing data is straightforward. In a real codebase, values get passed through helper functions, stored in objects, transformed by framework abstractions, and retrieved elsewhere. Following that movement across calls is interprocedural analysis, and it is expensive. Tools therefore make tradeoffs: how deep to follow, what framework behaviors to model, what sanitizers to recognize. That is why SAST is so language- and framework-specific. If the tool does not understand your stack’s conventions, it cannot correctly follow the flow. That limitation pushes us toward the contrasting approach used by DAST.
+
+**Because DAST cannot see code, it tests behavior by probing the running application like an attacker would.**  
+DAST starts from the outside. It discovers reachable inputs by crawling pages, forms, APIs, headers, and parameters. Then it sends crafted payloads and looks for signs that the application behaved unsafely. This is a completely different detection mechanism from SAST. DAST is not proving that tainted data could reach a sink. It is trying to provoke a real observable effect in the live system. That difference explains both its realism and its constraints.
+
+**DAST depends on reachability: if it cannot get to a part of the system, it cannot test it.**  
+This is the core mechanical limitation of DAST. It only knows what it can crawl, authenticate into, or otherwise trigger. If an endpoint is behind a multi-step workflow, hidden behind SPA routing the scanner cannot execute, or available only to admins when the scanner has user credentials, that code path is invisible. This is not a minor configuration issue; it is built into how DAST works. Since it observes from outside, no reach means no visibility. That naturally leads to a broader point: each technique has structural blind spots.
+
+**The blind spots are different because the tools observe different layers of the system.**  
+SAST can inspect code paths that are hard to reach in practice, but it cannot see deployment-time configuration, load balancer behavior, missing security headers, or misconfigured CORS unless those things are encoded in the code it analyzes. DAST can detect those live-system issues immediately, because they show up in the real HTTP responses and environment behavior. But DAST cannot see dormant code paths, second-order issues that do not show immediate effects, or the exact source line responsible for what it found. The blindness is not accidental; it follows directly from the representation each tool sees.
+
+**IAST exists because engineers want runtime realism plus internal visibility.**  
+If SAST gives internal structure without runtime truth, and DAST gives runtime truth without internal structure, the obvious idea is to combine them. IAST does this by instrumenting the running application. As requests execute, the agent watches real data flow through real code paths and can often tell you both “this is exploitable” and “here is the code path involved.” That sounds ideal, but the mechanism creates its own constraints: runtime overhead, language-specific agent support, and dependence on test coverage. It only sees what actually executes.
+
+**In practice, tool value is limited less by theory than by operational failure modes.**  
+A SAST tool can be technically capable and still fail because developers see too many false positives and stop trusting it. That happens because conservative analysis often flags paths that look dangerous unless the tool can prove otherwise, and tools often cannot fully model custom sanitizers or internal frameworks. DAST can likewise be technically sound and still fail because the scan covered only a small, easy-to-reach slice of the app. In both cases, the output can create false confidence: “we have scanning” replaces “we are learning something useful from scanning.”
+
+**So the real decision is not which tool is better, but which blindness you can afford and what operational effort you will sustain.**  
+Once you understand the mechanics, the conclusion is not “always use both” in a shallow checklist sense. It is: these tools answer different questions, cover different failure modes, and require tuning, triage, and workflow integration to produce value. Running both badly gives you dashboards. Running one well, with clear ownership and good integration, may reduce more real risk than deploying both as compliance artifacts.
+
+---
+
+## Handles and Anchors
+
+**1. SAST is looking at the building plans; DAST is walking through the building.**  
+From the plans, you can see every hallway that exists, even ones no one uses. But you cannot tell whether the front door lock was installed correctly. Walking through the building tells you whether doors are actually unlocked, windows are broken, or alarms are disabled. But you only see the rooms you enter.
+
+**2. The core question is: “What representation of the system does this tool actually see?”**  
+If it sees code, ask what flows and patterns it can model. If it sees HTTP behavior, ask what routes, states, and permissions it can reach. This one question often cuts through vendor language and tells you what kinds of findings are even possible.
+
+**3. A useful one-line summary: SAST reasons about what could happen; DAST observes what does happen.**  
+That is the central tension. “Could happen” gives broad path coverage but more abstraction and more false positives. “Does happen” gives realism but only where you can drive the system.
+
+---
+
+## What This Changes When You Build
+
+**An engineer who understands this will evaluate scanner coverage in terms of visibility, not in terms of pipeline stage, because “early” and “late” do not tell you what the tool can actually observe.**  
+The unaware engineer says, “We scan in CI and in staging, so we are covered.” The aware engineer asks, “Does the code scanner understand our framework? Does the dynamic scanner reach authenticated SPA routes? What percentage of meaningful attack surface is actually being exercised?” That shift prevents false confidence.
+
+**An engineer who understands this will treat SAST onboarding as a tuning project, not a switch to flip, because untuned taint analysis often produces enough false positives to destroy trust.**  
+The unaware engineer enables default rules across the whole monorepo and sends all findings to developers. Very quickly, the findings are ignored. The aware engineer expects an initial triage phase, rule suppression, custom sanitizer modeling, and framework-specific tuning before making the tool blocking or broadly visible.
+
+**An engineer who understands this will configure DAST around application reachability, because scanner quality is capped by what the tool can discover and authenticate into.**  
+The unaware engineer points DAST at a staging URL and accepts the report. The aware engineer provides credentials, session setup, API specs, test data, and navigation support for multi-step workflows or JavaScript-heavy apps. They know a clean scan of a barely reached app is not evidence of security; it is evidence of limited access.
+
+**An engineer who understands this will route findings differently because SAST and DAST produce different kinds of remediation work.**  
+A SAST finding often points closer to code ownership and can usually be assigned to the team responsible for that module. A DAST finding often starts with exploitability at an endpoint and requires tracing backward through logs, routes, middleware, and service calls to find the fix location. The unaware engineer treats them as identical ticket types; the aware engineer builds different triage paths for each.
+
+**An engineer who understands this will choose tools based on current blind spots in the system, because the right investment depends on what kind of unknowns are most dangerous.**  
+If the main risk is unsafe code patterns across a large internal codebase, stronger SAST may pay off first. If the main risk is deployment misconfiguration, exposed headers, auth issues, or complex runtime behavior across integrated services, DAST or IAST may produce more immediate value. The unaware engineer buys according to checkbox requirements; the aware engineer buys to reduce a specific kind of blindness.

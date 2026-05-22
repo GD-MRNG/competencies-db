@@ -151,4 +151,116 @@ This creates real costs — you lose cross-service joins, you lose distributed A
 
 - Data ownership boundaries erode through incremental shortcuts; maintaining them is a governance discipline, not a one-time architectural decision.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+A lot of teams adopt microservices to get one specific benefit: the ability for one team to change and deploy its service without waiting on other teams. That promise breaks the moment multiple services depend on the same database schema. Now a column rename, a type change, or even a subtle shift in what a field means can break another service without either team noticing until runtime. What looked like “independent services” at the repo and container level is still one tightly coupled system at the data level.
+
+When engineers don’t have a concrete model of this, they make decisions that feel harmless in the moment: “we only need one read query,” “it’s the same table anyway,” “we’ll coordinate this migration later.” The failure mode is not abstract architectural impurity. It is blocked deployments, fragile migrations, hidden inter-team dependencies, and production bugs caused by one service changing data another service quietly relied on.
+
+The deeper reason this matters is that data boundaries are where service boundaries become real or fake. If you misunderstand that, you can end up with the worst combination available: distributed-system complexity on the outside, monolith-level coupling underneath.
+
+---
+
+## What You Need To Know First
+
+### 1. What a service boundary is
+A service boundary is the line around what one service owns and is responsible for. Inside that boundary, the service can organize code and data however it wants. Outside that boundary, other services should interact only through explicit interfaces, like APIs or events. If other services can reach inside and depend on internal tables directly, the boundary is mostly pretend.
+
+### 2. What a schema is
+A database schema is the structure of stored data: tables, columns, types, constraints, indexes, and relationships. It is not just storage layout. Any code that queries the database depends on that structure being what it expects. If the structure changes, that code may fail or behave differently.
+
+### 3. The difference between strong consistency and eventual consistency
+Strong consistency means when you read data, you expect to see the latest committed value immediately. Eventual consistency means copies can lag; for some period of time, different parts of the system may see different versions of reality. Shared-database access often gives you strong consistency by default. Many decoupled-service patterns do not.
+
+### 4. What “ownership of data” means
+Owning data means one service is the authority for that data: it decides how it is stored, who can change it, and what rules must always be true. If multiple services write the same records directly, ownership is blurred. Once ownership is blurred, invariants usually stop having one reliable enforcement point.
+
+---
+
+## The Key Ideas, Connected
+
+### 1. A shared database schema acts like an API contract whether you acknowledge it or not.
+If two services both use the same table, they both depend on that table’s shape and meaning. That is functionally an interface between them. The important part is that the dependency exists even if nobody wrote an API spec or drew a boundary on a diagram.
+
+This matters because service independence depends on being able to change internals without breaking consumers. But if another service is querying your tables directly, your schema is no longer internal. It has become part of what they consume. That leads directly to the next idea: if the schema is an interface, then schema changes behave like interface changes.
+
+### 2. Shared schemas are usually unversioned interfaces, so changes become breaking changes by surprise.
+With a normal API, teams usually expect versioning, compatibility rules, and tests that tell them when they broke a consumer. Shared database access often skips all of that. A team changes a column name or data type because it looks like an internal refactor, but another service was depending on it.
+
+The mechanism here is simple: the consuming service has SQL queries, ORM mappings, assumptions about nullability, and business logic tied to the old structure. Since the dependency lives in the database rather than an explicit service contract, the producer often cannot even see who they are about to break. Once this is true, deployment independence starts to disappear, because any schema change now requires coordination.
+
+### 3. Once schema changes can break other services, deployments stop being truly independent.
+Suppose one team needs to split `total_amount` into `amount` plus `currency`. If another service reads `total_amount`, the first team cannot safely deploy alone. They have to coordinate rollout order, compatibility windows, migration sequencing, and testing across teams.
+
+That is the mechanical reason a shared database defeats microservice independence. It is not that “shared databases are bad” in the abstract. It is that internal changes are no longer internal. Every change to shared data structures becomes a cross-team event. Repeated enough times, this teaches teams to either move slowly or take risky shortcuts. That opens the next issue: even “read-only” consumers cause this problem.
+
+### 4. Read-only access still creates real coupling, both structural and semantic.
+Teams often think writes are dangerous but reads are harmless. Structurally, that is false because read queries still depend on tables and columns existing in a certain shape. If the producer normalizes a table, renames fields, or changes a type, readers break too.
+
+More subtly, readers depend on what the data means, not just how it is shaped. A billing service that reads `status = 'completed'` is making a business interpretation, not just a technical one. If the order domain later distinguishes `completed`, `fulfilled`, and `partially_fulfilled`, the old reader may still run successfully while doing the wrong thing. This is more dangerous because structural mismatches often fail loudly; semantic mismatches often fail quietly. That brings us to the even worse case: shared writes.
+
+### 5. When multiple services write the same data, ownership becomes ambiguous and invariants scatter.
+If several services can update the same table or column, who is responsible for ensuring the data remains valid? In a single owned model, one place enforces rules like allowed state transitions. With multiple writers, each service either reimplements those rules, partially implements them, or assumes others will behave correctly.
+
+The mechanism of failure is scattered authority. One service sets status to `pending`, another to `paid`, another to `shipped`. If no single owner controls the state machine, invalid transitions become possible. Not because any one service is obviously broken, but because the business rule is no longer enforced atomically in one place. Once you see that, the design requirement becomes clearer: a service boundary must include data ownership, not just code ownership.
+
+### 6. Real service boundaries require each service to own its data and expose explicit interfaces instead of table access.
+If a service owns its data, other services do not query its tables directly. They get what they need through something explicit: an API, events, or a replicated view. That makes the contract visible. Now the producer can decide what is public, how long compatibility is preserved, and how consumers should migrate.
+
+This changes the type of coupling rather than removing coupling entirely. You cannot eliminate dependency between collaborating services; you can only choose a dependency shape that is visible and governable. That leads naturally to the next idea: the alternatives each trade one kind of coupling for another.
+
+### 7. API calls trade hidden schema coupling for visible runtime coupling.
+If Service B asks Service A for data through an API, Service B no longer depends on A’s internal tables. A can restructure its database freely as long as the API contract remains stable. That is a major improvement in encapsulation.
+
+But now Service B depends on Service A being reachable and responsive at request time. The coupling has moved from build/deploy time to runtime. That is often a better trade because latency, timeouts, retries, and outages can be measured and mitigated directly. You can see them in dashboards. Hidden schema coupling usually shows up later, during a migration or incident. Still, for high-volume reads or join-heavy workflows, synchronous calls may be too expensive, which is why another pattern exists.
+
+### 8. Event-based replication trades runtime dependency for eventual consistency.
+Instead of calling the owning service every time, a consumer can receive events and keep a local copy of the data it needs. Now it reads from its own database and can shape that data for its own needs. This restores local query performance and removes the need for the producer to be up during each read.
+
+The cost is lag. The local copy may be stale. That means some behaviors that were previously correct under shared strong consistency may now require redesign. The key mechanism is time: state changes propagate asynchronously, so two services can momentarily disagree. This is not a side issue; it directly changes what workflows are safe. If stale data can trigger harmful actions, those actions need guards, compensation, or redesigned sequencing.
+
+### 9. Change data capture helps with migration, but it can leak the old coupling model back in.
+CDC tools publish database changes by reading the database log, which is useful when you cannot easily change an existing service to emit proper domain events. That makes it a practical migration bridge away from a shared database.
+
+But CDC events are often shaped like row mutations, not business facts. Consumers end up depending on table structure and low-level field changes, which partly recreates the original problem. The producer’s schema is still leaking outward, only now through an event stream instead of direct SQL. So CDC is often useful tactically, but less clean strategically unless carefully wrapped in a more stable domain contract.
+
+### 10. The hard part is not only technical separation, but choosing the right boundary and paying the consistency costs consciously.
+If you split data stores along the wrong lines, you create expensive cross-service joins and distributed workflows for things that should have stayed local. If you split along the right lines but ignore eventual consistency, you create correctness bugs in places that used to rely on immediate shared state.
+
+That is why “every service gets its own database” is not a magic rule by itself. The deeper rule is: service boundaries must align with ownership and transactional reality. Data that changes together, is validated together, and is usually queried together often belongs in the same service. Once you split, you are choosing explicit contracts and weaker consistency in exchange for autonomy. That trade only makes sense if the boundary is real.
+
+---
+
+## Handles and Anchors
+
+### 1. The database is not just storage; it is a contract surface.
+If another service can see your tables, your schema is no longer an internal detail. That single sentence helps explain why “shared DB” is an integration decision, not a storage decision.
+
+### 2. Shared database coupling is like letting other teams import your private classes directly.
+It feels fast because they can reach exactly what they want. But now you cannot refactor internals safely, because your internals have become someone else’s dependency. A proper API is like a public interface; direct table access is like exposing private implementation details.
+
+### 3. Ask this question: “If I rename this column tomorrow, who must coordinate?”
+If the answer includes other services or teams, then that data is already a shared contract. This is a practical test for whether your architecture really has independent service boundaries.
+
+---
+
+## What This Changes When You Build
+
+### 1. An engineer who understands this will treat cross-service table access as interface design, not convenience.
+Instead of saying “we only need one query,” they will ask what contract is being created and who will own it over time. The unaware engineer inherits a direct SQL dependency because it is cheap today, then pays for it later in blocked schema changes and hidden consumers.
+
+### 2. An engineer who understands this will separate “service boundary” from “deployment unit” and verify data ownership explicitly.
+They will not assume separate repos and containers mean services are independent. They will ask: who owns writes, who enforces invariants, and can one team change internal representation without coordinating? The unaware engineer mistakes topology for autonomy and discovers the coupling only during migrations.
+
+### 3. An engineer who understands this will design migrations as compatibility problems whenever a schema is shared, and will prefer to eliminate the sharing instead of normalizing the pain.
+If they are stuck with a shared schema temporarily, they will use additive changes, backfills, dual reads/writes, and staged rollouts because they know direct changes are breaking changes. The unaware engineer treats schema changes as local refactors and creates production failures when downstream queries or assumptions break.
+
+### 4. An engineer who understands this will choose between API access and event replication based on the failure they are willing to own.
+If they need fresh authoritative data at request time, they may choose an API and accept runtime dependency. If they need local reads and independence, they may choose events and accept staleness. The unaware engineer often chooses ad hoc per-call shortcuts and ends up with both forms of pain: hidden schema coupling plus runtime fragility.
+
+### 5. An engineer who understands this will place service boundaries around cohesive transactional domains, not around table names or org charts.
+They will keep data together when it is validated together, changed together, and queried together. The unaware engineer may split too early or along the wrong line, forcing distributed joins, awkward sagas, and consistency bugs where a local transaction would have been enough.
+
+---

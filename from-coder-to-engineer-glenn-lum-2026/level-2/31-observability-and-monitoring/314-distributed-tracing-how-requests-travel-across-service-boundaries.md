@@ -99,4 +99,90 @@ The fragility of this system lives in one place: context propagation. Every serv
 
 - High-cardinality span attributes (user IDs, request IDs, session tokens) are valuable for debugging but create real storage and indexing costs — add them deliberately, not by default.
 
-[← Back to Home]({{ "/" | relative_url }})
+# Discussion
+
+## Why This Conversation Is Happening
+
+In a distributed system, the hard debugging questions are rarely “did service X have elevated latency in general?” They are “why was *this* user request slow?” and “where did *this* failure actually begin?” Logs with a shared request ID help you gather related records, but they do not tell you which operation caused which other operation, which calls were parallel versus sequential, or which span was actually on the critical path. Without that structure, engineers misdiagnose bottlenecks, blame the wrong service, and spend incident time reading piles of logs trying to reconstruct causality by hand.
+
+What breaks in practice is not just visibility, but decision quality. A service may appear slow when the real delay is in an untraced downstream dependency. A request may “disappear” after one hop because a proxy dropped propagation headers. A system may look healthy in aggregate metrics while individual requests still fail in strange ways across service boundaries. Distributed tracing exists because once work is split across independently running services, no single process can see the full request path unless the system deliberately carries that context across every hop.
+
+## What You Need To Know First
+
+**1. Request/response boundaries**  
+When one service calls another, that call crosses a process boundary and usually a network boundary too. The caller and callee do not share memory, local variables, or call stacks. That is why a distributed system cannot infer parent-child relationships automatically the way a single-process program can; the relationship has to be carried explicitly in the request.
+
+**2. Logs vs metrics vs traces**  
+Logs are discrete records of events or messages. Metrics are numeric aggregates like request count, error rate, or p99 latency. Traces are per-request execution records that show how one request moved through multiple components. If you keep these separate in your head, it becomes easier to see why a request ID in logs is helpful but still not the same thing as a trace.
+
+**3. Headers or metadata on network calls**  
+Protocols like HTTP and gRPC let you attach extra metadata to a request. For HTTP, these are headers; for gRPC, metadata fields; for queues, message attributes. Tracing relies on this mechanism because the trace context has to travel along with the request that caused downstream work.
+
+**4. Parent-child relationships in execution**  
+If operation A causes operation B to happen, B can be modeled as a child of A. That sounds simple, but it is the core of tracing: the system is recording causality, not just timing. Once you understand that a trace is built from these parent-child links, the rest of the mechanics make more sense.
+
+## The Key Ideas, Connected
+
+**A distributed trace is a causal tree, not just a shared label.**  
+A request ID tells you “these records belong to the same overall request.” A trace tells you more: “this operation caused that one, these two happened in parallel, and this branch consumed most of the time.” That structure matters because performance and failure analysis depend on causality. If you only know events are related, you still have to guess the execution shape; if you know the tree, you can see it directly. Once tracing is about structure rather than correlation, you need a unit that can represent each piece of work.
+
+**That unit of work is the span.**  
+A span represents one operation: handling an inbound request, making an outbound HTTP call, executing a DB query, publishing a message. A full trace is the set of spans for one request, connected into a tree. Each span has its own span ID, shares the trace ID with the rest of the trace, and records a parent span ID to show what caused it. Those IDs are the minimum machinery needed to reconstruct the tree later. Once you accept that spans are emitted independently by different services, the next problem appears immediately: how does one service know which trace and parent it belongs to?
+
+**Services know their place in the trace only because context is propagated across boundaries.**  
+No service can discover the full trace locally. Service B only knows its work is part of Service A’s request if Service A sends trace context along with the call. That is why tracing context travels in-band with the request itself: HTTP headers, gRPC metadata, queue message attributes. The request is the causal link, so the tracing context has to ride on that same path. This leads directly to the core operational pattern every participating service must follow.
+
+**Every traced hop performs an extract-process-inject cycle.**  
+On inbound request: extract trace context. During local work: create spans using that context as parentage. On outbound request: inject updated context for downstream services. This is the real mechanism of distributed tracing. It is not “the backend figures it out”; the backend can only assemble what services correctly propagate. Once this cycle is in place, the trace can cross service boundaries. If it is missing at any hop, the tree breaks, which makes the next idea unavoidable.
+
+**A single broken hop severs the downstream trace, often silently.**  
+If one service fails to forward context, everything after it loses the causal chain. Downstream services may start a new trace as if the request began there, or they may emit spans that cannot be connected properly. The dangerous part is that this usually does not throw an obvious error. The system still serves traffic. The trace just develops gaps, and those gaps often look like local slowness in the parent span. That fragility exists because propagation is what carries the parent-child relationships across independent services. Once spans can be emitted correctly, they still need to get to a tracing system somewhere.
+
+**Span data is reported out-of-band so tracing does not slow the request path.**  
+A service does not usually block user requests waiting for a tracing backend to acknowledge every span. Instead, it buffers and exports spans asynchronously to a collector. This keeps tracing from adding large latency or failure risk to production traffic. But that design has a consequence: the trace is not built live inside the request path. It is reconstructed later from independently arriving span records. That leads to an important property of tracing backends.
+
+**Traces are assembled after the fact and are therefore eventually consistent.**  
+The backend receives spans from many services at different times, groups them by trace ID, and rebuilds the tree using parent span IDs. Because spans arrive asynchronously, the trace UI may be temporarily incomplete. If some spans never arrive because of drops or exporter failures, the trace may remain incomplete forever. The backend does not have magical knowledge of the “true” request; it only has the spans that were propagated, emitted, and delivered. Once you realize every request can produce many spans, you hit the next systems problem: cost.
+
+**You usually cannot afford to keep every trace in a high-throughput system.**  
+A request touching several services can generate many span records. At production scale, that becomes substantial network, storage, indexing, and query load. So tracing systems sample. This is not a convenience feature; it is often a capacity requirement. But sampling creates a tradeoff between cost and visibility, which produces two major approaches.
+
+**Head-based sampling is cheap because it decides early, but that early decision is blind.**  
+At the start of a trace, the root decides whether the trace is sampled, and that decision is propagated downstream. This keeps overhead low because unsampled traces can be dropped early. But it means the system decides before it knows whether the request will fail, timeout, or hit an unusual path. So the exact requests you most want during an incident are often the ones you did not keep. That weakness motivates the alternative.
+
+**Tail-based sampling is smarter because it decides after seeing the trace, but that makes the architecture heavier.**  
+If you wait until spans have arrived, you can keep all traces with errors, long latency, or interesting attributes while discarding boring successes. That is much better for debugging value per stored trace. But now some system has to ingest and buffer all candidate spans long enough to make that decision, which means you still pay the ingestion complexity and much of the data-path cost up front. So sampling is not just a config toggle; it changes the shape of your tracing pipeline. With that in place, the practical failure modes make more sense.
+
+**Most tracing problems are not conceptual failures; they are boundary failures.**  
+Broken header forwarding, missing instrumentation in one service, queue consumers that do not extract context, proxies that drop unknown headers, and high-cardinality attributes that explode storage costs—these all come from the mechanics above. Clock skew distorts timelines because timestamps come from different machines. Async boundaries create gaps because there is no automatic synchronous call chain carrying context unless you attach it yourself. These are not edge cases separate from tracing theory; they are direct consequences of how traces are built.
+
+**The durable mental model is: tracing works only if causality is carried forward hop by hop.**  
+A trace is a tree of spans. The tree exists because each service receives parent context, creates child work, and passes updated context onward. The backend only assembles the evidence later. So the first question in a real system is not “do we have a tracing vendor?” but “can our request context survive every boundary where causality crosses processes, protocols, and async systems?” If the answer is no, your traces will be partial regardless of tooling.
+
+## Handles and Anchors
+
+**1. Handle: “Request ID is a label; trace is a family tree.”**  
+A request ID says a group of records belong together. A trace says who begat whom. The family tree is what lets you answer causality questions, not just grouping questions.
+
+**2. Handle: “Tracing is call-stack reconstruction for systems that no longer share a stack.”**  
+Inside one process, a debugger can show function calls because the program has one stack. In distributed systems, there is no shared stack across services, so tracing rebuilds an equivalent structure using propagated context and span IDs.
+
+**3. Question to ask any system: “What carries causality across this boundary?”**  
+For an HTTP call, maybe headers. For a queue, maybe message attributes. For a cron-triggered job, maybe nothing unless you add it. This question quickly reveals where trace gaps will appear.
+
+## What This Changes When You Build
+
+**An engineer who understands this will treat propagation as part of the interface, not optional observability garnish, because downstream trace continuity depends on it.**  
+The unaware engineer adds tracing libraries to a few services and assumes traces will “mostly work.” The aware engineer checks every proxy, gateway, client library, and middleware layer for header forwarding and context injection/extraction, because one broken hop invalidates everything past it.
+
+**An engineer who understands this will instrument async boundaries explicitly because queues and background jobs do not preserve parent-child relationships by default.**  
+The unaware engineer instruments synchronous HTTP services and then wonders why traces stop at message publication. The aware engineer attaches trace context to messages, extracts it in consumers, and decides deliberately whether the consumer work is a child span, linked work, or a new root depending on semantics.
+
+**An engineer who understands this will read missing child spans as a possible observability failure, not immediate proof that the parent did all the work.**  
+The unaware engineer sees a 500ms span with no children and blames that service. The aware engineer asks whether a downstream call was uninstrumented, unsampled, or severed by propagation failure before concluding the latency was local.
+
+**An engineer who understands this will choose sampling strategy based on incident needs and architecture cost, because head and tail sampling fail in different ways.**  
+The unaware engineer accepts a low head-sampling rate and assumes tracing coverage exists. The aware engineer recognizes that low-rate head sampling systematically misses rare failures, so they add endpoint overrides, dynamic rate changes, or tail-based capture for error/latency cases where the extra pipeline complexity is justified.
+
+**An engineer who understands this will be selective about span attributes because useful debugging detail and backend cost are tightly coupled.**  
+The unaware engineer dumps user IDs, session tokens, and other high-cardinality fields everywhere, then gets expensive storage and slow queries. The aware engineer chooses attributes that support actual debugging and query patterns, and avoids making every span an indexing bomb.
