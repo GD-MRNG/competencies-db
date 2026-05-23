@@ -4,9 +4,21 @@
 
 This is personal knowledge infrastructure. The goal is not mastery of everything — it is a durable floor of understanding across the domains that matter, so that after any break, any shift, any disruption, you are never starting from zero. You always have structure to return to, entry points to re-engage from, and principles to reason with.
 
-The level of document you can honestly produce for a topic is a signal of where you actually stand. Nothing here is inflated. Documents connect to each other; connections become internalized; the value grows non-linearly over time.
-
 Return to this file when you come back to the system. The documents are the material. This is the reason they exist.
+
+## Why systematising compounds knowledge
+
+Structure does two things that raw notes cannot.
+
+**It forces honest encoding.** When you have to place something in a map — decide what group it belongs to, what depends on it, what it unlocks — you discover whether you actually understood it or just recognised it. Recognition feels like knowledge but evaporates under pressure. Placement requires understanding.
+
+**It creates re-entry points.** Knowledge decays with disuse, but not evenly. Detail fades first; structure fades last. If you documented the structure, you can reconstruct the detail from it far faster than learning from scratch. The map survives even when the specifics have gone quiet.
+
+The compounding is specifically about connections. An isolated fact has value proportional to itself. A fact connected to five others has value proportional to all five — because recalling it recalls the others, and any of the five can retrieve it. The more connections exist, the more the network self-reinforces. That is the non-linear growth.
+
+A useful analogy: a list of addresses has information; a city has infrastructure. You can navigate a city, find shortcuts, notice when something is missing. This system is infrastructure, not a list.
+
+**What the level system adds on top** is honest depth signalling. A Level 1 doc means you can describe it. A Level 3 doc means you have built with it. The system prevents conflating "filed it" with "know it" — which is where most knowledge management breaks down.
 
 ## The course pipeline, step by step
 

@@ -17,8 +17,9 @@ The system works for technical material (a DevOps course, a security certificati
 ## Principles
 
 - **Floor, not ceiling.** The goal is not mastery of everything. It is a solid surface to stand on in any territory that matters.
-- **Compounding over collecting.** Documents connect to each other. Connections become internalized. The value grows non-linearly over time.
-- **Honest depth.** The level of document you can produce for a topic is a signal of where you actually stand. Nothing is inflated.
+- **Compounding over collecting.** A fact connected to five others has value proportional to all five — recalling one recalls the others, and any of the five can retrieve it. Documents connect to each other; connections become internalized; the value grows non-linearly over time. This system is infrastructure, not a list of addresses.
+- **Honest depth.** The level of document you can produce for a topic is a signal of where you actually stand. Nothing is inflated. The level system prevents conflating "filed it" with "know it."
+- **Structure outlasts detail.** Knowledge decays unevenly — detail fades first, structure last. If the structure is documented, you can reconstruct detail far faster than starting from zero.
 - **Principles over tools.** Tools change. Mental models endure. The system captures the reasoning behind things, not just the things themselves.
 
 ## Outcomes

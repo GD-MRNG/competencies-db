@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-Personal knowledge infrastructure. The goal is a durable floor of understanding across domains that matter — not mastery of everything, but structure that survives breaks, shifts, and disruptions. The level of document that can honestly be written for a topic is a signal of where the author actually stands.
+Personal knowledge infrastructure. The goal is a durable floor of understanding across domains that matter — not mastery of everything, but structure that survives breaks, shifts, and disruptions. The level of document that can honestly be written for a topic is a signal of where the author actually stands. Structure outlasts detail: when specifics fade, the map remains and enables rapid reconstruction. The level system prevents conflating "filed it" with "know it."
 
 Each course or book lives in its own top-level folder. Prompts that generate documents live in `_prompts/`. There is no build system, no test suite, and no executable code — the "pipeline" is a human (or LLM) substituting `{placeholders}` in prompt files and saving the output as markdown.
 
