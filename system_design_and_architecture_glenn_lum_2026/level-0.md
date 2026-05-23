@@ -318,3 +318,13 @@ The dependency chain across groups is real but not rigid. **Group 1 (Architectur
 **Group 4 should not be started in isolation** — it is a synthesis layer and assumes the vocabulary of the first three groups. But individual Level 2 candidates in Group 4 can be visited earlier as reference points. **L1-17 (Failure Reasoning)** in particular is worth establishing early — having a failure reasoning framework changes how you read every pattern in Groups 2 and 3.
 
 For a practitioner with production experience, the highest-leverage entry is **L1-03 (Modularity and Coupling)** — it is the concept most often felt but least often formalised by engineers who have worked inside large systems, and making it explicit unlocks the architectural vocabulary to reason about everything else. The second highest-leverage entry is **L1-14 (Consistency and Consensus)** — it is the theoretical layer that makes the most production surprises retroactively obvious.
+
+---
+
+# Sources
+
+https://www.oreilly.com/library/view/fundamentals-of-software/9781492043447/
+
+https://www.oreilly.com/library/view/designing-distributed-systems/9781491983638/
+
+https://www.oreilly.com/library/view/designing-data-intensive-applications/9781491903063/
