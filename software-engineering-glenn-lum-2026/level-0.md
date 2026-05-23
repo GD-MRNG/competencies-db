@@ -1,4 +1,4 @@
-# From Coder to Engineer — Level 0: Course Map
+# Software Engineering (From Coder to Engineer) — Level 0: Course Map
 
 > **Intent:** To close the gap between writing code and engineering software. Software is not valuable when it is written — it is valuable when it is running. Everything between a developer typing a line of code and a user benefiting from it is the domain of operational engineering. This curriculum maps that domain in full.
 >
