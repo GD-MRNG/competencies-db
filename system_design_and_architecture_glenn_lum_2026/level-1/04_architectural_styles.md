@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 23-05-2026
+- **Source:** 04_architectural_styles.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-04 · Architecture Styles
+
+Most engineers who have worked inside a system for any length of time can tell you what it does, but struggle to tell you what it is. They can describe the services, the queues, the database, the deployment pipeline — but if you ask them what shape the system has, the answer comes out as a list of components rather than a structural claim. This is the gap that architecture styles fill. A style is not a label you apply after the fact; it is a structural commitment that determines what the system is good at, what it is bad at, and what kinds of changes it will resist.
+
+An architecture style is a named, reusable structural pattern with known characteristics, known tradeoffs, and a known domain of applicability. The three clauses each carry weight. Named, because shared vocabulary is what makes architectural conversations possible — when two engineers say "event-driven," they should be reaching for the same mental model. Known characteristics, because every style has a profile of what it is structurally good at: layered architectures are simple, microservices are deployable, space-based architectures are extreme-scale. Known tradeoffs, because every characteristic comes at a cost — layered architectures scale poorly, microservices are operationally complex, event-driven systems are hard to reason about. Known domain of applicability, because no style is universally correct; each fits some problems and actively misfits others.
+
+The catalogue Richards & Ford build is not a menu. The mistake engineers make when they first encounter the styles — layered, pipeline, microkernel, service-based, event-driven, space-based, microservices, modular monolith — is to treat them as options to choose from at the start of a greenfield project. That framing misses the point. The catalogue is primarily a vocabulary for recognising what a system already is. Most of the systems you will work on were not designed; they accreted. They started as one style, drifted toward another, and now exhibit characteristics of both without the discipline of either. The first job of the catalogue is to let you name what you are looking at so you can reason about whether it is the right thing to be.
+
+The styles divide along two axes that are worth holding in your head. The first axis is monolithic versus distributed: does the system run as a single deployment unit, or as multiple units coordinating across a network? Layered, pipeline, microkernel, and modular monolith are monolithic. Service-based, event-driven, space-based, and microservices are distributed. The second axis is technically partitioned versus domain partitioned: are the boundaries inside the system drawn by technical role (presentation, business logic, persistence) or by business domain (orders, inventory, payments)? Layered architecture is the canonical technically partitioned style; microservices are the canonical domain partitioned one. These two axes will not tell you which style you have, but they will narrow the field quickly when you are reading an unfamiliar system.
+
+The reason this matters in practice is that structural problems are visible in the style long before they are visible in the code. If a team is complaining that every change requires touching three layers and coordinating two deployments, you do not need to read the code to know they are in a layered architecture being asked to do domain-partitioned work. If a team is complaining that they cannot trace a request through their system without piecing together logs from seven services, you do not need to read the code to know they are in an event-driven architecture without the observability investment that style demands. The style predicts the pain. Once you can read the style, you can predict the pain — and more importantly, you can tell whether the pain is essential to the style (and therefore the price of admission) or accidental (and therefore fixable without restructuring).
+
+The other reason styles matter is that they make the cost of change legible. Every style has a set of changes it absorbs cheaply and a set it resists violently. A modular monolith absorbs changes within a module cheaply and resists changes that cut across modules. Microservices absorb independent service changes cheaply and resist changes that require coordinated updates across services. Event-driven systems absorb new consumers cheaply and resist changes to event schemas. The style is, in effect, a prediction about which future changes will be easy and which will be expensive. Choosing a style is choosing which future you are betting on.
+
+The skill this topic builds is the ability to read a system structurally rather than componentially. Given an unfamiliar codebase, deployment topology, and team structure, you should be able to name the dominant style within an hour, identify where the system has drifted from it, and predict the three or four classes of change that will be most painful. That diagnostic capability is the foundation for everything else: it is what lets you ask whether the style fits the characteristics the system actually needs, whether the operational complexity is justified, whether the team is fighting the architecture or working with it. Without it, every architectural conversation is about components. With it, the conversation is about structure — which is where the leverage actually lives.
+
+## Level 2 candidates
+
+**Styles vs. patterns** — The distinction between an architecture style (a system-level structural choice) and a design pattern (a local solution to a recurring problem). Worth a deep dive because conflating the two is one of the most common sources of confused architectural conversations, and untangling it sharpens the rest of the vocabulary.
+
+**Layered architecture** — The default style most systems start in: simple, technically partitioned, and quietly limiting. Worth deeper treatment because understanding precisely why it scales poorly and deploys awkwardly is what explains the migration pressure that pushes teams toward other styles, often before they need to go.
+
+**Event-driven architecture** — Asynchronous, decoupled, high-scalability, and the hardest style to reason about. Worth a Level 2 because its failure modes — eventual consistency, lost events, ordering problems, debugging opacity — are the prerequisite knowledge for using it without quietly building a system nobody can operate.
+
+**Microservices architecture** — The style most often adopted without understanding what it actually costs. Worth a deep dive because the gap between the marketing characteristics (deployability, scalability, team autonomy) and the operational reality (network complexity, distributed data, observability burden) is where most failed microservices migrations live.
+
+**Modular monolith** — The style that combines the deployment simplicity of a monolith with the modularity discipline of microservices. Worth deeper treatment because it reframes the microservices decision: the question stops being "monolith or microservices" and becomes "is the operational complexity of distribution justified by what modularity alone cannot give you."
+
+**Choosing the right style** — The framework for mapping characteristic requirements to style candidates. Worth a Level 2 because the actual practice — surfacing the non-negotiable characteristics, eliminating styles that cannot deliver them, and choosing among what remains — is a repeatable discipline rather than the intuitive judgment most engineers treat it as.
+
+---

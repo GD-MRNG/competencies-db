@@ -1,0 +1,35 @@
+## Metadata
+- **Date:** 23-05-2026
+- **Source:** 05_architectural_decision_making.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-05 · Architectural Decision-Making
+
+The architectural debt in most systems is not bad code. It is decisions nobody can explain. Somewhere in the system's history, someone chose a message broker, a service boundary, a database, an authentication model — and then left. The decision remains, but the reasoning is gone. The next engineer to look at it cannot tell whether the choice was deliberate, accidental, or forced by a constraint that no longer exists. So they leave it alone. Then the engineer after them leaves it alone. And the system slowly calcifies around decisions that nobody understands and nobody dares to touch.
+
+This is the problem architectural decision-making is built to solve, and it starts with a shift in how you think about decisions themselves. Most engineering decisions are reversible — you can refactor the function, rename the variable, swap the library. Architectural decisions are the ones where reversal is expensive: changing a service boundary, switching a storage engine, moving from synchronous to asynchronous communication. The cost of change is the defining property. And because the cost is high, the quality of the decision matters more, the documentation of the decision matters more, and the conditions under which you would revisit the decision matter more. Treating architectural decisions like ordinary decisions — made in a Slack thread, captured nowhere, justified by whoever was loudest in the meeting — is how you end up with the calcified system.
+
+The discipline Richards & Ford advocate for is straightforward but not easy: when you make an architectural decision, you write it down, and you write down enough that someone who joins the team in two years can reconstruct your reasoning without finding you. The instrument for this is the Architecture Decision Record, or ADR. An ADR captures four things — the context that forced the decision, the decision itself, the alternatives that were considered, and the consequences (good and bad) that the decision is expected to produce. The format is not the point. The discipline of separating context from decision from alternatives from consequences is the point, because it forces you to make explicit the things that decisions usually leave implicit.
+
+The piece that does the most work is the alternatives section. Most engineers, when documenting a decision, describe what they chose and why it is good. This is almost useless to a future reader, because the question they will be asking is not "is this choice good" but "is this choice still the best one given what we now know." That question can only be answered if you know what was rejected and why. An ADR that says "we chose Postgres because it fits our needs" tells the future reader nothing. An ADR that says "we considered Postgres, DynamoDB, and Cassandra; we rejected DynamoDB because we needed multi-table transactions, and we rejected Cassandra because our write volume did not justify the operational overhead, and we chose Postgres because the consistency model matched our domain" tells them everything. If write volume changes, or transaction needs change, the future reader knows immediately which decision is now suspect.
+
+The consequences section is the other piece that earns its place. Every architectural decision costs something — that is the first law of software architecture, and pretending otherwise is how you produce decisions that cannot be defended when the costs eventually surface. Recording the consequences explicitly, including the bad ones, is what protects future engineers from believing the decision was free. It also creates the conditions under which the decision can be revisited honestly: if the recorded cost has grown beyond what was originally accepted, that is the signal that the decision needs to be reopened, not patched around.
+
+The other instinct this discipline cultivates is knowing when to revisit a decision. Architectural decisions are not made once and locked forever — they are made under conditions, and when those conditions change, the decision should be reopened. Without ADRs, this never happens, because nobody remembers what conditions the decision was made under. With ADRs, the conditions are the first thing in the document. When you find yourself working around an old decision repeatedly, you go back to its ADR, check whether the original context still holds, and either reaffirm the decision (with a new ADR explaining why it still applies) or replace it (with an ADR explaining what changed). The system's architectural history becomes legible.
+
+The skill this topic builds is the discipline of treating architectural decisions as artifacts in their own right — things that exist, that are owned, that can be inspected, that can be challenged, and that can be replaced with reasoning rather than guesswork. Engineers who do this produce systems that remain reasonable to work in long after they themselves have moved on. Engineers who do not produce the systems everyone else inherits and resents. The difference is not how smart the decisions were. It is whether the decisions can still be explained.
+
+## Level 2 candidates
+
+**Architecture Decision Records (ADRs)** — The mechanics of writing ADRs well: what to include, what to leave out, where to store them, and how to keep them alive as the system evolves rather than letting them rot. Worth a deep dive because the format is simple but the practice of writing ADRs that future engineers actually use — rather than skim and ignore — has real craft to it.
+
+**Analyzing tradeoffs** — The framework for surfacing tradeoffs explicitly during the decision process: naming what is being gained, what is being given up, and under what conditions the tradeoff holds. Worth going deeper because most engineers can recognise tradeoffs in retrospect but struggle to make them explicit at decision time, which is when the analysis is actually useful.
+
+**Anti-patterns in architectural decisions** — The recurring failure modes of architectural decision-making — covering your assets, email-driven architecture, decision by committee, decision by avoidance — and the structural reasons each one produces the systems nobody understands. Worth a separate post because recognising the anti-pattern in your own organisation is often the prerequisite for adopting the discipline at all.
+
+**Fitness functions** — Automated checks that verify architectural characteristics are maintained as the system evolves, turning architectural intent into a continuous constraint rather than a decision documented once and forgotten. Worth deeper treatment because it is the bridge between decision-making (a one-time act) and architectural integrity (an ongoing property), and it changes how you think about what an ADR is actually for.
+
+---
