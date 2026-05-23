@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 23-05-2026
+- **Source:** 07_operating_systems.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# Operating Systems
+
+Most developers think of the operating system the way they think of plumbing: present, necessary, and someone else's problem. This is a mistake. Almost every performance cliff, reliability puzzle, and concurrency bug you will ever debug in application code is actually a question about the operating system underneath it. The reason your service stalls under load, the reason a file write didn't survive a power loss, the reason two threads corrupted shared state, the reason a fork of your process suddenly used twice the memory — these are not application problems. They are OS behaviours leaking through the abstraction. You cannot reason about them while treating the OS as opaque.
+
+The mental model worth holding is this: the OS exists because hardware is a single, shared, dangerous resource, and your program is one of many that wants to use it. There is one CPU (or a handful of cores), one block of physical memory, one disk, one network card. There are dozens or hundreds of processes that all believe they have exclusive access to all of it. The OS is the lie that makes this work. It multiplexes the CPU across processes so each one believes it is running continuously. It virtualises memory so each process believes it owns the whole address space. It mediates every interaction with hardware so that a misbehaving program cannot scribble over another's memory or monopolise the disk. Almost every interesting OS concept is, at root, a mechanism for maintaining one of these illusions safely and efficiently.
+
+From this premise, the structure of the OS falls out naturally. Because the CPU must be shared, you need a scheduler — something that decides which runnable process gets the CPU next, and for how long. Because memory must be shared and protected, you need a memory manager — something that maps the address space each process sees onto actual physical RAM, and onto disk when RAM runs out. Because hardware must not be touched directly by user code, you need a kernel — a privileged execution mode that owns the hardware, and a system call interface so user code can request hardware operations without performing them itself. Because programs need to coordinate and persist data, you need primitives for inter-process communication, concurrency, and a file system. Each of these is a response to a constraint imposed by the underlying hardware.
+
+The distinction between processes and threads is where most of the practical consequences of this model show up. A process is the OS's unit of isolation: its own virtual address space, its own file descriptors, its own view of the system. Two processes cannot accidentally read each other's memory, because the memory manager will not let them. A thread is the OS's unit of execution within a process: multiple threads inside one process share that address space and see the same memory. This is why threads are fast to create and communicate but treacherous to coordinate — every shared variable is a potential race condition. Most concurrency complexity in modern software is a consequence of this single design decision: shared memory is cheap, but correctness on top of it requires explicit synchronisation, and humans are bad at synchronisation.
+
+Scheduling and the cost of a context switch explain a great deal of what feels mysterious about latency. When the OS preempts your thread to run another one, it must save your CPU registers, load theirs, possibly switch address spaces, and almost certainly invalidate caches that were warm with your data. None of this is free. The reason a system can feel fast at light load and pathologically slow at heavy load is rarely that any single operation became slower; it is that the system is now spending a meaningful fraction of its time switching between things rather than doing them. The same logic explains why crossing the user-kernel boundary via a system call is expensive: it is a context switch into privileged mode, plus argument validation, plus often a switch back. A program that makes a million tiny reads will be dramatically slower than one that makes a thousand large ones, not because reading is slow, but because the boundary crossing is.
+
+Memory management is where the illusion gets most elaborate. Virtual memory means the addresses your program uses are not the addresses the hardware uses; the OS maintains a page table that translates between them, and the CPU has dedicated hardware (the MMU and TLB) to make this translation fast. This is what allows the OS to give every process the same starting address, to share read-only pages between processes, to swap inactive pages to disk, and to fault on access to pages that were never allocated. It is also why "out of memory" is rarely a simple condition, why fork can be cheap (copy-on-write pages), and why memory-mapped files behave the way they do. The whole edifice of modern application performance — caches, allocators, garbage collectors — sits on top of this mechanism and is shaped by it.
+
+The practical skill this topic builds is the ability to look at a confusing system behaviour and locate it in the right layer. When a service's tail latency spikes under load, you can ask whether it is the scheduler, the I/O subsystem, contention on a kernel lock, or page faults from memory pressure. When a deployment uses more memory than expected, you can distinguish resident set from virtual size and reason about what is actually pinned in RAM. When a concurrent program produces wrong results, you can think in terms of what the OS is allowed to do between any two instructions. None of this is exotic knowledge. It is the layer immediately beneath the one you work in every day, and learning to see it is the difference between debugging by hypothesis and debugging by guess.
+
+## Level 2 candidates
+
+**Processes and threads** — The unit of isolation versus the unit of execution, and what each implies about memory sharing, communication cost, and failure containment. Worth going deeper because nearly every modern concurrency model — async runtimes, actor systems, web workers — is a re-derivation of choices made at this level.
+
+**Scheduling** — How the OS decides what runs next, including preemption, time slices, priority, and the cost of context switches. Worth going deeper because tail latency and responsiveness under load are scheduler phenomena, and most "the system feels slow" investigations end here.
+
+**Memory management** — Virtual memory, paging, the TLB, and the mechanics of address translation. Worth going deeper because the page table is the substrate on which process isolation, fork, mmap, and the entire memory hierarchy are built — understanding it unlocks a large class of performance reasoning.
+
+**File systems** — How data is laid out on disk, how directories and inodes work, how journaling and write barriers provide durability guarantees. Worth going deeper because the gap between "I called write" and "the data is safe" is wider and stranger than most developers realise, and durability bugs live in that gap.
+
+**System calls** — The user-kernel boundary, why crossing it is expensive, and how high-performance systems minimise the number of crossings. Worth going deeper because batched I/O, io_uring, zero-copy techniques, and the design of network servers all derive from the cost model of this single operation.
+
+**Concurrency primitives** — Mutexes, semaphores, condition variables, and the memory-ordering guarantees the OS and CPU provide beneath them. Worth going deeper because correct concurrent code requires reasoning about what the hardware and OS are allowed to reorder, and the primitives are where that reasoning becomes concrete.
+
+---

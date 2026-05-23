@@ -1,0 +1,41 @@
+## Metadata
+- **Date:** 23-05-2026
+- **Source:** 09_databases.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-09 · Databases
+
+Almost every non-trivial program you have ever written was, underneath the features and the framing, a system for moving data into and out of a database. The UI is a view onto it. The API is a contract over it. The business logic is a set of rules about what is allowed to happen to it. And yet databases are the layer where practitioners most consistently operate by folklore — picking a tool because the team already uses it, writing queries that work in development and collapse in production, modelling data the way the ORM nudges them to and inheriting the consequences years later. The reason is almost always the same: the tool is being used without an understanding of the model underneath it.
+
+The model is older than most of the tools built on it. In 1970 Edgar Codd published a paper proposing that data should be organised as relations — sets of tuples obeying a schema — and that queries should be expressed declaratively, in terms of the logical properties of the result rather than the procedural steps to compute it. This was a radical claim at the time. Existing systems forced you to navigate data structurally: follow this pointer, traverse this hierarchy, read these records in this order. Codd's argument was that the navigation should be the database's problem, not yours. You describe what you want; the system figures out how to get it. This is the single most important idea in the field, and almost everything else — SQL, indexing, query planning, transactions — exists to make it work in practice.
+
+Once you internalise the relational model, a lot of database behaviour stops being mysterious. SQL is declarative because the model is declarative: a query is a statement about which rows satisfy which predicates, joined on which relationships. Schemas matter because the model assumes data conforms to a defined shape — and when it does not, the guarantees the database makes start to leak. Normalisation is not a stylistic preference; it is the discipline of structuring tables so that each fact lives in exactly one place, which is the only way to prevent a class of bugs where the same information becomes inconsistent across rows. Most "the database is slow" or "the data is corrupt" stories in real systems trace back to a schema that was modelled without understanding what the model was actually for.
+
+But declarative querying creates a new problem. If you only describe what you want, something has to decide how to get it — and that decision is enormously consequential. Reading a million rows and filtering them in memory and using an index to jump directly to the matching ones can differ by four orders of magnitude in latency. This is where indexing and the query planner come in. An index is a secondary data structure (almost always a B-tree) that lets the database find rows by some key without scanning the table. The planner is the component that, given a query, looks at the available indexes, the table statistics, and the estimated cost of different strategies, and picks one. When experienced engineers talk about "writing fast SQL," they usually mean writing SQL whose intent the planner can recognise and serve well. The skill is half about the query and half about understanding what the planner is going to do with it.
+
+The other half of why relational databases earned their dominance is what they guarantee when things go wrong. Real systems fail mid-operation. Power dies. Network connections drop. Two users update the same row at the same time. The transaction is the unit of work that either fully happens or fully does not — and the ACID properties (atomicity, consistency, isolation, durability) describe exactly what the database promises in each of these failure modes. These guarantees are not free; they cost performance and they constrain how the system can be distributed. But they are what allows you to reason about your application as if operations are clean and ordered, even when the underlying reality is messy. Most of the difficulty of distributed systems, later in this map, comes from the fact that you cannot get ACID guarantees cheaply once your data lives on more than one machine.
+
+Which is why the NoSQL movement exists. Once data is too large or too heavily accessed to fit on one machine, the relational model's guarantees start to cost more than they are worth for many workloads. Document stores, key-value stores, column stores, and graph databases each abandon some part of the relational contract in exchange for something else — horizontal scalability, schema flexibility, write throughput, or a model better suited to a specific data shape. These are not replacements for relational databases; they are different tradeoffs. The mistake practitioners make is treating "SQL vs NoSQL" as a generational choice rather than a tradeoff to evaluate per workload. A document store is excellent for data that is genuinely document-shaped and read together. It is a poor relational database. The skill is recognising which shape your data actually has.
+
+The throughline across all of this is that databases reward principled thinking and punish improvisation. The schema you design on day one constrains the queries you can write efficiently for the next five years. The transaction model you choose determines what failure modes your application has to handle in code. The index you forget to add is the latency spike that wakes someone up at three in the morning. None of these decisions are reversible cheaply. Understanding the model — what it guarantees, what it costs, and where it stops applying — is what separates engineers who use databases from engineers who design with them.
+
+## Level 2 candidates
+
+**The relational model** — Codd's 1970 formulation: data as relations, queries as predicates over them, and the mathematical grounding in set theory and predicate logic. Worth depth because it is the conceptual root of everything else in this topic, and because most schema-design mistakes come from not having internalised it.
+
+**SQL** — The declarative query language that operationalises the relational model: selection, projection, joins, aggregation, subqueries, and the composition rules that govern them. Worth depth because the gap between syntactic SQL and well-composed SQL is where most query performance and correctness problems live.
+
+**Normalisation** — The progression from 1NF through 3NF and beyond, and the specific update, insertion, and deletion anomalies each form is designed to prevent. Worth depth because the theory is what tells you when denormalisation is a deliberate tradeoff versus a mistake you will pay for later.
+
+**Indexing** — How B-trees enable sub-linear lookup, what composite indexes do, and why every index speeds reads at the cost of writes. Worth depth because the difference between a query that scans and a query that seeks is usually the difference between a system that scales and one that does not.
+
+**Transactions and ACID** — The four guarantees, the isolation levels that weaken them in exchange for concurrency, and the failure modes each level admits. Worth depth because isolation levels are where subtle, hard-to-reproduce bugs originate — and where most engineers stop reading the manual.
+
+**Query planning** — How the database translates a declarative query into an execution plan using statistics, cost models, and join strategies. Worth depth because reading an execution plan is the most direct path from "this query is slow" to understanding why.
+
+**NoSQL and alternatives** — Document, key-value, column, and graph stores as deliberate departures from the relational contract for specific workload shapes. Worth depth because choosing the right store is a design decision that compounds, and the choice is rarely made on principled grounds.
+
+---

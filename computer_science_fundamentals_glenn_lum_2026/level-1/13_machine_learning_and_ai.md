@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 23-05-2026
+- **Source:** 13_machine_learning_and_ai.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-13 · Machine Learning and AI
+
+For most of computing's history, machine learning was a specialisation — a field you opted into, alongside compilers or graphics, if the problem you cared about happened to be one of pattern recognition. That stopped being true sometime around 2012, and it has accelerated since. ML is no longer a niche; it is infrastructure. The practitioners who treat it as a black box they call into through an API are doing the same thing developers did with databases in the 1990s — using a tool whose internals shape every meaningful decision around it, and paying the price in debugging, cost, and correctness when those internals leak through.
+
+The mental model worth carrying is this: machine learning is applied statistics with a computational engine bolted on. You are not teaching a machine to think. You are fitting a function — often an enormous one, with billions of parameters — to a dataset, by adjusting those parameters to reduce the error between what the function predicts and what the data shows. Everything else is variation on that theme. The variations matter enormously, but the core is statistical curve-fitting, scaled to the point where the curves can capture structures we previously thought required intelligence.
+
+The deeper you go, the more you find that the apparent magic dissolves into mathematics you already half-know. Linear algebra provides the language: data lives in high-dimensional vector spaces, and transformations between those spaces are matrices. Statistics provides the discipline: every prediction is a probability distribution, every loss function is a measure of distance from truth, every confidence interval has meaning. Calculus provides the engine: you find the parameters that minimise error by following gradients downhill, one small step at a time. None of this is exotic. What is exotic is the scale at which it works — and the fact that, beyond a certain scale, qualitatively new behaviours emerge from quantitatively familiar mechanics.
+
+This is also a field with a history that the current moment tends to obscure. Neural networks are not new. The perceptron was demonstrated in 1958, and its limitations were sharply exposed by Minsky and Papert in 1969 — a critique that helped trigger the first AI winter. The 1980s saw a revival around backpropagation and connectionism, then another collapse when the methods failed to scale to interesting problems. The current era began around 2012, when a convolutional network called AlexNet won an image recognition competition by a margin so large it forced the field to take deep learning seriously. What changed was not the algorithms — backpropagation had existed for decades — but the convergence of three things: enough data (the internet), enough compute (GPUs), and enough refinement of training tricks to make very deep networks actually train. Knowing this arc matters because it tells you the current moment is neither unprecedented nor permanent. The field has been here before, and it has retreated before.
+
+The practical consequence of understanding the foundations is that you can reason about what a model is doing rather than ritualising your interactions with it. When training fails to converge, you know it is almost always either a learning rate problem, a data problem, or an architecture problem — and you know how to tell which. When a model performs well in training and poorly in production, you know the vocabulary for that gap (overfitting, distribution shift, data leakage) and the techniques that address each. When someone tells you their model is 95% accurate, you know to ask about the class balance before being impressed. The fundamentals are not just theoretical decoration; they are the difference between debugging a system and praying at it.
+
+The opinionated view: most of what makes ML hard in practice is not the math. The math, while non-trivial, is finite and well-documented. What makes ML hard is that it is the first programming paradigm where the behaviour of the system is determined more by the data than by the code. You do not write a function that classifies images; you write a function that learns to classify images, and then the data writes the actual classifier. This inverts most of what you know about debugging, testing, and reasoning about correctness. A neural network's behaviour cannot be read from its weights. It can only be probed empirically. This is why ML engineering looks more like science than software engineering — you form hypotheses, run experiments, and update beliefs based on metrics. If that feels uncomfortable, it should. It is a genuinely different discipline wearing software's clothing.
+
+The skill this topic builds is the ability to engage with ML systems without either mystifying them or dismissing them. You should leave understanding why a transformer is fundamentally a stack of matrix multiplications and attention operations, why training takes the time and money it does, why some problems yield to ML and others stubbornly refuse, and why the hype cycles of the past suggest the current one will neither continue forever nor collapse entirely. The goal is not to become an ML researcher. It is to be the kind of practitioner who can read a paper, evaluate a claim, and call a model from production code knowing roughly what is happening on the other side of the API.
+
+## Level 2 candidates
+
+**Linear algebra foundations** — Vectors, matrices, and the geometric interpretation of transformations in high-dimensional space. Worth depth because every ML mechanic — embeddings, attention, convolutions, gradients — is fundamentally a linear algebra operation, and intuitions about "what the math is doing geometrically" make the rest of the field legible rather than symbolic.
+
+**Statistics and probability** — Distributions, Bayes' theorem, expectation, variance, and the difference between frequentist and Bayesian framings. Worth depth because ML is applied statistics, and the gap between practitioners who understand this and those who do not shows up immediately in how they evaluate models, design experiments, and interpret results.
+
+**Gradient descent** — The optimisation algorithm at the core of training, including learning rates, momentum, and the variants (SGD, Adam) that dominate practice. Worth depth because almost every training pathology — slow convergence, instability, getting stuck — has its explanation here, and tuning by feel is a poor substitute for understanding the dynamics.
+
+**Neural network architecture** — Layers, weights, activation functions, forward and backward passes, and the families that define modern practice (CNNs, RNNs, transformers). Worth depth because architecture choices are where the inductive biases live — what a model can and cannot easily learn is decided more by structure than by training.
+
+**The historical arc** — Perceptrons, the AI winters, the post-2012 deep learning renaissance, and the conditions that triggered each transition. Worth depth because the field's history is the strongest defence against treating the current moment as either uniquely transformative or guaranteed to continue, and the patterns of past transitions inform what to watch for now.
+
+---

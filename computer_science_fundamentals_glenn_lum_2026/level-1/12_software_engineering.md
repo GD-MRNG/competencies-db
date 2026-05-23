@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 23-05-2026
+- **Source:** 12_software_engineering.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# Software Engineering
+
+Most of what makes software hard has nothing to do with computer science. A working program is the easy part. The hard part is that the program will be read more often than it is written, modified by people who were not in the room when it was designed, and asked to do things its original author never anticipated. Software engineering is the discipline that takes the second half of that sentence seriously. It is what separates someone who can solve a problem in code from someone who can leave behind a system that other people can keep solving problems in.
+
+The framing matters because the field's wisdom looks deceptively obvious in hindsight. Write tests. Don't repeat yourself. Keep functions small. Use version control. Decouple your modules. None of these sound like insights — they sound like advice you would give to a junior developer in passing. But every one of them was discovered the hard way, by an industry that spent decades shipping unmaintainable systems and watching them collapse under their own weight. The principles are not arbitrary preferences. They are scar tissue. Understanding them as scar tissue — knowing what specifically went wrong before each one was named — is the difference between following them ritualistically and applying them with judgment.
+
+The core tension software engineering exists to manage is the gap between writing code and maintaining a system. When you write code, you have full context. You know what you meant, why you made each decision, and what you were trying to avoid. Six months later, that context is gone — even if you are the one reading your own code. Multiply that across a team of ten, across three years, across two reorganisations, and you arrive at the actual operating environment of professional software. Every practice in this domain is, in some form, an attempt to externalise the context that lived in someone's head into something durable: a test that documents intent, a name that explains a choice, a pattern that signals what kind of solution this is.
+
+This is why design patterns matter, and also why they are routinely misunderstood. The point of the Gang of Four catalogue is not that you should sprinkle factories and observers through your code; it is that recurring problems have recurring shapes, and having shared names for those shapes lets a team communicate a design decision in two words instead of twenty minutes of whiteboarding. The same logic underlies the SOLID principles. Each one — single responsibility, open-closed, Liskov substitution, interface segregation, dependency inversion — exists because a specific category of mistake kept recurring across codebases at scale, and someone eventually noticed the pattern and named it. You do not need to memorise them as rules. You need to recognise them as compressed answers to questions like "why does this codebase resist change?"
+
+Version control is the most universally used and least universally understood tool in the discipline. Most developers learn Git as a series of incantations: pull, branch, commit, push, resolve conflict, pray. But Git is not a magic syncing tool. It is a content-addressable directed acyclic graph of commits, and once you see it that way, the commands stop feeling arbitrary. Branches are pointers. Merges are graph operations. History is data. The tool reveals an underlying model of how collaborative work on text actually composes — and that model, once internalised, changes how you think about reviewing changes, isolating work, and recovering from mistakes.
+
+Testing belongs in the same category — a practice whose surface form (write some assertions, run them) hides its actual value. Tests are not primarily about catching bugs. They are about making code that is testable, and code that is testable is code with explicit boundaries, clear inputs and outputs, and minimal hidden state. Test-driven development, taken seriously, is a design discipline disguised as a verification practice: it forces you to articulate what a piece of code is supposed to do before you write it, which forces you to design it in a way you can articulate. Coverage numbers are the least interesting part. The interesting part is what writing the test reveals about the code you were about to write.
+
+System design sits at the top of this stack. Once a system grows beyond a single service, the failure modes stop being about individual functions and start being about the interactions between components — what happens when one part is slow, or fails, or scales differently than its neighbours. This is where the tradeoffs become explicit and uncomfortable: latency versus throughput, consistency versus availability, simplicity versus flexibility. There are no right answers in system design, only defensible ones. The skill is reasoning clearly about which property you are choosing to prioritise and what you are giving up to get it — and being able to communicate that reasoning to people who will inherit the consequences.
+
+What unites all of this is a shift in what you are optimising for. Early in a career, you optimise for getting the thing working. The transition to engineering is the point at which you start optimising for the system continuing to work, six months from now, when someone else needs to change it without breaking everything else. That shift is not technical. It is a stance toward your own code: a willingness to treat clarity, testability, and reversibility as first-class concerns rather than afterthoughts. The principles and patterns in this domain are tools for holding that stance under deadline pressure, when the temptation to ship something that merely works is strongest. The whole field exists because that temptation never goes away.
+
+## Level 2 candidates
+
+**Design patterns** — The Gang of Four catalogue and the broader vocabulary of recurring design solutions, from creational patterns through structural and behavioural ones. Worth going deeper because the value is not in memorising patterns but in developing the eye for when a problem has a pattern shape — and that eye only develops through working examples.
+
+**SOLID principles** — Single responsibility, open-closed, Liskov substitution, interface segregation, and dependency inversion, each grounded in the specific failure mode it was named to prevent. Worth a deep dive because each principle has subtle edges that get lost in the slogan version, and misapplying them produces codebases that are technically SOLID and practically unworkable.
+
+**Version control internals** — What Git actually is underneath the commands: a content-addressable store, a DAG of commits, and the mechanics of how branches, merges, and rebases manipulate that graph. Worth going deeper because most developers operate this tool daily on a layer of folklore, and the underlying model is genuinely simple once seen directly.
+
+**Testing theory** — The taxonomy of test types (unit, integration, end-to-end), what each one actually verifies, and the role of TDD as a design tool rather than a verification tool. Worth a deep dive because the practical questions — what to test, at what level, with what isolation — have non-obvious answers that determine whether a test suite accelerates or strangles a codebase.
+
+**System design** — The discipline of reasoning about large systems before building them: scalability, reliability, the explicit tradeoffs between consistency and availability, and the vocabulary for communicating architectural decisions. Worth going deeper because this is the layer where senior judgment is actually exercised, and the reasoning patterns transfer across every domain of distributed software.
+
+---

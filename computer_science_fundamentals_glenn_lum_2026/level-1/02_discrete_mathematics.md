@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 23-05-2026
+- **Source:** 02_discrete_mathematics.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# Discrete Mathematics
+
+Most working programmers carry a quiet suspicion that the mathematics they avoided in school is the mathematics that matters for their job. They are mostly wrong. The calculus, differential equations, and continuous analysis that dominate a standard mathematics education are tools for modelling the physical world — fluid flow, orbits, signal propagation. They are not the tools that describe what a program is doing. The mathematics that actually underlies your work is a different branch entirely, and most practitioners never encounter it as a coherent subject. They pick up fragments — a bit of boolean logic from writing if-statements, a vague sense of sets from SQL, some graph intuition from drawing architecture diagrams — without ever seeing that these fragments are pieces of one unified discipline.
+
+That discipline is discrete mathematics. The name is doing real work: discrete as opposed to continuous. Continuous mathematics deals with quantities that vary smoothly — the temperature in a room, the position of a planet, the voltage across a capacitor. Between any two values there are infinitely many intermediate values. Discrete mathematics deals with quantities that come in distinct, separable units — integers, symbols, nodes in a graph, elements of a set, true and false. There is no value between 3 and 4 in the integers. There is no state between true and false in boolean logic. This separateness is not a limitation; it is precisely what makes the objects of discrete math the right model for computation. A computer is a finite machine manipulating finite, distinguishable states. The mathematics that describes it has to be built from finite, distinguishable things.
+
+The mental shift is recognising that almost every formal structure you work with is a discrete-mathematical object, even when you do not name it that way. A program's control flow is a directed graph. A type is a set, and a function is a relation between sets. A database schema is a structure of relations in the formal sense — Codd's relational model is literally an application of set theory and predicate logic to data storage. A type checker is running a proof. A query optimiser is solving a search problem over a finite space. When you reason about your code at all, you are reasoning in discrete mathematics; you are simply doing it informally and without the vocabulary that would make the reasoning rigorous.
+
+The components of the field cluster into a small number of recurring areas. Logic and boolean algebra give you the rules for combining true-and-false propositions — the same rules that govern if-statements, the gates inside a CPU, and the steps of a formal proof. Set theory gives you the language of collections, membership, and the relationships between collections; this is the substrate of databases, type systems, and most of the precise definitions you will encounter in algorithm textbooks. Graph theory gives you nodes and edges, which turn out to model an astonishing range of real problems: networks, dependencies, scheduling, routing, social structures, version control history. Combinatorics gives you the techniques for counting possibilities, which is how you reason about how big a search space is or how unlikely a hash collision actually is. Proof techniques — induction, contradiction, direct proof — give you the means by which mathematical claims are established, which matters because every non-trivial algorithmic correctness argument is a proof, and every textbook treatment of an algorithm assumes you can read one.
+
+The connection between these areas is tighter than it first appears. Boolean logic and set theory are structurally the same — AND corresponds to intersection, OR to union, NOT to complement. Graphs are sets of nodes paired with sets of edges, which are themselves sets of node pairs. Combinatorics is largely the study of how big certain sets are. Once you see the unification, the field stops feeling like a collection of separate topics and starts feeling like one language with several dialects. This is the same unification that lets a single concept — say, a relation — do work in databases, type systems, and graph theory simultaneously, because it is the same mathematical object in all three contexts.
+
+There is a practical reason this matters beyond the obvious one of being able to read papers. Most of the time, when an explanation of an algorithm or a data structure feels mysterious, the mystery is not in the algorithm; it is in the mathematical vocabulary the explanation assumes. You read that a hash table has expected O(1) lookup time and the proof goes through some argument about uniform distributions and pigeonhole reasoning, and the argument feels like sleight of hand because you do not have a working grasp of combinatorics. You read that a type system is sound and the proof is by induction over the structure of expressions, and you skip it because you do not know how to read a proof by induction. You read about consistent hashing or Bloom filters or Merkle trees, and the underlying ideas are simple, but the explanations assume fluency in the mathematics of finite structures. Discrete math is the prerequisite that, once acquired, makes a great deal of CS literature suddenly readable.
+
+The investment is not enormous. You do not need to become a mathematician. You need enough fluency to recognise the structures when you encounter them, to follow the proofs in a textbook without skipping the boxed lemmas, and to express your own reasoning precisely when precision matters. The goal is to make the implicit mathematics of your work explicit — to stop treating the formal layer as someone else's concern and start treating it as the actual object you are manipulating.
+
+What you build, with this floor in place, is the ability to reason about programs the way the people who designed them reasoned about them. That is the difference between using the abstractions and understanding them.
+
+## Level 2 candidates
+
+**Logic and boolean algebra** — The formal system of propositions, connectives, and inference rules that underlies if-statements, circuit design, and proof. Worth a deep dive because the same algebra appears at three very different layers of the stack, and seeing the equivalence is the kind of insight that reorganises your understanding of what code, hardware, and proofs actually are.
+
+**Set theory** — The language of collections, membership, relations, and functions. Worth depth because once you see types as sets and functions as relations, a great deal of programming language theory and database theory becomes legible in a way it previously was not.
+
+**Graph theory** — Nodes, edges, paths, connectivity, and the structural properties that follow. Worth depth because graph problems recur constantly in applied work, and the ability to recognise that a problem is a graph problem — and which kind — is one of the highest-leverage analytical skills in the field.
+
+**Proof techniques** — Induction, contradiction, direct proof, and the structural patterns that algorithm correctness arguments follow. Worth depth because the goal is not to write proofs but to read them with confidence, which unlocks the more rigorous parts of the literature.
+
+**Combinatorics** — The mathematics of counting configurations and arrangements. Worth depth because complexity analysis, probability of collisions, cryptographic hardness, and the size of search spaces all reduce to combinatorial reasoning, and informal intuition about counting is unreliable in ways formal training fixes.
+
+---

@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 23-05-2026
+- **Source:** 15_distributed_systems.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-15 · Distributed Systems
+
+The mental shift that distributed systems demand is harder than it looks, because the assumptions you have built up over years of single-machine programming are not just wrong here — they are silently wrong. On a single machine, time moves forward, memory is consistent, function calls either return or throw, and a crash is a crash. None of that survives the jump to a system spread across machines connected by a network. Time becomes plural. Memory becomes a negotiation. A function call can succeed, fail, or hang forever in a state where you cannot tell which. And a "crash" might mean the other side is dead, or merely unreachable, or actually fine but slow — and you have no reliable way to distinguish.
+
+This matters because the default deployment environment is now distributed. Even an application that feels like a monolith almost certainly talks to a managed database on another host, a cache on another host, an object store in another region, and a handful of third-party APIs across the public internet. The moment more than one machine is involved in serving a request, you are in distributed territory, and the theoretical results that govern this territory apply whether or not you have read them. The whole field is best understood as the systematic study of what guarantees you can still make when the comforts of a single machine are gone.
+
+The first thing to internalise is that distributed systems are not unreliable because the engineering is sloppy. They are unreliable because the underlying medium — networks of independent machines — is fundamentally unreliable, and a great deal of the theory exists to characterise exactly which kinds of unreliability you cannot engineer away. Networks partition: the link between two healthy nodes can fail while both nodes continue running, leaving each convinced the other is dead. Messages can be lost, duplicated, reordered, or delayed arbitrarily. Nodes crash without warning, and worse, sometimes pause (a long garbage collection, a hypervisor stall) in ways indistinguishable from crashing. Building a reliable system from these components is the core engineering challenge, and it has hard limits.
+
+The most famous of those limits is the CAP theorem, which says that when a network partition occurs you must choose between consistency (every read sees the latest write) and availability (every request gets a response). You cannot have both during a partition. This is not a tradeoff you can engineer your way out of with a cleverer algorithm; it is a property of the problem. What CAP really does is force the design conversation to be explicit. A system that claims to be both highly consistent and highly available is either lying, or has not yet encountered a partition, or has quietly redefined one of the words. Most production systems pick a side per operation — strong consistency for payments, eventual consistency for the feed — and the discipline is in knowing which is which.
+
+Closely related is the problem of consensus: getting a group of nodes to agree on a single value despite some of them failing or being unreachable. This sounds modest until you try to do it correctly, at which point it becomes the central hard problem of the field. Algorithms like Paxos and Raft exist to solve it, and once you understand them you start to see consensus everywhere — leader election, distributed locks, replicated state machines, and most distributed databases are consensus problems wearing different clothes. The reason these algorithms are intricate is not academic flourish; it is that the obvious approaches all have subtle failure cases that a careful adversary (or just bad luck) will eventually find.
+
+When strong consistency is too expensive, systems weaken it deliberately. Eventual consistency is the model where replicas are allowed to disagree temporarily, with the guarantee that they will converge if writes stop. This is what makes globally distributed databases viable — you cannot synchronously coordinate every write across continents and still call your system fast — but it changes the contract with the application. Reads can return stale data. Writes can appear to vanish and reappear. Two updates to the same record can conflict, and somebody has to decide how to merge them. Most surprises in distributed databases trace back to a developer assuming relational-style consistency from a system that explicitly does not provide it.
+
+Underneath all of this is a more disorienting fact: there is no global clock. Two events on two machines cannot be reliably ordered by wall-clock timestamps, because the clocks drift, and even synchronised clocks are only accurate to within some window that is larger than the time it takes to do many operations. The field's response is to abandon physical time as the ordering mechanism and use logical time instead — Lamport clocks and vector clocks establish causal ordering ("this event could have influenced that one") without requiring the clocks to agree. Once you accept that "what happened first" is genuinely ambiguous across machines, a lot of confusing distributed behaviour stops being confusing.
+
+The skill this topic builds is a particular kind of paranoid imagination. You learn to look at a piece of system architecture and ask what happens when the network between these two boxes goes away for thirty seconds, or when this node pauses for a minute and comes back, or when this message gets delivered twice. You learn to be suspicious of any guarantee that has not been explicitly named and bounded. And you learn that the goal is not to build a system where nothing fails — that system does not exist — but to build one whose failure modes you have chosen, rather than ones that have chosen you.
+
+## Level 2 candidates
+
+**The CAP theorem** — Covers the formal statement that under network partition you must choose between consistency and availability, and what that choice looks like in real systems. Worth deeper treatment because the popular version of CAP is a caricature; the precise version (and its successor, PACELC) is what actually guides design decisions.
+
+**Consensus algorithms** — Covers how Paxos and Raft enable a group of nodes to agree on a value despite failures, including leader election, log replication, and quorum reasoning. Worth going deeper because consensus is the hidden engine inside most distributed infrastructure, and understanding even one algorithm end-to-end changes how you read the rest of the field.
+
+**Eventual consistency** — Covers the weaker consistency models (eventual, causal, read-your-writes) and the conflict resolution mechanisms (last-write-wins, CRDTs, vector clocks) that make them workable. Worth depth because the gap between what eventual consistency promises and what developers assume it promises is where most data-correctness bugs in distributed systems actually live.
+
+**Clock synchronisation and logical time** — Covers why physical clocks are insufficient for ordering events across machines, and how Lamport and vector clocks establish causal order instead. Worth depth because logical time is the conceptual key that unlocks most of the rest of distributed systems theory, and it is genuinely counterintuitive on first contact.
+
+**Failure modes and fault tolerance** — Covers the taxonomy of distributed failures (crash-stop, crash-recovery, omission, Byzantine) and the techniques used to tolerate each. Worth depth because the assumptions a system makes about how its components can fail determine which algorithms are even applicable, and most production incidents are failures the designer did not model.
+
+---

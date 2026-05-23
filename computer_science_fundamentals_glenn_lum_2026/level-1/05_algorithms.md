@@ -1,0 +1,43 @@
+## Metadata
+- **Date:** 23-05-2026
+- **Source:** 05_algorithms.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-05 · Algorithms
+
+Most working programmers have a functioning relationship with algorithms that is mostly social. You know the names — quicksort, Dijkstra, dynamic programming — and you know roughly when someone is supposed to use them. You can recognise an O(n²) loop when it embarrasses you in production. But if you are honest, the relationship is closer to recognition than fluency. You reach for the standard library, and the standard library reaches for the right algorithm, and the gap between "the code runs" and "I understand why this is the right approach" stays politely unaddressed.
+
+Algorithms, properly understood, are the layer where you stop reasoning about your specific code and start reasoning about the shape of the problem itself. A sort is a sort whether it is written in Python or Rust, whether it runs on a laptop or a cluster. Once you can see past the implementation to the underlying procedure, you gain something that no amount of language fluency gives you: a way to predict how a solution will behave before you run it, and a way to explain why one approach beats another without resorting to "I tried it and it was faster." This is the move from craft to engineering — from working code to defensible design.
+
+The first thing the field gives you is a language for cost. Big-O notation describes how an algorithm's resource consumption — usually time, sometimes space — grows as the input grows. It deliberately throws away constants and lower-order terms because at scale they stop mattering; what matters is the shape of the growth curve. An O(n log n) sort and an O(n²) sort might be indistinguishable on a hundred elements and catastrophically different on a million. Without this vocabulary, performance discussions collapse into anecdote. With it, you can look at a piece of code you have never run and make defensible claims about how it will behave under load. This is the single most transferable analytical tool in the discipline.
+
+The second thing the field gives you is a small set of design strategies that recur everywhere. Divide and conquer breaks a problem into smaller versions of itself, solves each, and combines the results — this is the skeleton behind mergesort, binary search, and most things you do to a tree. Dynamic programming is what divide and conquer becomes when the subproblems overlap and you would rather not solve the same one twice; you store intermediate results and trade memory for time. Greedy algorithms make the locally optimal choice at each step and hope it accumulates into a global optimum — sometimes it does, sometimes it doesn't, and knowing the difference is a real skill. These are not three techniques among many; they are three lenses, and most non-trivial algorithms you will ever encounter are some combination or refinement of them.
+
+The third thing is a set of canonical problems that act as training grounds for the strategies above. Sorting is the obvious one, and the reason it gets so much attention in courses is not because you will ever implement quicksort yourself but because the family of sorting algorithms — quicksort, mergesort, heapsort — are clean illustrations of how the same problem yields to different design choices, with different tradeoffs in time, space, and stability. Searching makes the same point in miniature: linear search treats data as opaque, binary search exploits the fact that it is sorted, and the difference between O(n) and O(log n) is the difference between a system that scales and one that doesn't. The lesson generalises: sorted data is dramatically more powerful than unsorted data, and the structure you impose on your inputs is often the lever that makes a hard problem easy.
+
+Then there are graph algorithms, which deserve their own mention because so many real problems turn out to be graph problems in disguise. Routing is a graph problem. Dependency resolution is a graph problem. Social networks, scheduling, build systems, version control — all graphs. Once you have BFS, DFS, Dijkstra, and the idea of a minimum spanning tree in your toolkit, an enormous range of problems suddenly look familiar. The skill is not memorising the algorithms; it is the pattern-recognition that says "this is a graph, and therefore this body of work applies."
+
+The deeper payoff of all this is judgment. When you understand algorithmic complexity, you stop being surprised by performance. When you understand the design strategies, you stop reinventing them badly. When you can read an algorithm and trust that it works — because someone has proved it, and you know what such a proof looks like — you stop having to verify everything empirically. You begin to recognise, by shape, when a problem is going to be easy and when it is going to be hard, and what kind of approach is likely to pay off. That recognition is what separates a senior engineer's intuition from a junior one's, and it is mostly built here, in the time spent learning to think about solutions independent of any particular machine.
+
+The practical implication is straightforward. You will not write quicksort in your day job. You will write code that calls a sorted collection, queries an indexed table, walks a dependency graph, caches an expensive computation, or paginates a result set. Every one of those is an algorithmic decision wearing a library's clothes. The point of studying algorithms is not to reimplement them — it is to know what your library is doing, why it was designed that way, and when its assumptions stop matching your problem. That is when the choice of algorithm stops being someone else's decision and starts being yours.
+
+## Level 2 candidates
+
+**Big-O complexity** — A formal language for describing how algorithmic cost scales with input size, including the conventions (dropping constants, focusing on dominant terms) and the common growth classes. Worth a deep dive because the fluency to reason in Big-O on the fly is the foundation everything else in algorithm analysis rests on, and most practitioners have an approximate version of it rather than a rigorous one.
+
+**Sorting algorithms** — A close look at quicksort, mergesort, and heapsort as case studies in algorithm design, comparing their time and space behaviour, stability, and the input shapes that favour each. Worth going deeper because the comparison is one of the cleanest lessons in tradeoff thinking the field offers, more valuable as pedagogy than as code you will ever write.
+
+**Searching** — Linear versus binary search, and the broader principle that imposing structure on data (such as sorting) is often the move that converts a slow problem into a fast one. Worth a deep dive because the insight generalises far beyond search itself into how indexes, tries, and hash tables earn their performance.
+
+**Divide and conquer** — The recursive design pattern of breaking a problem into self-similar subproblems, solving them, and merging results, with the master theorem as the analytical tool for predicting cost. Worth deeper treatment because once you see the pattern explicitly you start recognising it everywhere, and the master theorem turns recurrence analysis from black magic into mechanics.
+
+**Dynamic programming** — The technique of memoising overlapping subproblems to avoid redundant work, and the discipline of identifying when a problem has the optimal substructure that makes DP applicable. Worth a deep dive because recognising the pattern in the wild is the actual skill — implementation is mechanical once the structure is seen — and most practitioners struggle precisely with the recognition step.
+
+**Greedy algorithms** — Making locally optimal choices in the hope they aggregate into a global optimum, and the conditions under which this strategy provably works versus where it silently fails. Worth deeper treatment because the judgment of when to trust greedy is genuinely subtle and is where most incorrect-but-plausible algorithms come from.
+
+**Graph algorithms** — BFS, DFS, Dijkstra's shortest path, and minimum spanning trees, along with the meta-skill of recognising when a problem is a graph problem at all. Worth a deep dive because the recognition skill alone unlocks a disproportionate share of real-world problem solving, and the algorithms themselves are the canonical toolkit for an enormous class of applied work.
+
+---
