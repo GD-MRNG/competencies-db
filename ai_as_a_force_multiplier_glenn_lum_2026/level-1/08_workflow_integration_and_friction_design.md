@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 24-05-2026
+- **Source:** 08_workflow_integration_and_friction_design.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-08 · Workflow Integration and Friction Design
+
+The way most people use AI is structurally broken, and they don't notice because it still feels like progress. They open a chat window when they hit a problem, paste in some context, get a response, copy it back into whatever they were actually doing, and close the tab. This feels productive. It is not. It's a detour with extra steps — a tool used as a destination rather than as part of how the work moves. The compounding gains people talk about with AI don't come from this pattern. They come from integration: AI sitting inside the workflow you already have, where the cost of asking is near zero and the cost of accepting is deliberately non-zero.
+
+The mental model worth holding is that AI usage has two kinds of friction, and you have to manage them in opposite directions. There's friction on the way in — the cost of getting a useful answer at the moment you need it. That friction should approach zero. Switching apps, re-explaining context, rebuilding a prompt you wrote yesterday, hunting through your history for the version that worked — all of this taxes the moments where AI would be most valuable, the small judgment calls in the middle of real work. Then there's friction on the way out — the cost of accepting an answer and putting it into the world. That friction should not approach zero. It should be calibrated to the consequences of being wrong. The default state of most AI tools inverts this: they make output trivially easy to accept and surprisingly annoying to summon in context. Your job is to flip both sides.
+
+Reducing input friction means putting AI where the work happens. If you write code, that's suggestions arriving in the editor without you asking. If you write prose, that's an assistant that already has the document loaded. If you analyze data, that's a notebook where you can interrogate the dataset alongside your own queries. If you maintain a body of knowledge — notes, documentation, research — that's the ability to prompt against that corpus rather than retyping its contents into a stranger's chat box. The pattern across all of these is the same: AI in context, with the context already loaded, available without a mode switch. Every keystroke, tab, or copy-paste between you and the model is friction you'll pay every time, and most people pay it dozens of times a day without noticing.
+
+Increasing output friction means refusing to let AI's confidence become your confidence by default. The model produces a paragraph, a function, a recommendation; the cheapest thing in the world is to accept it. The work is to deliberately make that acceptance cost something — a review step, a test that has to pass, a second prompt that asks the model to find what's wrong with its first answer, a comparison against another output, a moment where you read it as a critic rather than a recipient. This sounds like it cancels out the speed gains, but it doesn't. The integration removed friction from a hundred small interactions; the checkpoint adds friction to the few that matter. Net leverage goes up, error rate goes down.
+
+The third piece — the one most people skip — is reproducibility. If you got a great result yesterday and can't reconstruct how, you got a one-time trick, not a workflow. Treat the prompts and contexts that produce good output as artifacts. Save them. Version them. Know which prompt produced which output. This is unglamorous and feels excessive until the first time you need to redo something at scale or explain to someone else why you trust a particular result. The people who get long-term compounding from AI are the ones who treat their prompt library the way an engineer treats their dotfiles — boring infrastructure that quietly makes everything faster.
+
+The components of an integrated AI workflow, then, are roughly these. There's the choice of surface — chatbot, IDE plugin, specialized tool, custom script — each of which trades flexibility for speed in different ways, and the right answer depends on whether you're exploring or executing. There's context preservation — the prompts, source materials, and prior outputs that you should be able to summon without rebuilding. There's happy-path automation — the keyboard shortcuts, snippets, and small integrations that make the common case effortless. There's the deliberate-friction layer — the review steps, comparison prompts, and human checkpoints at decisions that matter. And there's the feedback loop — the habit of noticing which patterns actually work in your workflow and which ones you've been performing because they sound sophisticated.
+
+The reason to take this seriously is that the gap between someone who uses AI as a tool and someone who has integrated it into their workflow is not a small productivity delta. It's a different shape of work. The first person gets a 10–20% speed-up on tasks where they remember to use AI. The second person operates in a regime where the marginal cost of trying something, drafting something, or checking something is near zero, and so they try, draft, and check things they would never have bothered with before. That changes what work looks like, not just how fast it gets done. The cost of getting there is unglamorous: a few hours setting up shortcuts, building a prompt library, picking the right surfaces, and deciding where you will refuse to let AI move fast. The payoff is that AI stops being something you go to and becomes something the work runs through.
+
+## Level 2 candidates
+
+**Tool selection by context** — Covers the tradeoffs between chatbot interfaces, IDE plugins, specialized vertical tools, and custom API setups, and how to match the surface to the task. Worth a deeper look because most people default to whichever tool they discovered first, and the cost of that default compounds across years of work.
+
+**Context preservation and prompt versioning** — Covers how to save, organize, and version prompts and their associated contexts so good results are reproducible rather than accidental. Worth deeper treatment because the practices here borrow from software engineering (version control, fixtures, test data) in ways that aren't obvious to non-technical users but pay back enormously.
+
+**Reducing friction in the happy path** — Covers the concrete mechanics of shortcuts, snippets, scripts, and small integrations that remove the UI tax from common AI interactions. Worth depth because the specific moves are not intuitive and the difference between a 5-second and a 30-second invocation determines whether you actually use AI in the moment or skip it.
+
+**Deliberate friction at decision points** — Covers where and how to slow yourself down — review steps, adversarial prompts, multi-output comparison, mandatory checkpoints. Worth depth because this is the discipline that separates integration from automation gone wrong, and the design patterns are not widely taught.
+
+**Feedback loops and pattern auditing** — Covers how to actually measure which AI usage patterns earn their keep in your workflow versus which ones you've adopted because they're trendy. Worth depth because most people never audit their own AI habits and end up with workflows that are theatrical rather than effective.
+
+---
