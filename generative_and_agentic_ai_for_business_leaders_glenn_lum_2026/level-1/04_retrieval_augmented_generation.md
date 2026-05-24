@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 24-05-2026
+- **Source:** 04_retrieval_augmented_generation.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-04 · Retrieval-Augmented Generation (RAG)
+
+The single most expensive misdiagnosis in enterprise AI is calling a retrieval failure a model failure. A user asks the system a question, the answer comes back wrong or hallucinated, and the conversation in the room turns to whether the model is good enough — whether you should switch to a more capable frontier model, whether you should fine-tune, whether the technology is simply not ready. Almost always, the model was perfectly capable of answering the question. It just never saw the material it needed to answer correctly. That distinction — between what the model can do and what the model was given to work with — is the entire point of understanding RAG, and it is the lens through which most production AI architecture should be evaluated.
+
+The mechanism itself is unglamorous, which is part of why it is underestimated. When a user submits a query, your system does not send that query straight to the model. It first searches your own data — documents, knowledge bases, transcripts, records, whatever the corpus of relevant material happens to be — pulls back the passages most likely to contain the answer, and stuffs them into the prompt alongside the original question. The model then answers using that supplied material as context. Nothing about the model's weights changes. Nothing about its training is touched. You are, in effect, giving the model an open-book exam where you control the book.
+
+Once you internalise that mental model, the strategic consequences fall out cleanly. Your knowledge stays in your database, where it belongs. It is auditable — you can inspect what was retrieved for any given query. It is updatable — when a policy changes or a document is revised, the next retrieval pulls the new version, with no retraining cycle, no GPU budget, no ML team in the loop. It is governable — you can apply permissions at the retrieval layer, so the model only ever sees material the user is entitled to see. None of these properties are available when knowledge is baked into model weights, which is why fine-tuning is almost always the wrong tool for the job of "making the model know our stuff."
+
+The flip side is that RAG turns most of your AI quality problem into a search problem, and search is harder than it looks. Retrieval quality is governed by how you chunk your documents (too small and you lose context, too large and you dilute relevance), how you encode them for semantic search (the embedding model determines what "relevant" actually means), and how you rank and filter results before they reach the prompt. Each of these choices has downstream effects that are invisible until users start asking real questions. The dominant failure mode in production RAG systems is that the retrieval step returns plausible-but-wrong context, the model dutifully reasons over that wrong context, and the output is confidently incorrect. From the outside, this looks exactly like a model hallucination. It is not. It is a search defect with a language model on top of it.
+
+This is why the diagnostic discipline matters more than the architectural choice. When a RAG system underperforms, the first question is not "is the model good enough?" but "did the right material reach the prompt?" If the answer is no, more capable models will not save you — they will just hallucinate more eloquently over the same impoverished context. If the answer is yes and the model still got it wrong, then you have a genuine model or prompting problem, which is a much rarer situation than the discourse implies. Teams that skip this diagnostic step end up spending budget on model upgrades and fine-tuning experiments that do nothing, because they are solving the wrong layer of the system.
+
+The practical implication for how you evaluate proposals is straightforward. When a vendor or internal team brings you an architecture, the questions worth asking are about retrieval, not about the model. What is the corpus? How is it chunked and indexed? How is relevance measured? How is retrieval quality monitored over time as the corpus grows and queries diversify? What happens when the user asks something the corpus does not contain — does the system know to say so, or does it improvise? These questions distinguish a serious RAG implementation from a demo. The demo always works because the demo queries were chosen to match the demo corpus. Production queries are not chosen; they are whatever users actually ask, and the gap between those two distributions is where most projects quietly fail.
+
+RAG was formalised by Lewis et al. at Meta in 2020 and became the dominant enterprise architecture by 2023 for a reason: it is the cleanest available answer to the question of how you put your organisation's knowledge into a generative system without surrendering control of that knowledge. Understanding it well is what lets you tell the difference, in any given AI conversation, between a real architectural problem and a search problem dressed up as one. That distinction, applied consistently, is worth more than most of the other decisions you will make about the stack.
+
+## Level 2 candidates
+
+**Vector databases and semantic search** — Covers what the encoding and indexing layer actually does, and why keyword search fails for the kinds of questions users ask of knowledge systems. Worth going deeper because vendor and infrastructure decisions in this space are made on terms most leaders cannot evaluate, and the wrong choice locks in retrieval quality ceilings that no amount of model capability can compensate for.
+
+**Chunking strategy and retrieval quality** — Covers how chunk size, overlap, and document structure affect what the retrieval layer can actually find and return. Worth going deeper because this is where most RAG implementations silently fail in practice, and the relationship between chunking choices and downstream answer quality is non-obvious enough that teams routinely ship the wrong defaults.
+
+**RAG vs fine-tuning: the decision rule** — Covers the practical heuristic that changing facts belong in retrieval and stable behavioural patterns belong in weights, along with the conditions under which that heuristic breaks down. Worth going deeper because the choice between these two architectures is the most consequential and most frequently mis-made decision in enterprise AI, and the decision rule is learnable.
+
+**Retrieval quality monitoring and evaluation** — Covers how you measure whether the right material is reaching the prompt, separately from whether the final output is correct. Worth going deeper because without this instrumentation you cannot tell retrieval failures from model failures, which is the diagnostic discipline the whole architecture depends on.
+
+**Permissioning and governance at the retrieval layer** — Covers how access controls, audit trails, and data freshness are implemented in the retrieval step rather than the model. Worth going deeper because this is where RAG's strategic advantage over fine-tuning is actually realised, and where regulated industries either succeed or fail at deploying generative AI on sensitive content.
+
+---
