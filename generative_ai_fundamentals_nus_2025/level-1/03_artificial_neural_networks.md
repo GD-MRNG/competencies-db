@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 24-05-2026
+- **Source:** 03_artificial_neural_networks.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-03 · Artificial Neural Networks
+
+It is tempting, when you already know that GPT-4 exists, to treat the artificial neural network as a quaint stop on the way to something more interesting. This is a mistake, and a costly one. Almost every problem you will hit while training or debugging a modern model — gradients that go to zero, training that diverges, a network that memorises its training set and falls apart on real data, a learning rate that quietly destroys weeks of compute — is a classical ANN problem wearing a larger hat. The architectures got bigger. The pathologies did not change.
+
+The mental model worth building first is this: a neural network is a parameterised function that you fit to data by gradient descent. Everything else is implementation detail. You have inputs, you have a stack of layers that transform those inputs through learned weights and nonlinear activations, and you have an output. You compare that output to a target using a loss function. You then ask, for every weight in the network, "how should I nudge this to make the loss smaller?" — and you nudge. You repeat this millions of times. The network does not "learn" in any mysterious sense; it descends a loss surface, one small step at a time, guided by gradients computed by the chain rule.
+
+The chain rule part is where the conceptual weight sits, because it is the trick that makes deep networks trainable at all. Backpropagation is the algorithm that takes the loss at the output and propagates blame backward through every layer, computing how much each weight contributed to the error. Without it, you would have no efficient way to train anything beyond the smallest networks. Once you internalise that backprop is just the chain rule applied systematically to a computation graph, the apparent magic of deep learning frameworks becomes legible: PyTorch and TensorFlow are, at their core, automatic differentiation engines that record what operations you performed and replay them in reverse to compute gradients.
+
+The vocabulary that gets used everywhere — weights, activations, epochs, learning rate, batch size — comes from this setup, and each term names a real choice you are making. Weights are the parameters being learned. Activations are the values flowing through the network at a given layer, after the nonlinearity is applied. The activation function itself (historically sigmoid or tanh, now almost always ReLU or one of its variants) matters more than it looks: choose poorly and your gradients vanish as they propagate back through layers, and the early layers stop learning. This is the vanishing gradient problem, and it is the single biggest reason deep networks were considered untrainable for decades. ReLU did not solve it completely, but it made it tractable, and the history of activation functions is essentially the history of the field figuring this out.
+
+An epoch is one full pass through the training data; the learning rate is how big a step you take in the direction the gradient suggests. Set the learning rate too high and training oscillates or diverges; too low and it crawls. The choice of optimiser — plain stochastic gradient descent, momentum, Adam — controls how those steps are computed in practice. Adam is the modern default because it adapts the effective learning rate per parameter, which makes it forgiving in ways SGD is not, but there is a reason researchers still occasionally reach for plain SGD: it sometimes finds flatter minima that generalise better. The tradeoff is real and points at something deeper about loss landscape geometry that you will meet again later.
+
+The other half of the story is that fitting a function to data is not the same as learning something useful. A network with enough capacity will memorise its training set perfectly and still fail catastrophically on data it has not seen. This is overfitting, and it is the central failure mode of the entire enterprise. The toolkit for managing it — train/validation/test splits, regularisation, dropout, early stopping — is what makes the difference between a model that works in a paper and one that works in the world. Dropout in particular is worth pausing on: randomly switching off neurons during training looks like sabotage until you realise it forces the network to not rely on any single pathway, which is mathematically equivalent to training an ensemble of subnetworks and averaging them at inference. It is one of the cleverest ideas in the field and it looks weird until it doesn't.
+
+Why does any of this matter once you have moved on to transformers and diffusion models? Because the problems compound at scale rather than disappear. A 70-billion-parameter language model is still a stack of layers being trained by backpropagation with some optimiser variant, and when its training loss spikes or its gradients explode, the diagnosis is the same as it would be for a three-layer MLP — just more expensive to run. Vanishing gradients motivate the residual connections in transformers. Overfitting motivates the data scale and regularisation choices that distinguish successful pre-training runs from failed ones. The data hunger of deep models is the ANN's appetite for parameters multiplied by depth.
+
+The skill this topic builds is the ability to look at a model that is not training and form a hypothesis about why. That diagnostic instinct comes from holding the full picture — forward pass, loss, backward pass, weight update — in your head as a single mechanism, not four disconnected steps. Get this right and the rest of the curriculum stops feeling like a sequence of disconnected tricks and starts feeling like variations on a theme.
+
+## Level 2 candidates
+
+**Backpropagation** — The chain rule applied systematically to a computation graph to compute gradients of the loss with respect to every weight. Worth a deep dive because it is the difference between someone who can launch a training run and someone who can debug why training has stalled, exploded, or silently corrupted itself.
+
+**Activation functions (ReLU, sigmoid, tanh)** — The nonlinearities applied at each layer, and the historical progression from sigmoid through tanh to ReLU and its variants. The history is essentially the field learning to diagnose and engineer around the vanishing gradient problem, which makes this the cleanest lens for understanding why depth was hard.
+
+**Gradient descent variants (SGD, Adam)** — How the gradient information is actually used to update weights, including momentum, adaptive learning rates, and the optimisers used in practice. Adam dominates production training, but understanding why SGD sometimes generalises better is a window into loss landscape geometry that pays off when you start reading scaling and optimisation papers.
+
+**Overfitting, regularisation, and dropout** — The toolkit for closing the gap between training performance and real-world performance: weight decay, early stopping, dropout, data augmentation. Dropout in particular rewards the deeper look because the ensemble interpretation reframes what looks like a hack as a principled technique, and the same reasoning shows up in modern architectures.
+
+---

@@ -1,0 +1,41 @@
+## Metadata
+- **Date:** 24-05-2026
+- **Source:** 12_llms_in_applications_langchain_and_rag.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-12 · LLMs in Applications: LangChain and RAG
+
+A large language model, on its own, is a closed book. It knows what it knew when training stopped, it cannot tell you what happened yesterday, and it cannot cite the contents of your company wiki. You can fine-tune it to absorb new information, but fine-tuning is expensive, slow, and updates are coarse — you cannot easily teach a model one new fact on Tuesday and a contradicting one on Thursday. This is the constraint that shapes most production LLM architecture in 2024: the model is the reasoning engine, but the knowledge has to come from somewhere else, at inference time, every time.
+
+That somewhere else is retrieval. Retrieval-Augmented Generation, introduced by Lewis et al. in 2020, is the pattern that solves the closed-book problem by giving the model an open book at the moment it answers. The system finds the few most relevant passages from an external corpus — your documentation, your customer's tickets, last week's news — and inserts them into the prompt. The LLM then generates an answer grounded in that retrieved context rather than relying solely on what its weights happen to remember. The architectural shift is small but the consequences are large: knowledge becomes a database concern instead of a training concern, updates become cheap, and you gain a much clearer story about where an answer came from.
+
+The mental model worth holding is two-component. There is a retriever, whose job is to find relevant material from a corpus given a query, and there is a reader (the LLM itself), whose job is to synthesise an answer from that material. The retriever is almost always built on vector embeddings: every document in the corpus is converted into a dense numerical vector by an embedding model, and incoming queries are converted the same way. Retrieval becomes a similarity search — find the document vectors closest to the query vector, usually by cosine similarity. The reader then receives the original query and the retrieved chunks together, and produces an answer that should be grounded in what was retrieved.
+
+This decomposition is what gives RAG its power and also where it fails. When a RAG pipeline gives a wrong answer, the question to ask first is which component broke. Did the retriever surface the wrong documents, in which case the LLM never had the right context to begin with? Did the retriever surface the right documents but bury them among irrelevant ones? Did the LLM ignore the retrieved context and hallucinate from its parametric memory anyway? Each of these is a different bug with a different fix, and conflating them is the most common mistake practitioners make when their RAG system underperforms.
+
+The infrastructure that makes this practical is the vector database. Computing similarity between a query vector and every document vector in a corpus of millions becomes prohibitive quickly, so vector databases like FAISS, Pinecone, and Chroma implement approximate nearest-neighbour search — algorithms that trade a small amount of recall for a large speedup. This tradeoff is genuine and consequential: at production scale you are not actually getting the most similar documents, you are getting documents that are very probably among the most similar. For most use cases this is fine. For some it is not, and knowing which you are in is part of the engineering.
+
+LangChain is the framework that has emerged as the dominant way to wire all of this together. Its core abstraction is the chain — a sequence of LLM calls, retrievals, and tool invocations connected so that the output of one step feeds the input of the next. A simple RAG application is a chain of two steps (retrieve, then generate). A more elaborate one might retrieve, summarise the retrieval, plan a follow-up query, retrieve again, then generate. Beyond chains, LangChain offers agents — LLMs that decide for themselves which tools to call and in what order — along with memory abstractions for multi-turn conversation and standardised connectors to dozens of vector stores and model providers. Whether LangChain's abstractions are the right ones is a live debate among practitioners, but the patterns it encodes are the patterns the field has converged on, and reading its source is one of the faster ways to internalise how these systems are actually built.
+
+The constraint that pervades all of this is the context window. LLMs accept a fixed maximum number of tokens as input, and into that window you have to fit the system prompt, the conversation history, the retrieved documents, and any tool outputs. Retrieve too few documents and the model lacks information; retrieve too many and you blow the budget or, worse, dilute the relevant content with noise the model then struggles to attend to. Strategies for context management — chunking documents intelligently, reranking retrieved results, summarising older conversation turns — are not glamorous but they are where a meaningful share of RAG quality actually lives.
+
+The practical skill this topic builds is system-level thinking about LLMs. A single LLM call is a function: input goes in, output comes out, and the only knobs are the prompt and the model parameters. A RAG application is a pipeline with multiple components, each of which can fail independently and each of which has its own latency, cost, and accuracy profile. Reasoning about why a deployed LLM application gives wrong answers — and what to change to fix them — requires holding the whole pipeline in your head and knowing where to look. That diagnostic instinct is what separates someone who can call an API from someone who can ship a product.
+
+## Level 2 candidates
+
+**RAG architecture: retriever + reader** — The two-component decomposition of a RAG pipeline and the failure modes specific to each. Worth deeper treatment because most production debugging starts with localising failure to one of these components, and the diagnostic patterns repay focused study.
+
+**Vector embeddings and similarity search** — How text is converted into dense vectors and why cosine similarity captures semantic relatedness. Worth going deeper because the choice of embedding model determines what relationships your retriever can see at all, and embedding behaviour is full of subtle gotchas (domain mismatch, multilingual gaps, length sensitivity).
+
+**Vector databases (FAISS, Pinecone, Chroma)** — The approximate nearest-neighbour algorithms (HNSW, IVF, product quantisation) that make similarity search tractable at scale, and the speed/recall tradeoffs they expose. Worth deeper study because production decisions here have real consequences and the underlying algorithms are accessible enough to actually understand.
+
+**LangChain chains and agents** — The specific abstractions LangChain provides for composing LLM calls, and the distinction between deterministic chains and LLM-driven agents. Worth going deeper because the abstractions encode opinions about how LLM applications should be structured, and understanding those opinions critically is necessary to know when to use the framework and when to drop down beneath it.
+
+**Context window management** — Strategies for fitting retrieved documents, conversation history, and instructions into a fixed token budget: chunking, reranking, summarisation, and sliding windows. Worth deeper attention because this is where a lot of real-world RAG quality is won or lost, and the techniques are concrete and immediately applicable.
+
+**Chunking strategies for retrieval** — How source documents are split into the units that get embedded and retrieved, and why chunk size and boundary choices dramatically affect retrieval quality. Worth its own treatment because chunking is where most RAG implementations silently underperform, and the right strategy depends on the structure of the underlying corpus.
+
+---
