@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 26-05-2026
+- **Source:** 03_statistics_as_calibration.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-03 · Statistics as Calibration
+
+Most data scientists carry a vestigial fear of statistics from school — a half-remembered jumble of t-tests, null hypotheses, and the ritual chase of p < 0.05. Forget most of it. The statistics that actually matters in your day job is not a body of formulas to apply; it is a habit of asking, before you act on a number, whether that number is real. The job is calibration: tuning your confidence in a result to match the evidence behind it. Everything else — the tests, the distributions, the Greek letters — is machinery in service of that one question.
+
+The reason this reframing matters is that the failure modes of modern data work are almost never "I didn't know which test to run." They are "I trusted a lift that was within noise," "I shipped a model that memorized its training set," "I ran twenty analyses and reported the one that looked good," "I drew a conclusion from 200 users when I needed 2,000." None of these are math errors. They are calibration errors — gaps between how confident the data justifies being and how confident you actually were when you made the decision. A data scientist who cannot close that gap will ship bad decisions confidently, which is worse than shipping no decisions at all.
+
+Start with the most useful instinct: separating signal from noise. Every measurement you take — a conversion rate, a model's accuracy, an average order value — is a sample, and samples bounce around. Two cohorts of identical users will produce different numbers just because they are different people. The question is never "did the number change?" — it always changes. The question is "did it change by more than it would have changed by chance?" Once that lens clicks, you stop being impressed by 3% lifts on 500-user experiments and start asking how much variation you would have seen if you had done nothing at all.
+
+This is where sample size and power come in. Power analysis is the unglamorous, practical question of how much data you need to reliably detect an effect of a given size. It is the antidote to two opposite failures: running an experiment too small to ever conclude anything (and then concluding something anyway), and running an experiment far longer than necessary because nobody bothered to estimate when you'd have an answer. Smaller effects need much more data than people intuit. If you want to detect a 1% lift in conversion, you do not need twice the data you'd need for a 2% lift; you need roughly four times as much. Internalize that scaling and you will stop promising impossible things.
+
+Confidence intervals are the natural partner to this thinking, and almost everyone gets their interpretation wrong. A 95% confidence interval is not "a 95% chance the true value lies in this range." It is a statement about the procedure: if you repeated this measurement many times, 95% of the intervals you'd construct would contain the true value. The practical upshot is what you should care about: a confidence interval is a width, and the width tells you how much you actually know. An estimate of "12% ± 0.3%" supports a different decision than "12% ± 8%," even though both have the same point estimate. When someone reports a number without an interval, they are asking you to act on a point and hiding the width. Don't.
+
+The third calibration habit is recognizing when you have given yourself many chances to find something and then acted surprised that you did. If you run 100 A/A tests — comparing groups that should be identical — about 5 of them will look "significant" at the 5% level, by definition. This is the multiple testing problem, and it shows up everywhere: dashboards with thirty metrics, feature importance scans, segment-level analyses, hyperparameter sweeps. The cure is not always a formal correction; often it is just remembering how many shots you took before celebrating the one that landed. The same instinct, applied to model training, is what stops you from picking the cross-validation fold that looks best and reporting it as your performance.
+
+Which leads to the deepest version of this skill, the one that touches your machine learning work directly: distinguishing a model that has learned from a model that has memorized. Generalization is a calibration problem dressed up in different clothes. A 99% training accuracy is the model's claim about itself; whether that claim survives held-out data, time-shifted data, or production data is the only thing that matters. The same suspicion you bring to a 3% lift on a small sample, you should bring to a model's reported accuracy. What was the test set's size? Was it drawn from the same distribution as deployment? How many model variants did you try before this one looked good? These are statistics questions, even when no one writes a formula.
+
+The skill this topic builds is not the ability to compute. It is the ability to look at a number — yours or someone else's — and ask the right three questions before you act on it: how much noise should I expect at this sample size, how many chances did I take to find this result, and how would I know if I were fooling myself? Get good at those, and you will be more useful than a colleague who has memorized every test in scipy.stats but never learned to be suspicious of their own numbers.
+
+## Level 2 candidates
+
+**Sampling and power analysis** — Covers how to estimate the sample size needed to reliably detect an effect of a given magnitude, and how power, effect size, and significance interact. Worth a deep dive because the math is simple but the intuition (especially how sample size scales with the inverse square of effect size) reshapes how you plan experiments and set expectations with stakeholders.
+
+**Confidence intervals and uncertainty** — Covers the correct interpretation of intervals, how to construct them for the quantities you actually care about (rates, differences, model metrics), and how to use widths to drive decisions. Worth deeper treatment because the misinterpretation is so widespread that even experienced practitioners use them as if they were Bayesian credible intervals, and bootstrapping unlocks intervals for quantities where closed-form formulas don't exist.
+
+**Multiple testing and correction** — Covers why repeated analyses inflate false positives and the spectrum of responses, from Bonferroni's blunt instrument to false discovery rate methods to simply pre-registering your analysis. Worth going deeper because the practical question — when do I correct, and how aggressively — depends on whether you're exploring or confirming, and that distinction is rarely taught well.
+
+**Bayesian thinking (informal)** — Covers how to update beliefs with evidence without invoking the full machinery of priors, posteriors, and MCMC. Worth a Level 2 because in business contexts where you have genuine prior knowledge (last quarter's conversion rate, similar past experiments), Bayesian framing often produces clearer decisions than frequentist tests, and the informal version is accessible without heavy math.
+
+**A/B testing and causal inference** — Covers experiment design, randomization, common pitfalls (peeking, novelty effects, network interference), and why observational comparisons systematically mislead. Worth deeper treatment because most of the decisions you'll be asked to support are causal, and the gap between "ran an A/B test" and "ran a rigorous A/B test" is where most production experiments go wrong. Note that this overlaps with L1-06 (Causal Inference) and the experimental-design portion belongs here while the observational-data methods belong there.
+
+---

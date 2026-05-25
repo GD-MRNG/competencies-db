@@ -1,0 +1,41 @@
+## Metadata
+- **Date:** 26-05-2026
+- **Source:** 04_supervised_learning_prediction.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-04 · Supervised Learning: Prediction
+
+Most people who come back to supervised learning after a few years away expect the algorithms to have changed. They haven't, much. XGBoost still wins Kaggle. Linear regression still anchors the interpretable end. Random forests still work on the messy tabular data nobody wants to clean. What has changed is what a working data scientist spends their time on, and it is almost never the algorithm. The interesting work — the work that determines whether a model creates value or quietly poisons decisions — happens before you call `.fit()` and after you call `.predict()`. The middle, where the 2023 curriculum spent most of its time, has largely been solved.
+
+The mental model to hold is this: supervised learning is a contract between a target you have decided to predict and the features you will have available at the moment of prediction. Both halves of that contract are choices, and both are where projects fail. The algorithm in the middle is a commodity. If your target is wrong — if you're predicting something that doesn't drive the decision, or that's measured inconsistently, or that leaks information from the future — no algorithm will save you. If your features include something that won't exist at inference time, your offline metrics will look brilliant and your production model will be worthless. Most of the discipline of supervised learning is in keeping that contract honest.
+
+Once the contract is clear, you need to recognise what kind of problem you have, because the setup differs more than the math suggests. Regression predicts a continuous number — revenue next quarter, time until churn, price of a house — and lives or dies by how you handle outliers and which loss function actually reflects the business cost of being wrong. Binary classification predicts one of two outcomes — fraud or not, click or not, convert or not — and almost always involves an imbalanced class and a threshold decision that matters more than the model itself. Multiclass classification predicts one of many — which product category, which support tier, which fault code — and forces you to think about whether the classes are actually mutually exclusive and whether errors between adjacent classes are equivalent to errors between distant ones. Ranking — what to show first in a list of search results or recommendations — looks like classification but evaluates differently, because the absolute score doesn't matter, only the relative order. Treating one of these as another is a common and expensive mistake.
+
+The model menu has consolidated. For structured tabular data, gradient-boosted trees (XGBoost, LightGBM, CatBoost) are the default starting point and the ending point for most problems; they handle missing values, mixed feature types, and non-linear interactions without much ceremony. Linear and logistic regression remain the right choice when interpretability matters more than the last few points of accuracy, or when you need to explain coefficients to a regulator. Random forests still serve as a sturdy baseline. Deep learning earns its place when your input is unstructured — images, audio, free text, long sequences — and the relevant features are not things a human would think to engineer. Reaching for a neural network on a tabular problem with ten thousand rows is, in 2026, almost always a sign that someone wants to use deep learning rather than that the problem requires it.
+
+What now consumes your time is the surrounding scaffolding. How you split train and test data is no longer a one-line afterthought; if there's any time component to your problem, a random split will leak the future into the past and your validation will lie to you. Cross-validation is how you tune hyperparameters without overfitting them, and the choice of folds — stratified, time-based, group-based — matters more than the choice of model. The metric you optimise must match the decision being made: accuracy is almost never it, and on imbalanced data it is actively misleading. Precision and recall trade off against each other, and where you set the threshold is a business decision dressed up as a technical one. For regression, RMSE punishes large errors more than MAE does, which may or may not match the cost structure you actually face.
+
+Feature engineering used to be where you spent your weekends. Two things have changed that. First, gradient boosting handles raw features well enough that elaborate manual transformations buy you less than they used to. Second, for unstructured data, foundation models have eaten the feature engineering layer wholesale — you embed text or images into vectors and train on top of those, rather than hand-crafting bag-of-words features or pixel histograms. What remains valuable is domain-driven feature construction: encoding the things a human expert knows about the problem that aren't in the raw data. Days since last purchase, ratio of recent activity to historical baseline, whether this transaction is unusual for this customer — these still matter, and they still come from understanding the business, not from a library.
+
+The skill this topic builds, then, is not the ability to fit a model. Anyone can fit a model. The skill is recognising what kind of prediction problem you have, choosing a target and feature set that will survive contact with production, picking a metric that reflects the actual decision being made, and validating in a way that doesn't lie to you. The model itself is the easy part. If you remember nothing else from a refresher on supervised learning, remember that the algorithm is rarely the bottleneck — the framing is.
+
+## Level 2 candidates
+
+**Problem formulation and framing** — How to translate a business question into a target variable, a feature set, and a success metric. Worth its own deep dive because this is where most projects fail before any code is written, and the failure modes are surprisingly patterned.
+
+**Train-test splits and leakage** — How to split data so your validation reflects production performance, including time-based splits, group splits, and the subtle ways future information sneaks into training features. Deserves depth because leakage is the single most common reason a 95% offline model fails in production.
+
+**Tree ensembles: Random Forest, Gradient Boosting, XGBoost** — How bagging and boosting differ, why boosted trees dominate structured data, and what knobs actually matter when tuning them. Worth going deeper because this is the family you'll reach for most often, and surface familiarity isn't enough to debug a misbehaving model.
+
+**Hyperparameter tuning and cross-validation** — How to tune models without overfitting the tuning itself, why nested cross-validation exists, and when random search, Bayesian optimisation, or just sensible defaults are right. Deserves depth because the failure mode — a model that looks great in CV and mediocre in production — is exactly the gap good practice closes.
+
+**Imbalanced data and threshold tuning** — How to handle problems where one class is 1% of samples, why class weights and resampling are often the wrong fix, and how to think about precision-recall tradeoffs as a business decision. Worth its own treatment because fraud, churn, conversion, and most consequential classification problems are imbalanced, and accuracy will betray you on every one of them.
+
+**Linear models and their assumptions** — When linear and logistic regression are the right answer despite seeming old-fashioned, what their coefficients actually mean, and how their assumptions break. Worth depth because interpretability requirements (regulatory, ethical, communicative) keep these models in use even when they're not the most accurate option.
+
+**Metrics and the cost of being wrong** — How accuracy, precision, recall, F1, AUC, RMSE, MAE, and log loss each tell different stories, and how to map a business cost structure onto a loss function. Deserves a deep dive because metric choice silently determines what your model optimises for, and most defaults are wrong for most problems.
+
+---
