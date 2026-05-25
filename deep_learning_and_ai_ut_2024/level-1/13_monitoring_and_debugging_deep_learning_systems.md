@@ -37,9 +37,3 @@ The skill this topic builds is operational humility. Once you've watched a model
 **Monitoring multimodal and generative outputs** — Covers how monitoring changes when the output is free-form text or an image rather than a class label or a number. Worth a separate treatment because traditional drift metrics don't apply, and you need proxy metrics (embedding-space drift, LLM-as-judge, sampled human review) with their own failure modes.
 
 ---
-
-## Original Content
-
-#### L1-13 · Monitoring and Debugging Deep Learning Systems
-
-Production models degrade. Data distribution shifts, users change behavior, and bugs hide in preprocessing. In 2026, monitoring is not optional. You need to know when to retrain, when to investigate, and what actually broke. Debugging a neural network is harder than debugging classical software—the failure modes are subtle (slightly wrong preprocessing, a shifted feature distribution) and hard to localize.

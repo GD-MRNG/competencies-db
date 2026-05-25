@@ -39,9 +39,3 @@ The takeaway is that the unit of work has changed. You are no longer building mo
 **Domain-specific vs. task-specific fine-tuning** — Covers the two-stage approach where you first adapt a base model to your domain (medical text, legal text) and then to your specific task (classification, extraction). Worth a deeper look because this staging is non-obvious, often skipped, and frequently the difference between a model that generalizes within your domain and one that overfits to a single task.
 
 ---
-
-## Original Content
-
-#### L1-05 · Pre-Trained Models and Transfer Learning
-
-Training a language model from scratch is expensive (billions of tokens, months of compute). In 2026, you do not train from scratch. You use a pre-trained model (BERT, GPT-2, LLaMA, etc.) and either: (1) fine-tune it on your task (if you have labeled data), or (2) prompt it directly (if you don't). Transfer learning in language is about moving from generic understanding (learned on Wikipedia and Common Crawl) to specific understanding (your domain, your task). This shift from "train a model for my problem" to "adapt a pre-trained model to my problem" is the biggest change in 2026.

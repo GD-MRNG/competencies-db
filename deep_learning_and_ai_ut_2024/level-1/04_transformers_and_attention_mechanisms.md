@@ -39,9 +39,3 @@ The skill this topic builds is the ability to read modern model architectures fl
 **Transformer efficiency and variants** — Why full attention is O(n²) and what sparse, linear, and windowed attention variants trade off to scale to long contexts. Worth deeper coverage because this is the most active engineering frontier in the architecture, and choosing between variants is now a real production decision.
 
 ---
-
-## Original Content
-
-#### L1-04 · Transformers and Attention Mechanisms
-
-Attention is a mechanism that lets a model focus on relevant parts of its input. "What should I pay attention to?" In the sentence "The bank executive washed his hands," the word "his" should attend to "executive," not "bank" or "hands." Attention allows a model to compute similarity between every pair of positions in a sequence, then use those similarities to weight what information to combine. Transformers are stacks of attention layers—no recurrence, just attention. This architecture is parallelizable (good for GPUs), can learn long-range dependencies easily, and has become the foundation of all modern language models. You do not need to implement Transformers from scratch, but you need to understand why they work, what self-attention computes, and how to use pre-trained Transformers.

@@ -41,9 +41,3 @@ The skill this topic builds is the discipline of treating the model as one compo
 **Edge deployment** — Covers running models on phones, browsers, and devices using TensorFlow Lite, ONNX, CoreML, and similar runtimes. Worth a deep dive because the constraints (memory, power, no network) and the tooling are entirely different from server-side deployment, and the format conversions are where most teams hit walls.
 
 ---
-
-## Original Content
-
-#### L1-11 · Model Deployment and Serving
-
-A model that works in a notebook is not useful. Deployment means: (1) choosing a serving environment (API, batch, edge), (2) optimizing for latency and throughput, (3) handling versioning and updates, and (4) monitoring in production. This is where most real-world AI fails. A model that returns predictions is not a deployed model. A model that returns correct predictions, quickly, reliably, and maintains accuracy over time is deployed.

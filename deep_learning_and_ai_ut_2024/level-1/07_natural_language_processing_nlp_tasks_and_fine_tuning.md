@@ -39,9 +39,3 @@ What this topic builds in you is taxonomic instinct. When a stakeholder describe
 **Information extraction and relation extraction** — Covers extracting structured data (entities, relations, events) from unstructured text, and where rule-based methods complement neural ones. Worth depth because hybrid systems (regex + model) often outperform pure approaches in this area, and the engineering patterns are non-obvious.
 
 ---
-
-## Original Content
-
-#### L1-07 · Natural Language Processing (NLP) Tasks and Fine-Tuning
-
-Beyond LLMs, there is a range of NLP tasks: classification (sentiment, topic, intent), sequence labeling (named entity recognition, part-of-speech tagging), generation (summarization, translation), and retrieval (information retrieval, semantic search). Some are best solved with fine-tuned models (classification on your data), some with prompting (zero-shot classification with an LLM), some with classical methods (token-level operations). Understanding the landscape of NLP tasks and their solutions is essential.

@@ -39,7 +39,3 @@ The skill this topic builds, then, is not the ability to write a convolution lay
 **Vision Transformers as an alternative to CNNs** — Covers when treating an image as a sequence of patches outperforms convolution, and what the trade-offs are. Worth deeper treatment because by 2026 the CNN-vs-ViT decision is a live one, and the answer depends on data scale and the kind of structure you expect to matter.
 
 ---
-
-## Original Content
-
-Convolution is not magic—it is weight sharing. A learned filter slides across an image, producing a feature map. Stack many filters, and you extract hierarchies of features: edges → textures → shapes → objects. CNNs exploit two properties of images: locality (nearby pixels matter more than distant ones) and translation invariance (a cat looks like a cat whether it's on the left or right). In 2026, you rarely train a CNN from scratch on real data. Transfer learning (Section L1-05) is the default. But you need to understand what a CNN learns at each layer, why pooling and striding matter, and how to interpret failures.

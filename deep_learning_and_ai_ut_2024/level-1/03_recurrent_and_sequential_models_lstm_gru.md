@@ -41,9 +41,3 @@ The intuition LSTMs gave the field — that a model should learn what to remembe
 **Practical handling of variable-length sequences** — Padding, masking, packed sequences, and the bookkeeping required to batch sequences of different lengths efficiently. Worth covering because this is where most RNN implementations silently break, and the same issues recur in any sequential architecture.
 
 ---
-
-## Original Content
-
-#### L1-03 · Recurrent and Sequential Models: LSTM and GRU
-
-Sequences are different. A sequence has order: "the cat sat on the mat" is not the same as "the mat on sat cat the." RNNs process sequences one element at a time, maintaining hidden state that encodes what they've seen so far. LSTMs (Long Short-Term Memory) are RNNs that remember long-range dependencies by learning what to forget. In 2026, pure RNNs are largely obsolete—Transformers (L1-04) handle sequences better. But you need to understand LSTMs because they still appear in older codebases, and the intuition (learning what to remember) is useful. More importantly, you need to recognize when a problem is sequential and needs a sequential model.

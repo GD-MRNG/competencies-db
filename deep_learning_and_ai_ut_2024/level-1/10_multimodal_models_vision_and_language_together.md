@@ -35,9 +35,3 @@ What you should take from this topic is a shift in default thinking. When a prob
 **Hallucinations and bias in multimodal models** — Covers how vision-language models invent objects or attributes and inherit biases from web-scale training data, and what mitigations look like. Worth deeper treatment because the evaluation methodology — how you actually catch a hallucination or measure a bias — is non-obvious and is where most production deployments under-invest.
 
 ---
-
-## Original Content
-
-#### L1-10 · Multimodal Models: Vision and Language Together
-
-A model that understands both images and text can answer questions about images ("what is in this picture?"), generate captions, and retrieve images from text descriptions. In 2026, multimodal models (CLIP, GPT-4V, Gemini) are mainstream. They learn a shared embedding space where images and text descriptions cluster together. This is a shift from separate vision and language models to unified models that reason across modalities.

@@ -39,9 +39,3 @@ The practical consequence is that you should treat training a neural network as 
 **Residual connections and skip connections** — Covers why ResNets enabled training of very deep networks and how identity shortcuts change the optimisation landscape (gradients can flow directly back to early layers). Worth depth because skip connections are now standard in nearly every deep architecture, including Transformers, and the intuition for why they work is non-obvious.
 
 ---
-
-## Original Content
-
-#### L1-01 · Neural Network Architecture and Training
-
-A neural network is a function approximator. It learns by adjusting weights to minimize a loss function via gradient descent. Sounds simple. The devil is in the details: initialization matters (random small vs. careful schemes), activation functions matter (ReLU vs. sigmoid), learning rates matter (too high = divergence, too low = glacial), and depth matters (more layers = more capacity but harder to train). In 2026, most practitioners use standard architectures (MLPs for tabular data, CNNs for vision, Transformers for sequences) rather than inventing new ones. You need to understand why these standard architectures work, how to tune them, and when they fail.

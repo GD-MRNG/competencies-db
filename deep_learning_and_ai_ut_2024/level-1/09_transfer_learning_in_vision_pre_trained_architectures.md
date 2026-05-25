@@ -35,9 +35,3 @@ The skill this topic builds is a kind of triage. Given a vision problem, you sho
 **Domain shift and when transfer learning fails** — The specific domains where ImageNet pre-training doesn't transfer well (medical, satellite, microscopy, fine-grained classification) and the alternatives: domain-specific pre-training, self-supervised pre-training on unlabeled in-domain data, and synthetic data. Worth a deep dive because recognizing this case is what separates practitioners who ship from practitioners who spend a quarter wondering why their loss isn't going down.
 
 ---
-
-## Original Content
-
-#### L1-09 · Transfer Learning in Vision: Pre-trained Architectures
-
-Training a CNN on ImageNet from scratch would take weeks on modern hardware. Instead, you use a model pre-trained on ImageNet (or another large dataset), then fine-tune on your task. In 2026, this is the default. ImageNet pre-trained weights are a commodity. You need to know what architectures are available (ResNet, EfficientNet, Vision Transformers), how to fine-tune them, and when a pre-trained model is overkill (fine-grained visual tasks need more data than ImageNet provides).

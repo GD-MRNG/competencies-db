@@ -35,9 +35,3 @@ The practical takeaway is that the image preprocessing pipeline is the model, al
 **Common preprocessing pitfalls** — Covers the specific ways preprocessing silently breaks: per-image vs. per-channel normalization mismatches, augmentation that violates task invariances, resizing that introduces aliasing or loses critical detail. Worth its own piece as a checklist of failure modes you will actually encounter.
 
 ---
-
-## Original Content
-
-#### L1-08 · Image Processing and CNN Fundamentals
-
-Images are high-dimensional data: a 1000×1000 RGB image is 3 million numbers. Classical machine learning (logistic regression, random forests) fails because they don't respect the spatial structure of images. CNNs work because they exploit locality and weight sharing. Before using a CNN, you need to understand what an image is, how to preprocess it, and what an augmented dataset looks like. This is foundational.

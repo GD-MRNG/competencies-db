@@ -41,9 +41,3 @@ The skill this topic builds is pattern recognition. Given a problem — a chatbo
 **Evaluation of generative outputs** — Covers automatic metrics, human evaluation, LLM-as-judge, and task-specific evaluation harnesses. Worth a dedicated deep dive because evaluation is harder than building, most teams underinvest in it, and a good eval harness is what separates a demo from a production system.
 
 ---
-
-## Original Content
-
-#### L1-12 · Generative Model Applications: RAG, Fine-tuning, and Agents
-
-Generative models (LLMs, image generators) are tools. The art is knowing which tool to reach for. Do you need to retrieve facts from your data? Use RAG. Do you need the model to learn your domain's language? Fine-tune. Do you need the model to accomplish multi-step tasks? Use agents (systems that plan, act, observe, and iterate). In 2026, these patterns are standard.

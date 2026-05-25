@@ -41,9 +41,3 @@ The skill, in the end, is treating natural language as a programming interface. 
 **Prompt templates and versioning** — How to manage prompts as code: parameterizing them, version-controlling them, testing them against regression suites. Worth depth because prompts drift, models change, and teams that treat prompts as ephemeral strings end up with the LLM equivalent of unmaintained shell scripts in production.
 
 ---
-
-## Original Content
-
-#### L1-06 · Large Language Models (LLMs) and Prompting
-
-Large language models (GPT-4, Claude, LLaMA, Gemini) are Transformers trained on trillions of tokens. They can do things no amount of fine-tuning would teach them: reasoning, few-shot learning, translation, code generation. In 2026, you do not need to understand how GPT-4 works internally—you need to understand how to use it. Prompting is an engineering discipline: how to phrase a question so an LLM answers correctly, how to structure few-shot examples, how to chain LLMs together for complex tasks. This is not magic. It is specification and iteration.
