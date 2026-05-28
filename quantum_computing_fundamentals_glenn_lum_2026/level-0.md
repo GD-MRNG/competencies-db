@@ -448,6 +448,8 @@ quantum computers that would run Shor's algorithm.
   basis, and the T gate is the expensive one, which reshapes how fault-tolerant 
   circuits are designed and costed.
 
+---  
+
 ### Group 5 — Open Frontiers: What the Field Does Not Yet Know
 
 *Quantum computing is not a mature field with settled answers awaiting 
