@@ -47,3 +47,7 @@ Ethical Hacking — Introduction to ethical hacking, network scanning, system ha
 Ethics, Governance and Future of Cybersecurity — Security principles and governance, codes of ethics, best practices across network/cloud/IoT security, and emerging threats and technologies.
 
 Capstone Project — A culminating project applying the programme's learnings to a real-world scenario (inferred: scope and topic are learner-defined within the cybersecurity domain).
+
+## Source
+
+https://nus.comp.emeritus.org/cybersecurity

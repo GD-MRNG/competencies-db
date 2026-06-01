@@ -225,3 +225,7 @@ Group 3 (transformers) is the highest-leverage group in the curriculum. Everythi
 Group 4 (generative modelling) has internal dependencies: VAEs/GANs (L1-08) before diffusion (L1-09), since latent diffusion uses a VAE. RLHF (L1-07) can be studied in parallel with the image generation sequence, as it depends on the transformer foundations (Group 3) but not on image generation specifically.
 
 Group 5 (applied systems) is the least foundationally dependent and the most practically oriented. L1-12 (RAG) and L1-13 (multi-agent) can be approached once Group 3 is solid. L1-10 (ViT/CLIP) and L1-11 (DALL-E/Stable Diffusion) require Group 4 as well.
+
+## Source
+
+https://nus.comp.emeritus.org/generative-ai-fundamentals-to-advanced-techniques-programme

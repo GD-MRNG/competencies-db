@@ -264,3 +264,7 @@ Production models degrade. Data distribution shifts, users change behavior, and 
 - **Transfer learning is the default** — Not an optimization, but the baseline. Training from scratch is rare.
 - **Multimodal is mainstream** — Vision and language together is no longer niche.
 - **Deployment and monitoring are not afterthoughts** — They are as important as the model.
+
+# Source
+
+https://onlineexeced.mccombs.utexas.edu/online-ai-machine-learning-course

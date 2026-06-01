@@ -149,3 +149,7 @@ Learners completing this programme should emerge able to assess their organisati
 The first principle running beneath every module in this programme is this: **the ecological and social costs of economic activity are currently externalised onto those with the least power to resist them — ecosystems, low-wage workers, future generations, and communities in low-regulation jurisdictions.** Every framework this programme teaches is an attempt to address some dimension of that problem. None of them, individually or collectively, is sufficient to resolve it — because resolving it requires structural changes to ownership, regulation, and the political conditions under which markets operate that are outside the programme's frame.
 
 This does not make the programme useless. It makes it a map of the official response to a structural problem — and a map of the official response is exactly what you need before you can identify where the response is adequate, where it is captured, and where the real work remains to be done. Study it on those terms and it will serve you well.
+
+## Source
+
+https://smu.emeritus.org/sustainability-strategies-and-green-economy

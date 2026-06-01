@@ -39,3 +39,7 @@ Taken together, the three seasons form a complete, if non-linear, portrait of Ch
 **The Road to the 1911 Revolution** *(Season 2)* — Traces the intellectual and institutional crises of the late Qing period that culminated in the collapse of imperial China, framing the revolution as the endpoint of a long ideological unraveling rather than a sudden political rupture.
 
 **Cinematic and Artistic Methodology** *(All Seasons)* — (Inferred) Each season's distinct visual grammar — 6K/50fps cinematography in Season 1, panoramic historical reconstruction in Season 2, and Chinese-style painting merged with CG in Season 3 — constitutes a thematic statement about how history should be *felt* as well as understood.
+
+# Source
+
+https://w.mgtv.com/h/410211.html?lang=en

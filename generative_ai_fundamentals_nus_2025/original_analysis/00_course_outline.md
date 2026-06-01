@@ -195,4 +195,6 @@ The document is virtually silent on the operational and infrastructure side of g
 ### Perspective or Bias
 The curriculum exhibits an academic-technical bias, originating from a top-tier university (NUS). It assumes that the optimal path to utilizing generative AI is to understand its low-level mathematical and architectural foundations (e.g., writing neural networks from scratch in TensorFlow/Keras). A critic or industry pragmatist might argue that this bottom-up approach is inefficient for most professionals, who would benefit far more from a top-down focus on system design, API orchestration, prompt engineering, and business integration, rather than learning how to implement VAEs or write Bellman equations from scratch.
 
----
+## Source
+
+https://nus.comp.emeritus.org/generative-ai-fundamentals-to-advanced-techniques-programme

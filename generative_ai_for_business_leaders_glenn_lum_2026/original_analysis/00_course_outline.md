@@ -137,3 +137,7 @@ The course is structured as three sequential modules — Strategist, Decision Ma
 > **First principle:** ROI measurement in AI is harder than in conventional software because the denominator (true cost, including engineering time, model costs, human review, failure remediation) is consistently underestimated and the numerator (value delivered) is consistently overstated in the measurement period. A rigorous ROI framework includes: cost of failures and re-work, cost of human oversight maintained post-deployment, and value attributed only to outcomes the AI demonstrably caused.
 >
 > **"Demonstrate and sustain impact"** is the real test. Many AI projects show strong initial ROI metrics during a period of high attention and hand-holding, then degrade. The ROI framework should include a 12-month post-deployment measurement commitment. If it doesn't, it is measuring launch, not impact.
+
+## Source
+
+https://www.udemy.com/course/executive-briefing-generative-ai-and-large-language-models-llm/

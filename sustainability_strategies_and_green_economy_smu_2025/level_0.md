@@ -171,3 +171,7 @@ The dependency chain in this map runs in two directions simultaneously.
 3. **L1-08 (Political Economy)** — Polanyi is the single highest-leverage external text. One careful reading of *The Great Transformation* will reframe the entire programme and make its analytical structure visible in a way no module in the curriculum does directly.
 
 The annotation in Section 9 of the source material is worth taking seriously on its own terms: the frustration of a rigorous reader encountering clean optimism in the face of accelerating collapse is not cynicism — it is a signal that the analysis has reached the limits of the framework being offered. The purpose of this map is to give you somewhere to go when that signal fires.
+
+## Source
+
+https://smu.emeritus.org/sustainability-strategies-and-green-economy

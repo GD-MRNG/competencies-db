@@ -35,3 +35,7 @@ The material is delivered across thirteen lectures totalling roughly eight and a
 **How to Go Further** — Strategies for depth, persistence, and long-range progress — going beyond quick wins into sustained capability (inferred).
 
 **How to Go In the Right Direction** — Decision-making, prioritisation, and using structured AI reasoning frameworks to make sure effort is aimed at the right goals (inferred, connecting to the stated objective on decision-making and problem-solving).
+
+## Source
+
+https://www.udemy.com/course/the-age-of-ai/

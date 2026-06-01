@@ -171,3 +171,7 @@ From there, the dependency chain diverges by context:
 - **Regardless of path:** L1-01 (The Capability-Reliability Frontier) and L1-09 (Quality Control) are necessary preconditions. You must understand where AI fails and how to build checkpoints before you delegate work to it.
 
 The deepest leverage comes from iterating between these layers: use AI on a task, notice where it succeeds and fails, update your understanding of L1-01 and L1-02, change your prompts (L1-03), and redesign your workflow (L1-08). The map is not a linear path but a set of feedback loops that get tighter and more efficient over time.
+
+## Source
+
+https://www.udemy.com/course/the-age-of-ai/

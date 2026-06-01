@@ -114,3 +114,7 @@ The dependency structure here is genuine and directional. The strategic frame (G
 The delivery and leadership topics (Group 3) are not optional addenda — they are what determines whether the strategy and architecture topics produce value at all. The highest-leverage entry point for someone already in a leadership role is L1-07 (AI delivery as R&D), because it changes every subsequent decision about roadmaps, commitments, and team structure. The most commonly underweighted topic for experienced leaders is L1-09 (drift and adoption), because both costs are invisible at launch and only surface after the project is declared a success.
 
 If you are advising on a live initiative rather than building foundational knowledge, start with L1-03 (value taxonomy) to establish what you're measuring, move to L1-04 (RAG) to evaluate the architecture being proposed, and use L1-07 (delivery as R&D) to assess whether the roadmap is honest. That sequence addresses the most common ways business leaders are misled in AI project reviews.
+
+## Source
+
+https://www.udemy.com/course/executive-briefing-generative-ai-and-large-language-models-llm/

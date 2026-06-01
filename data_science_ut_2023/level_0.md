@@ -219,3 +219,7 @@ Different domains have their own data structures, problems, and best practices. 
 ---
 
 **Highest-leverage path for re-entry:** SQL → Python → Problem formulation (L1-10) → Supervised Learning → Causal Inference → Pipelines → Monitoring. You do not need to sit through the old curriculum again. You need direction and depth in the parts where 2026 is different from 2023.
+
+## Source
+
+https://onlineexeced.mccombs.utexas.edu/online-data-science-business-analytics-course

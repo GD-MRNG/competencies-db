@@ -232,3 +232,7 @@ The curriculum is structured as a genuine dependency chain, not an arbitrary seq
 **The most underinvested topics for professionals with a technical background:** L1-05 (PKI — the operational failure modes are almost universally underestimated), L1-15 (governance — the skill that determines whether technical work has organisational consequence), and the quantum/PQC thread in L1-15 (decisions being made today in system design will outlive current cryptographic assumptions).
 
 **The capstone's implicit claim:** You can only think at the level of a defender-who-has-done-the-attack when you can hold the adversarial mindset (L1-01), the cryptographic substrate (L1-02 through L1-05), the applied attack surfaces (L1-06 through L1-10), and the governance context (L1-15) simultaneously — and translate findings across all three into language a board can act on.
+
+## Source
+
+https://nus.comp.emeritus.org/cybersecurity
