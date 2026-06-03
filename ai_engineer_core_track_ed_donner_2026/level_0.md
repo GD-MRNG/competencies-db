@@ -1,214 +1,284 @@
-# AI Engineer Core Track: LLM Engineering, RAG, QLoRA, Agents — Level 0: Course Map
+# AI Engineer Core Track — Level 0: Course Map
 
-> **Intent:** To develop end-to-end capability for building production-grade AI systems — from calling frontier APIs through fine-tuning your own model and orchestrating autonomous agents.
+> **Intent:** Build the ability to architect and deploy functional AI systems that move beyond isolated model calls—understanding how to run models locally, orchestrate them across providers, and wire them into autonomous feedback loops.
 >
-> **Your angle:** You're not here to understand LLMs abstractly. The course is structured so that every concept earns its place by doing something. Arrive with software instincts; leave with the ability to make principled architectural decisions: when to RAG vs fine-tune, when to quantize, when a single LLM call beats an agent framework.
+> **Your angle:** You have professional development experience. This track teaches you to think of AI as decoupled inference (separable from your application logic), manage context explicitly (models are stateless), and navigate the central tradeoffs (cost vs. reasoning, latency vs. capability, autonomy vs. control). You're learning to be the architect of the system, not a consumer of ChatGPT.
 
 ---
 
-## How to use this map
+## How to Use This Map
 
-This map reflects a deliberate 8-week sequence. Level 1 topics are the major conceptual and practical stations. Level 2 candidates are the sub-concepts where the real leverage lives — things that break in surprising ways if you skip them, or unlock adjacent territory once you grasp them.
+This map is organized into three layers, reflecting the stack from **Infrastructure** to **Orchestration**.
 
-Descend to Level 1 when you want the full picture of a station: its historical motivation, its tradeoffs, its dependencies on other stations. Descend to Level 2 when something in a Level 1 explanation prompts a genuine "but why does that work?" — those are the questions that separate a practitioner from a user.
+**Level 1 topics** are the conceptual anchors—each one represents a significant shift in what you can build. Start with a topic that addresses an immediate problem you're facing.
+
+**Level 2 candidates** are the sub-concepts within each topic. Use them to diagnose knowledge gaps: if a description makes you think "I don't know how that works," descend into it.
+
+The **Sequencing note** at the end identifies which topics unlock which others and suggests entry points based on your project type.
 
 ---
 
 ## Topic Inventory
 
----
+### **Foundations: The Model as a Tool**
 
-### Group 1 — Foundations: APIs, Models, and the Development Environment
+#### L1-01 · Decoupled Inference
 
-This cluster establishes the operational baseline. Nothing in Groups 2–4 is reachable without fluency here. The emphasis is on removing the mystery from how models are called, how open-source models run locally, and why the hardware story matters.
-
----
-
-#### L1-01 · The Chat Completions API and the Inference Loop
-
-The API that launched the modern LLM era — OpenAI's `chat.completions.create` — formalised a conversation paradigm that every major provider now mimics. Before this, interacting with language models required custom pipelines; the Chat Completions interface gave developers a uniform surface. Understanding it means understanding tokens (the unit of I/O), context windows (the constraint on memory), streaming (for real-time UX), and response formats (JSON mode for structured output). This is the bedrock everything else in the course is built on top of.
+The separation of the "brain" (the model) from the "body" (your application code) is the foundational idea of AI Engineering. Before this concept existed, AI was locked inside a product (a website like ChatGPT); after it, AI becomes a programmable utility. This distinction unlocks the entire stack: you can now swap models, run them locally or remotely, and wire their outputs into larger systems. The critical insight is that **inference is a service**, not magic.
 
 **Level 2 candidates:**
-- **Tokens and tokenisation** — drilling here reveals why the same text has different costs across models and why whitespace and punctuation behave unexpectedly at context boundaries.
-- **Context window mechanics** — understanding this unlocks why "the illusion of memory" exists and why RAG is necessary at all: the model sees only what fits in its window.
-- **Streaming responses** — what breaks if you don't understand how tokens arrive incrementally, and why UX and server architecture both depend on it.
-- **Structured output / JSON mode** — the difference between asking a model to "return JSON" and actually enforcing a schema; what fails downstream when you assume the former works.
-- **Multi-shot prompting** — how adding worked examples in the prompt is the fastest, cheapest way to shift model behaviour before you ever touch fine-tuning.
-- **System vs user messages** — the design decision baked into the API architecture: what each role is for, and what breaks when you collapse them.
+
+- **Local vs. Remote Trade-off** — Why running a model on your own hardware feels fast but limited, while cloud APIs feel expensive but unrestricted; how to choose based on data sensitivity and task complexity.
+- **Model as a Function** — Understanding that a model call (`client.chat.completions.create()`) is just HTTP + JSON; the architecture doesn't care if the model is on your laptop or OpenAI's servers.
+- **The Statelessness Problem** — Models have no built-in memory; every call is a fresh start. This is the single most important realization for an AI Engineer, because it means *you* are responsible for reconstructing context.
+- **The Illusion of Memory** — The pattern of re-sending the full conversation history (messages list) with every API call to simulate continuity; why this is necessary and when it breaks down.
+- **Provider Agnosticism** — How the OpenAI API standard (chat.completions) became universal, allowing you to swap Anthropic, Gemini, or Ollama without rewriting your core logic.
 
 ---
 
-#### L1-02 · Frontier Model Landscape: GPT, Claude, Gemini, DeepSeek, Grok
+#### L1-02 · Tokenization and Context Windows
 
-From 2020 to 2025, the frontier model landscape went from a near-monopoly (GPT-3) to a competitive market with meaningfully different architectures, training philosophies, and character. Each provider exposes roughly the same API surface but produces measurably different outputs on reasoning, creativity, safety, and cost. Knowing how to call all of them through one client library (the OpenAI SDK pattern, reusing `base_url`) is a practical skill; knowing when to choose one over another is a strategic one. This topic also introduces the reasoning vs chat vs hybrid model distinction — one of the most consequential model-selection variables.
+The model doesn't read text the way humans do. It converts your words into **tokens**—atomic units of meaning (roughly 4 characters per token, but it varies). This seemingly low-level detail cascades upward: it determines how much you can fit in a prompt, how much you'll be billed, and whether the model will "forget" the beginning of a long conversation. Understanding tokens is understanding the economic and architectural constraints of your system.
 
 **Level 2 candidates:**
-- **Reasoning effort and inference-time scaling** — what changes when you increase `reasoning_effort` from `minimal` to `high`, and why more compute at inference time is a substitute for a bigger model at training time.
-- **OpenAI-compatible client pattern** — the trick of reusing the OpenAI Python client against Anthropic, Google, and local endpoints; understanding this is what makes multi-provider workflows practical.
-- **Model character and alignment differences** — why DeepSeek and Grok answer the Prisoner's Dilemma differently to Claude and GPT; the training and alignment choices that produce these differences.
-- **OpenRouter as an abstraction layer** — when a routing/aggregation layer earns its place, and what you lose when you add one.
-- **API cost and rate limits** — why cost-per-token, rate limits, and time-to-first-token are the three variables that determine whether a model choice is commercially viable.
+
+- **Token Encoding (Tiktoken)** — How text becomes integers, why different models use different tokenizers, and how to count tokens programmatically before you send them.
+- **Context Window Limits** — The maximum number of tokens a model can ingest in one call (4K to 200K+); how this became a primary differentiator between models and shaped the design of RAG systems.
+- **The Cost-Context Tradeoff** — Why throwing all your company's documents into every prompt feels efficient but is actually expensive (you pay per token, per request) and leads to latency and context degradation.
+- **Batching and Streaming** — Requesting multiple completions in parallel (batch processing) vs. receiving tokens one at a time (streaming); when to use each to optimize latency and cost.
 
 ---
 
-#### L1-03 · Running Open-Source Models Locally with Ollama
+#### L1-03 · The Transformer Architecture as a Pattern Recognition Engine
 
-Before Ollama (2023), running an open-source LLM locally required assembling a pipeline from Hugging Face weights, quantisation tooling, and custom inference code. Ollama packaged this into a single CLI, exposing an OpenAI-compatible endpoint — the same API surface, local hardware. This matters because it gives you a zero-marginal-cost inference environment for development and experimentation, and it concretely illustrates the difference between a *packaged runtime* and the actual model weights and code underneath.
+The Transformer (2017, Vaswani et al.) unified text, code, and images under one architecture: sequences of tokens processed by **self-attention** layers. You don't need to implement self-attention from scratch, but you need to understand the *story*—that the model is **predicting the next most likely token** based on everything it has seen before, and this simple iterative process produces reasoning, code generation, and creative writing. This is the "why" behind emergent capabilities.
 
 **Level 2 candidates:**
-- **GGUF format and quantised model files** — how models are packaged into a single file for efficient CPU/GPU inference, and why this differs architecturally from running raw PyTorch weights.
-- **Local vs cloud inference tradeoffs** — what you actually pay for when you "run for free" locally: power, latency, and hardware constraints.
-- **Model size and parameter count** — why 270M parameters produces a very different experience to 8B, and what the number actually tells you about what the model can absorb.
-- **Ollama as an OpenAI-compatible server** — the specific port/endpoint pattern, and why this architectural choice matters for switching between local and cloud inference without code changes.
+
+- **Self-Attention and "Understanding Context"** — How the model attends to relevant parts of the input; why it can sometimes "know" about something mentioned 50 tokens ago and sometimes loses it.
+- **Emergent Capabilities** — Why a model trained to predict the next token can suddenly solve math problems or write code it never "saw" in training; the philosophical puzzle of how compression becomes intelligence.
+- **The Scaling Laws** — Larger models (more parameters) generally perform better; more data helps too. This relationship is predictable (the Scaling Laws), which is why companies bet billions on frontier models.
+- **From Text to Multimodal** — How the same Transformer backbone can be extended to handle images, audio, or video by converting them to tokens; the architecture doesn't care what kind of sequence it processes.
 
 ---
 
-#### L1-04 · Hugging Face Platform and Libraries
+### **Core Infrastructure: Building with Models**
 
-Hugging Face is the infrastructure layer for the open-source AI ecosystem. It plays two distinct roles that are easy to conflate: (1) the Hub — a GitHub-style repository of 2M+ models, 500K+ datasets, and deployable Spaces; and (2) the Python libraries — `transformers`, `datasets`, `peft`, `accelerate`, `trl`, and `hub` — that let you download, run, and modify models in code. The distinction between running a model via Ollama (a packaged binary) and running it via Hugging Face Transformers (Python code you can step through and modify) is one of the most important conceptual splits in the course.
+#### L1-04 · Local Inference: Ollama and Environment Hermeticity
+
+Running a model on your own hardware (your laptop, a local GPU server) gives you full privacy, zero per-token costs, and the ability to prototype without API keys. The trade-off: you're limited by your hardware (RAM for the model, VRAM for inference speed), and smaller models are less "intelligent." **Ollama** packages models and their dependencies into a simple local service; **UV** ensures your Python environment is reproducible and fast. This combination lets you spin up a private AI lab in minutes.
 
 **Level 2 candidates:**
-- **The Hub vs the Transformers library** — why these are two separate things with the same name, and why conflating them causes real confusion when trying to download a model in code.
-- **Transformers `pipeline` API vs raw `AutoModelForCausalLM`** — what the pipeline abstraction hides from you, and when you need to bypass it to access the model's internals.
-- **Tokenisers as a separate object** — why tokenisation is decoupled from the model, and what breaks if you use the wrong tokeniser for a given set of weights.
-- **PEFT and the LoRA adapter pattern** — why `peft` exists as a separate library rather than being part of `transformers`, and what it enables that vanilla fine-tuning cannot.
-- **Hugging Face Datasets library** — how it handles datasets too large to fit in memory, and why efficient iteration matters for fine-tuning at scale.
-- **Google Colab as a GPU rental environment** — why a T4 with 15GB VRAM is sufficient for most week-3 and week-7 workloads, and how to reason about memory headroom.
+
+- **Model Weight Distribution and Quantization** — Why a 70B-parameter model can fit on consumer hardware; how quantization (storing weights in lower precision) trades off accuracy for speed and memory.
+- **Ollama as a Service** — Running Ollama as a background daemon, querying it via OpenAI-compatible HTTP endpoints; how this abstracts away the complexity of model serving.
+- **UV and Dependency Hell** — Why older tools (pip, conda) leave you guessing about reproducibility; how UV locks exact versions and compiles dependencies in a way that "just works" across machines.
+- **The Hardware Bottleneck** — Understanding VRAM requirements, batch sizes, and when your GPU is the constraint vs. when your CPU or disk I/O is; profiling your bottleneck before optimizing.
 
 ---
 
-### Group 2 — Retrieval-Augmented Generation
+#### L1-05 · API-Based Inference: Frontier Models and Vendor Ecosystems
 
-RAG is the highest-leverage inference-time technique for giving an LLM expertise it wasn't trained on. It is architecturally simple — retrieve relevant context, inject it into the prompt — but the engineering details of the retrieval step are where most production RAG systems succeed or fail.
-
----
-
-#### L1-05 · The RAG Architecture: From Dictionary Lookup to Vector Search
-
-RAG was independently invented and named around 2020 (Lewis et al., Facebook AI Research), but the core insight — put relevant knowledge in the prompt — is far older. The innovation was making "relevant" fuzzy rather than exact: instead of string-matching on keywords, you measure semantic similarity in a high-dimensional vector space, so that "Who is Avery?" can retrieve a document indexed under "Lancaster." Understanding RAG means understanding why exact-match retrieval is brittle, what a vector embedding is, and what happens at each stage of the retrieve-then-generate pipeline.
+Cloud APIs (OpenAI, Anthropic, Google, Mistral) give you access to **frontier models**—the largest, most capable models available—with zero hardware setup and automatic scaling. The cost is operational: you pay per token, you depend on a third-party's uptime, and you send your data to their servers. The strategic choice (local vs. cloud) dominates your architecture.
 
 **Level 2 candidates:**
-- **The brittleness of keyword-based retrieval** — what breaks when you try to match on substrings, and why this failure mode motivates everything that follows.
-- **Vector embeddings and encoder models** — the distinction between auto-regressive LLMs (generate the next token) and encoder models (compress a sequence to a fixed-length vector), which is the conceptual foundation of semantic search.
-- **Cosine similarity as a retrieval signal** — what it measures, why it works for semantic search, and when it fails (e.g. highly asymmetric documents).
-- **Chunking strategy** — how you split source documents before embedding them, and why chunk size and overlap are among the highest-impact RAG hyperparameters.
-- **Retrieval evaluation: precision and recall** — how you measure whether your retriever is finding the right documents, separately from measuring whether the LLM is answering correctly.
-- **Knowledge base as a separate architectural concern** — why the knowledge base (embedding store + retrieval logic) is a first-class component rather than a prompt engineering detail.
+
+- **Pricing Models and Hidden Costs** — Distinguishing between per-token costs, per-request minimums, batch pricing, and "hidden" tokens (like reasoning steps that you pay for but don't see). Cost estimation before shipping.
+- **Rate Limits and Quota Management** — How to structure retries, exponential backoff, and request queuing when you hit rate limits; designing for resilience.
+- **Latency and Tail Percentiles** — Understanding that APIs have variable latency; designing systems that tolerate 95th-percentile slowness without cascading failures (timeouts, circuit breakers).
+- **API Key Management and Environment Variables** — The `.env` file pattern; why hardcoding secrets is a critical security failure and how to rotate keys in production.
 
 ---
 
-#### L1-06 · Vector Databases and LangChain Integration
+#### L1-06 · Prompt Engineering as Architecture
 
-Once you have embeddings, you need somewhere to store and query them at scale. Vector databases (Chroma, Pinecone, Weaviate, FAISS) are specialised stores built for approximate nearest-neighbour search — returning the most semantically similar vectors to a query in milliseconds across millions of documents. LangChain emerged as an abstraction layer over this entire pipeline: document loaders, text splitters, embedding models, vector stores, and retrieval chains all wired together through a common interface. Understanding LangChain 1.0's API teaches you what the abstraction is hiding; understanding its limitations teaches you when to go without it.
+A prompt is not decoration; it is the interface between your intention and the model's output. Effective prompts are **architectural decisions**: they encode the persona, the constraints, the output format, and the reasoning pattern. A tight System Message is worth more than a dozen examples. This is the "glue code" of AI Engineering—it's what allows you to tune a model's behavior without fine-tuning.
 
 **Level 2 candidates:**
-- **Approximate nearest-neighbour (ANN) search** — why you don't do exact nearest-neighbour at scale, and what HNSW (the indexing algorithm most vector DBs use) trades off for speed.
-- **LangChain's retrieval chain abstraction** — what the chain does, what it hides, and why building the same pipeline from scratch once is a useful learning exercise.
-- **Embedding model choice** — why the embedding model is largely independent of the generation model, and what happens when you use a low-quality embedder with a high-quality generator.
-- **Re-ranking after retrieval** — why retrieving the top-k by cosine similarity is not always sufficient, and what cross-encoder re-ranking adds.
-- **RAG evaluation: answer faithfulness vs answer relevance** — the two different failure modes of a RAG system, and why a good retriever does not guarantee a good answer.
+
+- **System Message Design** — The blueprint of the model's role: who it is, what it does, what it cares about. A bulletproof System Message requires iteration; it's your primary lever for controlling behavior.
+- **In-Context Learning (Few-Shot Prompting)** — Providing examples inside the prompt to show the model what you want; when examples help and when they just waste tokens.
+- **Chain-of-Thought and Reasoning Patterns** — Asking the model to "think step by step" (or even asking it to give a wrong answer first, then correct itself); how to coax a model toward reasoning vs. pattern matching.
+- **Structured Output Expectations** — Communicating (through the System Message and examples) that you expect JSON, XML, or Markdown; the precursor to Structured Outputs (Pydantic + Constrained Decoding).
 
 ---
 
-#### L1-07 · Model Selection Strategy and Benchmarks
+### **Model Orchestration: Beyond a Single Call**
 
-Picking the right model for a task is arguably the most consequential decision in an LLM system — more impactful than prompt engineering, RAG tuning, or hyperparameter choices. The strategy involves two layers: first, filtering on basics (parameters, context window, cost, license, latency); then evaluating on benchmarks (GPQA, MMLU-Pro, AIME, LiveCodeBench, MUSA, HLE). Both layers have serious limitations: benchmarks suffer from training data contamination, overfitting to metrics, and inconsistent evaluation environments. The course's Connect Four leaderboard — where models play a simple board game — is a useful corrective: even models at apparent PhD-level benchmark performance struggle with spatial reasoning tasks a human child handles easily.
+#### L1-07 · Model Agnosticism and Provider Switching
+
+No single provider dominates forever. The ability to swap models—Anthropic for reasoning, OpenAI for creativity, Mistral for cost, Ollama for privacy—without rewriting your application is a strategic asset. This requires **abstraction**: you write to a standardized interface (chat.completions) and route to different providers via configuration. The OpenAI API became the de facto standard, but you're not locked in if you design for it.
 
 **Level 2 candidates:**
-- **The Chinchilla scaling law** — the relationship between parameter count and training data required for optimal performance, why it's a useful heuristic, and why inference-time scaling (reasoning effort, RAG) has reduced its practical importance.
-- **Reasoning vs chat vs hybrid models** — what each is trained to do, the speed/quality tradeoff, and why hybrid models don't always dominate.
-- **Benchmark contamination and overfitting** — why published benchmark scores are upper bounds on real-world performance, and how to construct your own evaluation.
-- **Latency vs throughput** — the difference between time-to-first-token (critical for streaming UIs) and tokens-per-second (critical for batch jobs), and which models are optimised for which.
-- **Open-source licensing landscape** — why Llama's license requires a separate agreement for commercial use, what that means in practice, and how license choice constrains your deployment options.
-- **Building your own leaderboard** — why the most trustworthy benchmark for your task is one you construct yourself, using your own inputs and a metric aligned with your business objective.
+
+- **API Standardization (OpenAI Compatibility)** — The chat.completions format became universal; how to write provider-agnostic client code using simple URL/API key swaps.
+- **Model Capability Matrices** — Understanding that models have different strengths (e.g., Claude 3.5 for reasoning, GPT-4o for speed, Gemini for long context); building decision trees that select the right model for the task.
+- **Fallback Strategies** — What to do when a provider is down, rate-limited, or too expensive; designing graceful degradation (use local model, cache previous results, return a sensible default).
+- **Benchmarking and Vendor Lock-in Risk** — How to evaluate whether switching is worth the engineering effort; understanding the cost-accuracy-latency surface for different models.
 
 ---
 
-### Group 3 — Fine-Tuning: Frontier and Open-Source Models
+#### L1-08 · Tool Calling (Function Calling) and the Bridge to Real Data
 
-Fine-tuning is the step beyond inference-time techniques. It modifies the model's weights to improve performance on a specific task — but it is expensive, slow, and often unnecessary. This group covers when fine-tuning is warranted, how to prepare data for it, and the techniques (QLoRA) that make fine-tuning an 8B+ open-source model feasible on a single GPU.
-
----
-
-#### L1-08 · Data Curation and the Training Pipeline
-
-Before any weight is updated, you need data. The capstone project — predicting product prices from Amazon descriptions — is a case study in data science as much as LLM engineering. The sequence: find a source (Hugging Face Datasets: `McAuley-Lab/Amazon-Reviews-2023`), load it, inspect it, filter it (price outliers, empty descriptions), build train/validation/test splits, and decide on the evaluation metric (mean absolute error in dollars, because it's both model-centric and business-interpretable). The insight the course returns to repeatedly: data curation had a larger impact on final model quality than any hyperparameter choice.
+Models can't access the internet, your database, or the current date. **Tool Calling** is the mechanism where the model generates a structured request (e.g., `{"function": "search_database", "args": {"query": "..."}}`), your application executes it, and you feed the result back into the conversation. This is how you wire AI into the real world without embedding data directly into the prompt.
 
 **Level 2 candidates:**
-- **Train / validation / test split rationale** — why you need three pools, not two, and what goes wrong if you use validation data to make final model selection decisions.
-- **LLM-assisted data preprocessing** — using a frontier model to rewrite raw product descriptions into a consistent prompt format before fine-tuning, which is itself a novel use of LLMs.
-- **Synthetic data generation** — how to use an LLM to produce labelled training examples, the failure modes (LLMs are systematically positive/gushing unless corrected), and when synthetic data substitutes for real data.
-- **Business-centric vs model-centric metrics** — why cross-entropy loss is useful during training but mean absolute dollar error is what you report to a stakeholder.
-- **Baseline models in traditional ML** — why you should build a linear regression and an XGBoost model before touching an LLM, and what their performance tells you about the information content of the features.
+
+- **Tool Definition Format** — Describing a function (its name, parameters, description) in JSON so the model understands what it can call; the schema becomes the contract.
+- **The Tool Loop** — The pattern: LLM decides it needs data → generates a tool call → you execute and return the result → you feed it back to the LLM. Repeating until the task is complete.
+- **Constraining Tool Use** — Ensuring the model only calls tools you've defined; preventing hallucinated function calls through constrained decoding or validation layers.
+- **Parallel Tool Calls** — Modern models can request multiple tools at once (e.g., fetch weather AND search news simultaneously); orchestrating execution and re-injection for speed.
 
 ---
 
-#### L1-09 · Fine-Tuning a Frontier Model via API
+#### L1-09 · Retrieval-Augmented Generation (RAG) as a Pattern
 
-OpenAI (and Anthropic) expose fine-tuning through an API: you upload a JSONL file of prompt-completion pairs, submit a training job, and receive a model ID pointing to your fine-tuned variant. This removes infrastructure complexity but introduces a different kind of constraint — you can't see the architecture, can't control the LoRA hyperparameters, and can't deploy the result outside the provider's infrastructure. The course treats this as a necessary disappointment: fine-tuning GPT-4o-mini on a price prediction task underperforms zero-shot prompting of GPT-4o, which is the right lesson about when fine-tuning a frontier model is and isn't warranted.
+RAG solves the problem of knowledge that's too large, too fresh, or too specific to fit in the model's training data. Instead of fine-tuning, you **retrieve relevant documents at inference time** and stuff them into the context. This is the workhorse pattern for Q&A systems, summarization, and any task where "up-to-date factual accuracy" matters more than behavioral adaptation. The trade-off: you're paying for tokens (the retrieved docs in every request) and depending on your retrieval quality.
 
 **Level 2 candidates:**
-- **JSONL training format** — how prompt-completion pairs are structured, what the model actually sees during fine-tuning, and why format matters for generalisation.
-- **When frontier fine-tuning loses to prompting** — the specific conditions under which a smaller fine-tuned model underperforms a larger prompted model, and what this tells you about the cost-performance tradeoff.
-- **Transfer learning mechanics** — why fine-tuning works at all (the pre-trained model already "knows" most of what you need; you're updating a small fraction of its knowledge), and what breaks if the fine-tuning dataset is too small or too different from the pre-training distribution.
-- **Overfitting to the fine-tuning set** — what it looks like when a model memorises training examples rather than generalising, and how early stopping and validation loss are used to detect it.
+
+- **Embedding-Based Retrieval (Vector Databases)** — Converting documents into dense vectors via an embedding model; using vector proximity (cosine similarity) to find relevant documents. Different from keyword matching.
+- **Chunking and Metadata** — How to split long documents into digestible chunks so the retriever can be precise; adding metadata (source, date, author) so the model knows *where* information came from.
+- **Retrieval Quality vs. Token Waste** — Why fetching 10 irrelevant documents and putting them in the prompt wastes tokens and confuses the model; how to tune the number of results and the retrieval threshold.
+- **RAG vs. Fine-Tuning Trade-off** — When to add knowledge via RAG (for fresh, factual data) vs. fine-tuning (for behavioral adaptation, style, format); they solve different problems.
 
 ---
 
-#### L1-10 · QLoRA: Quantisation + Low-Rank Adaptation
+#### L1-10 · Model Fine-Tuning: Baking Behavior into Weights
 
-QLoRA (Dettmers et al., 2023) is the technique that made fine-tuning 7B–70B open-source models accessible on a single consumer GPU. It combines two independent tricks: LoRA (Low-Rank Adaptation), which trains small additional matrices that adapt the model's frozen layers rather than updating all 3B weights; and quantisation, which compresses the base model's weights from 32-bit floats to 4-bit integers, reducing memory from ~13GB to ~4GB. The practical consequence: you can fine-tune Llama 3.2 3B on a free Colab T4. The conceptual consequence: you learn to think of a model's parameters as not a monolith but as a frozen base plus learned adapter layers.
+If RAG is "look it up," fine-tuning is "remember it." You start with a pre-trained model and update its weights using your own data. This bakes in specialized knowledge, style, or behavior. Fine-tuning is expensive (compute + data annotation) and risky (overfitting, where the model memorizes your training set and fails on new examples). But when it works—when you've curated clean data and validated on a holdout set—it's powerful.
 
 **Level 2 candidates:**
-- **LoRA rank (r) and alpha hyperparameters** — what `r` controls (the dimensionality of the adapter matrices), why powers of two are conventional (and why the convention matters less than the folklore suggests), and what happens when you increase `r`.
-- **Target module selection** — why attention layers (q_proj, v_proj) are the conventional first target for adaptation, and what adding MLP layers gains and costs.
-- **4-bit NF4 quantisation** — why 4-bit is 16 discrete positions mapped to floating-point values (not integers), why the accuracy degradation is much smaller than expected, and the MP3 analogy for why lossy compression of neural weights works.
-- **The bits-and-bytes library** — the specific Python package that implements bitsandbytes quantisation on CUDA, and why it needs to be installed fresh on each new Colab session.
-- **LoRA A and B matrix dimensions** — the linear algebra reason there are two matrices rather than one (so that their product has the right shape to add to the frozen weight matrix), for those who want to ground the intuition in the actual maths.
-- **Freezing vs training the base model** — the memory and compute savings that come from freezing all base weights and training only the adapter, and what you lose when you do this.
+
+- **Training Loop and Validation Strategy** — The pattern: forward pass, compute loss, backward pass, update weights. The critical skill is **monitoring validation loss** to catch overfitting before it ruins your model.
+- **Prompt Templates and Data Format** — Fine-tuning requires data in a specific format (usually messages lists with system/user/assistant roles); getting the format wrong wastes time and money.
+- **Overfitting and the Weights & Biases Valley** — The point where training loss keeps dropping but validation loss starts climbing—that's where your model is memorizing, not generalizing. Go back to that checkpoint.
+- **Parameter-Efficient Methods (LoRA, Adapters)** — Alternatives to fine-tuning the entire model; updating only a small subset of parameters to save compute; useful when you have limited budget.
 
 ---
 
-### Group 4 — Agentic AI and Production Deployment
+### **Production and Autonomy: The Final Mile**
 
-Agents extend LLMs beyond single-turn question-answering into systems that take actions, call tools, and loop until a goal is achieved. Production deployment takes a fine-tuned model and makes it available as an API endpoint. This group covers the architectural patterns, the practical infrastructure (Modal for serverless deployment), and the capstone project that ties all previous groups together.
+#### L1-11 · Structured Outputs and Constrained Decoding
 
----
-
-#### L1-11 · Agent Architectures and Tool-Calling
-
-Agents — AI systems that call tools in a loop to achieve a goal — became a practical engineering pattern around 2023–2024, when LLM reliability improved enough to make multi-step tool use viable without constant human intervention. The course builds a seven-agent system for deal-hunting: a scanner agent subscribing to RSS feeds, an ensemble agent pricing products (using both the fine-tuned model and a RAG-backed frontier model), a messaging agent sending push notifications, and a planning agent orchestrating the others. The key lesson is architectural restraint: don't decompose into agents because it sounds like a good design pattern; decompose because it demonstrably solves the business problem more effectively than a single LLM call.
+Raw LLM outputs are fuzzy: "sometimes valid JSON, mostly." **Structured Outputs** (Constrained Decoding) are the mathematical enforcement of a schema during generation. Instead of hoping the model returns JSON, the system zeros out invalid tokens in real-time, guaranteeing the output matches your schema. This is the only reliable way to wire AI into strict software systems (databases, APIs, transactions).
 
 **Level 2 candidates:**
-- **Three definitions of "agent"** — the Sam Altman definition (delegates work autonomously), the Anthropic definition (LLM controls the workflow), and the emerging definition (LLM + tools in a loop) — and why the distinctions matter for architecture decisions.
-- **Agentic workflow vs true agentic AI** — Anthropic's distinction between orchestrated multi-LLM-call pipelines (where Python controls the order) and systems where the LLM decides what to do next.
-- **Tool-calling / function-calling mechanics** — how the model signals that it wants to run a tool (by generating a structured JSON block), how your Python code executes the tool, and how the result re-enters the context.
-- **Memory and deduplication in agent loops** — why a planning agent needs to remember which deals it has already surfaced, and the simplest viable implementation of that state.
-- **When to use vs avoid agent frameworks** — what Crew.ai, OpenAI Agents SDK, and LangGraph provide, why Anthropic's "Building Effective Agents" recommends building from first principles first, and what you lose by abstracting too early.
-- **Multi-agent observability** — why logging and tracing become non-negotiable as soon as you have more than two agents in a loop, and what the minimum viable observability looks like.
+
+- **Pydantic Schema Definition** — Writing type-safe Python dataclasses that define exactly what the model must return; the schema becomes your contract.
+- **Token Elimination During Generation** — How constrained decoding works: at each step, the model generates probability scores for the next token, and the system masks illegal tokens (e.g., any character that violates JSON syntax), forcing a valid path.
+- **Performance Cost and Trade-offs** — Structured Outputs add latency because they constrain the model's freedom; measure whether the overhead is worth the reliability gain.
+- **Recursive Schemas and Nested Data** — Defining complex, hierarchical outputs (objects containing arrays of objects); ensuring the LLM can generate deeply nested structures without errors.
 
 ---
 
-#### L1-12 · Serverless Deployment with Modal
+#### L1-12 · Agentic AI and Autonomous Loops
 
-A fine-tuned model that lives only in Colab has no production value. Modal is a serverless AI infrastructure platform that lets you deploy Python functions — including inference code — to cloud GPUs with one decorator and pay only for actual runtime. The architectural insight: Modal decouples the *definition* of infrastructure (which image, which GPU, which secrets) from its *execution*, so the same Python function runs locally for debugging and on an A10G in production without a code change. This is a narrow but deep lesson in what "production" actually means for an LLM system.
+An **agent** is a system that enters a loop: perceive state → reason about options → act via tools → observe results → repeat. The model becomes a decision-maker, not a one-shot oracle. This unlocks autonomy: the agent can monitor feeds, make decisions, and take actions without human intervention between steps. The cost is complexity: you need to manage state, handle failures, define when loops terminate, and (crucially) decide when humans should be in the loop.
 
 **Level 2 candidates:**
-- **Serverless vs persistent GPU instances** — why paying only for inference time (Modal's model) beats reserving a persistent GPU instance for most LLM workloads, and when it doesn't.
-- **Modal's decorator pattern** — how `@app.function(image=..., gpu=..., secrets=...)` describes infrastructure as code, and how `.remote()` vs `.local()` switches execution context without changing the function body.
-- **Hugging Face secret management in Modal** — the specific pattern for passing HF tokens to cloud-hosted inference functions via Modal Secrets, and what breaks if the key names don't match.
-- **Cold start latency** — the tradeoff Modal surfaces between keeping a container warm (cost) and accepting startup latency (UX), and how to reason about it for a deal-scanning use case.
-- **Region selection for compliance** — why GDPR and data residency requirements can constrain which Modal regions you're allowed to use, and how to enforce region selection in code.
+
+- **The Perception-Reasoning-Action-Observation Cycle** — The core loop: the agent sees the current state and goal, decides which tool to use, generates a tool call, you execute it, and the results feed back. Repeating until done or timeout.
+- **Agent Frameworks (LangChain, CrewAI) vs. First Principles** — Frameworks speed up scaffolding but obscure the underlying loop; understand the mechanics first before using a framework, or you'll be helpless when it breaks.
+- **Goal Specification and Termination Conditions** — Defining what "done" means; preventing infinite loops through explicit termination conditions, token budgets, or iteration limits.
+- **Human-in-the-Loop Patterns** — When high-risk actions (financial transfers, deletions) require approval; designing escalation and review checkpoints into agent workflows.
+
+---
+
+#### L1-13 · Serving and Scaling: Infrastructure for Production
+
+Models are stateless functions, but serving them reliably requires infrastructure: load balancing, caching, monitoring, and scaling. **Serverless GPU platforms** (Modal) let you deploy agents without managing Kubernetes. **Vector databases** (Chroma, Pinecone) become your agent's long-term memory. **Interface layers** (Gradio, FastAPI) connect the agent to users. This layer bridges the gap between "working on my laptop" and "deployed in production."
+
+**Level 2 candidates:**
+
+- **Serverless GPU Infrastructure (Modal)** — Deploying models and agents without owning hardware; the cost is cold-start latency (30-60s if the infrastructure isn't "warm"); when it's acceptable and when you need alternatives.
+- **Caching and Semantic Deduplication** — Storing frequently-used outputs (embeddings, API calls) to avoid redundant compute; when exact-match caching applies and when you need semantic equivalence.
+- **Monitoring and Observability** — Tracking model behavior in production (latency, cost, error rates); understanding when a model is "broken" (hallucinating) vs. when the system is (API down, network issue).
+- **Cost Optimization at Scale** — Managing token spend across many requests; understanding when batch processing is worth the latency trade-off; identifying runaway costs before they hit your bill.
+
+---
+
+#### L1-14 · The System Architecture: Wiring It All Together
+
+A production AI system is not a single model—it's an orchestration of models, RAG systems, fine-tuned specialists, and hard-coded workflows. The **architecture** decides where logic lives: in the model (via prompting), in the code (rule engines), in the data (fine-tuning), or in the inference-time context (RAG). Understanding these trade-offs is what separates a prototype from a production system.
+
+**Level 2 candidates:**
+
+- **Ensemble Approaches** — Why multiple models (e.g., a planner + workers) often outperform a single model; using different models for different stages of reasoning.
+- **RAG vs. Fine-Tuning vs. Hard-Coded Logic** — The decision tree: Is this knowledge that changes daily? Use RAG. Is this a behavioral pattern unique to your company? Use fine-tuning. Is this a well-defined rule? Hard-code it.
+- **Cost-Accuracy-Latency Surface** — Understanding that fast, cheap, and accurate are usually in tension; visualizing the trade-offs for your specific use case; iterating on the best operating point.
+- **Error Handling and Graceful Degradation** — Designing for failure: what happens when the model hallucinates, the vector DB is down, or the API times out? Building fallbacks that keep the system running.
+
+---
+
+#### L1-15 · Observability and Iteration: Measuring What Matters
+
+You can't improve what you don't measure. **Observability** means instrumenting your system so you can diagnose problems: Did the agent go off the rails? Is the retriever finding relevant documents? Did a model change break my application? Measuring **latency, cost, accuracy,** and **user satisfaction** is the feedback loop that separates hype from utility.
+
+**Level 2 candidates:**
+
+- **Logging and Tracing** — Recording every model call, tool invocation, and decision point; tracing requests end-to-end to find where failures happen.
+- **Evaluation and Test Sets** — Defining what "correct" means for your application; building test cases and benchmarks so changes can be validated automatically.
+- **A/B Testing and Canary Deployments** — Rolling out model changes gradually; comparing metrics between old and new versions; ensuring improvements are real before full rollout.
+- **Cost Attribution and Token Accounting** — Tracking which features, users, or workflows consume the most tokens; making decisions about cost optimization based on data.
 
 ---
 
 ## Sequencing Note
 
-The logical dependency chain runs in one direction: **APIs → open-source models → RAG → fine-tuning → agents**. Each station assumes fluency at the previous one. Attempting RAG before you understand context windows produces brittle systems you can't debug. Attempting QLoRA before you understand the Hugging Face Transformers library produces opaque training failures. Attempting agents before you understand tool-calling mechanics produces systems that are genuinely hard to reason about.
+**This track is the foundation.** Everything in the Agentic Track and Production Track depends on mastering these concepts. You cannot skip it.
 
-The highest-leverage entry points for someone returning to foundations are **L1-05 (RAG architecture)** and **L1-10 (QLoRA)**. These are the topics where professional LLM engineers most commonly have gap knowledge — they understand the output but not the mechanism. L1-07 (model selection and benchmarks) is the other high-value stop: the ability to make and defend model selection decisions is a recurring professional need that most practitioners underinvest in.
+### ⚠️ Critical Warning: Don't Skip to Production
 
-If you're pressed for time: L1-01 through L1-04 can be skimmed if you already code comfortably against LLM APIs. L1-08 (data curation) can be approached at the intuition level rather than the implementation level without blocking later topics. L1-09 (frontier fine-tuning) is worth understanding primarily as a negative lesson — knowing when *not* to do something is as valuable as knowing how.
+A common mistake: looking at the Production Track and thinking "I'll just learn Docker and cloud deployment, skip the AI fundamentals." **This will fail.** You cannot deploy systems reliably if you don't understand:
+
+- **Context windows** (L1-02): If you don't know how many tokens fit in a prompt, you'll build systems that break when users ask longer questions.
+- **Statelessness** (L1-01): If you don't understand that models have no memory, you'll expect features that can't work, wasting weeks debugging phantom bugs.
+- **Tool calling** (L1-08): If you don't understand how to wire models to real data, you'll ship hallucinating systems that make up facts.
+- **Structured outputs** (L1-11): If you don't understand schema enforcement, your production system will crash when the model's JSON is malformed.
+
+**Do yourself a favor:** Complete the Core Track first. It's 15 topics and takes 2-4 weeks of focused learning. Every hour invested here saves 10 hours of debugging production issues later.
+
+### The Three Tracks Explained
+
+The Core Track has four layers that build on each other:
+
+1. **Foundations (L1-01 to L1-03)**: Start here. Understand that inference is decoupled, models are stateless, and the Transformer is predicting the next token. These concepts underpin everything that follows.
+
+2. **Infrastructure (L1-04 to L1-06)**: Once you understand the model as a service, you need to actually run one. Choose between local (Ollama + UV) or cloud (API-based), and learn to tune behavior through prompting. The decision between local and cloud cascades through all downstream choices.
+
+3. **Orchestration (L1-07 to L1-10)**: Now you can build beyond single calls. Model agnosticism lets you swap providers; tool calling wires the model to real data; RAG and fine-tuning add knowledge at different points in the inference pipeline. These are the techniques that turn a model call into a functional system.
+
+4. **Structured Reliability (L1-11 to L1-15)**: Enforce reliability through structured outputs, manage your architecture, and add observability. This layer bridges to the Agentic Track (autonomous systems) and Production Track (scaling and reliability).
+
+**How this relates to other tracks:**
+
+- **Core → Agentic:** The Agentic Track assumes you understand decoupled inference, context management, tool calling, and structured outputs. Master L1-08 (Tool Calling) and L1-11 (Structured Outputs) before moving to agentic loops.
+- **Core → Production:** The Production Track assumes you understand models as services, prompting, and basic architecture. Master all of Core before worrying about containerization and cloud deployment.
+- **Core + Agentic + Production:** These tracks are cumulative. You build knowledge in Core, add reasoning loops in Agentic, and productionize in Production.
+
+**High-leverage entry points depend on your problem:**
+
+- **"I need to build a prototype quickly"** → Start with L1-01 (Decoupled Inference), then jump to L1-05 (API-Based Inference). Use an OpenAI API call to get working proof-of-concept in minutes.
+- **"I need to keep my data private"** → L1-04 (Local Inference) first, then L1-02 (Tokenization) to understand context limits, then L1-08 (Tool Calling) to wire it to your database.
+- **"I need my system to reason over documents"** → L1-01, then L1-09 (RAG). Build a retrieval pipeline before worrying about agent loops.
+- **"I need an autonomous system that takes actions"** → Complete Core (all 15 topics), then move to the **Agentic Track**. Don't skip; agentic systems are built on top of reliable single-call inference.
+- **"I need to deploy to production"** → Complete Core and Agentic, then move to the **Production Track** for containerization, cloud deployment, and scaling.
+
+**The dependency chain within Core:**
+
+- L1-02 (Tokenization) depends on L1-01 (Decoupled Inference). You can't understand tokens without understanding that you're calling a remote service with constraints.
+- L1-04 and L1-05 (Local vs. API) are alternatives; pick one, but understand the other's trade-offs.
+- L1-07 (Model Agnosticism) depends on understanding the differences between L1-04 and L1-05; it's how you design to survive changes.
+- L1-08 (Tool Calling), L1-09 (RAG), and L1-10 (Fine-Tuning) are independent; you can tackle them in any order, but together they form the "knowledge integration" layer.
+- L1-11 (Structured Outputs) and L1-12 (Agentic AI) are closely related; understanding L1-11 makes agentic systems reliable.
+- L1-13 (Serving and Scaling), L1-14 (System Architecture), and L1-15 (Observability) apply to everything; don't defer them too long or you'll build systems you can't debug or scale.
+
+**The shortest path through Core:** L1-01 → L1-05 → L1-06 (Prompt) → L1-08 (Tools) → You now understand the basic pattern. Continue with L1-11 (Structured Outputs) before moving to Agentic Track.
+
+**The path to being ready for Agentic Track:** Complete all of Foundations + Infrastructure + Orchestration + Structured Reliability. Then move to the Agentic Track.
+
+**The path to being ready for Production Track:** Complete all of Core + Agentic Tracks. Then move to Production Track for deployment.
 
 ## Source
 
