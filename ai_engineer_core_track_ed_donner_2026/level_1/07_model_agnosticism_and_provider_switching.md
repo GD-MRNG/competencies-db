@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 07_model_agnosticism_and_provider_switching.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-07 · Model Agnosticism and Provider Switching
+
+The mistake most teams make isn't picking the wrong model — it's picking a model as if the choice were permanent. They wire their application directly to one provider's SDK, scatter that provider's quirks throughout their codebase, and treat the model selection as a foundational architectural decision. Six months later, a competitor releases something cheaper, faster, or better at their specific task, and the cost of switching is measured in weeks of refactoring. The provider didn't lock them in. They locked themselves in.
+
+Model agnosticism is the discipline of designing your system so that the model is a configuration value, not a structural commitment. The frontier shifts constantly — a lab that leads on reasoning today gets leapfrogged on cost next quarter, an open-weight model suddenly closes the gap on a closed one, a new provider emerges with a specialty (long context, low latency, cheap embeddings) that reshuffles the deck. If your architecture assumes any of these rankings are stable, you're building on sand. The agnostic architecture assumes the opposite: that the right model for any given task is a moving target, and your job is to make hitting that target a routine operation rather than a migration project.
+
+The mechanism that makes this possible is, somewhat accidentally, a standard. When OpenAI shipped the chat.completions interface — a messages list with roles, a model identifier, a few sampling parameters, a structured response — it became influential enough that nearly every subsequent provider adopted compatibility with it, either natively or through a thin shim. Local runtimes like Ollama expose the same shape. Open-weight hosting services expose the same shape. Even labs with their own native APIs typically ship an OpenAI-compatible endpoint alongside. This means that swapping providers, in the best case, is a matter of changing a base URL and an API key. In the worst case, it's a small adapter layer. It is almost never a rewrite.
+
+But interface compatibility is the easy part. The harder reality is that models with identical interfaces have very different behaviors. One model follows system messages literally; another treats them as suggestions. One returns clean JSON reliably; another wraps it in prose unless you constrain it. One handles 200K tokens of context gracefully; another degrades sharply past 32K. One charges for reasoning tokens you never see; another doesn't. The interface tells you nothing about these differences. You discover them by running your actual workload against each candidate and measuring what comes out. This is why model selection has to be empirical: build a small evaluation harness against your real tasks, and treat any leaderboard ranking — LMSYS Chatbot Arena, Hugging Face's leaderboards, the marketing claims from labs themselves — as a starting hypothesis, not a conclusion.
+
+The strategic value of agnosticism shows up in three places. First, in routing: different tasks within the same application often want different models. A cheap fast model handles classification and routing; a heavyweight reasoning model handles the hard analytical steps; a local model handles anything privacy-sensitive. If your architecture supports per-task model selection, this becomes a configuration concern. If it doesn't, you either pay frontier prices for trivial tasks or accept weak performance on hard ones. Second, in resilience: providers go down, hit rate limits, and deprecate models on their own schedules. An agnostic system can fail over to a backup provider, degrade gracefully to a smaller model, or fall back to cached results. A locked-in system just returns errors. Third, in negotiation: when your vendor knows you can leave in an afternoon, the conversation about pricing changes character.
+
+The practical design pattern is straightforward but worth stating explicitly. Centralize all model calls behind a single thin abstraction in your code — not a heavy framework, just a function or class that takes a task identifier, looks up the configured provider and model for that task, and dispatches the call. Keep provider-specific concerns (auth, retries, response shape quirks) inside that abstraction. Pass model identifiers and base URLs through configuration, not constants. When you need to evaluate a new model, you change the config for one task, run your eval harness, and compare. The new model either earns its place or doesn't. You never touch the application logic.
+
+There is a real cost to this approach, and it's worth being honest about. Designing for agnosticism means resisting the temptation to use provider-specific features that don't have analogs elsewhere — proprietary tool-calling extensions, native structured output modes that work differently across labs, prompt caching mechanisms unique to one vendor. Sometimes those features are worth the lock-in, and the right call is to use them. But that should be a deliberate decision, made with full awareness that you're trading flexibility for capability, not a default that creeps in because you copy-pasted from a tutorial. Agnosticism is a posture, not a purity test. You're not trying to support every provider on earth; you're trying to make sure that when the landscape shifts — and it will — you can move with it.
+
+The skill this topic builds is architectural humility about a fast-moving field. You're not betting on which lab will win. You're building a system that doesn't need to know.
+
+## Level 2 candidates
+
+**API Standardization (OpenAI Compatibility)** — How the chat.completions format became the de facto interface across providers, and what the actual contract includes (messages, roles, tools, sampling parameters) versus what's provider-specific. Worth a deep dive because the edges of the standard — where compatibility breaks down — are exactly where agnostic code fails in production.
+
+**Model Capability Matrices** — Building a structured view of which models excel at which dimensions (reasoning, speed, context length, cost, multimodality, tool use) so you can route tasks to the right model rather than defaulting to one. Worth deeper treatment because the practice of building and maintaining your own capability matrix — versus trusting public leaderboards — is a non-obvious skill.
+
+**Fallback Strategies** — The patterns for graceful degradation when a provider is down, rate-limited, or too expensive: cascading to a backup provider, dropping to a local model, returning cached results, or failing with a useful default. Worth going deeper because the design choices here (synchronous fallback versus circuit breakers, transparent versus visible degradation) materially shape user experience.
+
+**Benchmarking and Vendor Lock-in Risk** — How to actually evaluate whether switching providers is worth the engineering cost, using your own task-specific eval harness rather than public benchmarks. Worth a deep dive because most teams either over-invest in benchmarking (analysis paralysis) or under-invest (cargo-culting leaderboards), and the middle path is a learnable craft.
+
+**Provider-Specific Features and the Lock-in Tradeoff** — When to deliberately use proprietary features (prompt caching, native structured outputs, lab-specific tool formats) despite the coupling cost, and how to isolate that coupling when you do. Worth its own treatment because the discipline of making lock-in decisions consciously, rather than by accident, is what separates flexible architectures from rigid ones.
+
+---

@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 15_observability_and_iteration_measuring_what_matters.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-15 · Observability and Iteration: Measuring What Matters
+
+Most AI systems fail silently. A traditional web service fails loudly — a 500 error, a stack trace, a dashboard turning red. An AI system fails by returning a confident, well-formatted, plausible answer that happens to be wrong. The retriever pulled the wrong document. The model drifted after a silent version bump on the provider's side. The agent took a four-step detour through tools it didn't need. Nothing crashed. Nothing alerted. Your users just slowly lose trust, and you find out weeks later from a support ticket. This is why observability isn't an optional production concern bolted on at the end — it's the only mechanism that tells you whether the system you built is the system you think you're running.
+
+The mental model to start with is this: every other discipline in this track gives you the ability to *do* something — call a model, retrieve a document, run a tool, enforce a schema. Observability is the discipline that tells you whether what you did was any good. Without it, you are guessing. You are tuning prompts based on vibes, swapping models based on Twitter screenshots, and shipping changes you cannot prove are improvements. The feedback loop is the difference between engineering and cargo-culting, and in a field where the underlying components change weekly, the team with the tighter loop wins.
+
+There are four things worth measuring, and they pull in different directions. Latency is how long the user waits — end-to-end, not just the model call, because the retrieval step and the tool round-trips often dominate. Cost is what each interaction costs you in tokens and infrastructure, attributed down to the feature or user so you can see where your money actually goes. Accuracy is whether the output is correct, which is the hard one because "correct" is application-specific and often requires you to define it yourself. And user satisfaction is the ground truth that overrides all the others — a system can be fast, cheap, and technically accurate, and still be one your users hate. Each of these is a number. Each of these can be tracked over time. Each of these will tell you something different about why your system is or isn't working.
+
+The instrumentation layer underneath those metrics is logging and tracing. You want every model call, every tool invocation, every retrieved document, and every intermediate decision recorded with enough context to reconstruct what happened on a given request. This matters more in AI systems than in conventional services because the failures are interpretive. When a user says "the agent gave me a weird answer," you need to be able to pull up the trace and see: which model was called, what was in the context window, which documents the retriever surfaced, what tools fired and in what order, and what the model said at each step. Without that trace, you're debugging blind. With it, the root cause is usually obvious within minutes — the retriever returned junk, or the system prompt got truncated, or a tool returned an error the model misinterpreted as data.
+
+Accuracy is where most teams get stuck, because they treat it as a vibe rather than a measurement. The discipline you need is an evaluation set: a curated collection of inputs paired with expected outputs (or expected properties of outputs, when the answer space is open). You run this set against every meaningful change — a new prompt, a new model, a new retrieval strategy — and you compare scores. This sounds tedious, and it is, but it's also the only thing standing between you and the situation where you "improve" a prompt and silently regress on a third of your use cases. The eval set is the unit test of AI engineering. It doesn't have to be huge. It has to exist.
+
+Once you have evals, you can ship changes safely. A/B testing and canary deployments let you roll out a new model or prompt to a small slice of traffic, watch the metrics, and roll back if anything degrades. This matters especially when you depend on third-party model providers, because they will quietly update their models underneath you, and your only defense is having a baseline measurement you can compare against. If your accuracy on a stable eval set drops on a Tuesday for no reason you can identify in your own code, the provider probably shipped a change. You won't know to look unless you were already measuring.
+
+Cost attribution closes the loop on the economic side. Token spend tends to follow a power law — a small number of users, features, or workflows consume a disproportionate share of your bill. Without attribution, you cut costs by guessing. With it, you can see that one chatty agent loop is responsible for 60% of your spend and decide whether to cap it, cache its outputs, or route it to a cheaper model. This is the same instinct as profiling code before optimizing it: measure first, then act.
+
+The skill this topic builds is the engineer's habit of asking, before every change, "how will I know if this worked?" You will not always have a clean answer. Sometimes the only honest answer is "I'll ship it to 5% of traffic and watch the numbers for a week." That is still infinitely better than the alternative, which is shipping it to everyone and hoping. Observability is not a tool you install; it is the discipline of refusing to operate on faith in a system whose components are probabilistic, whose dependencies change without notice, and whose failures look exactly like successes.
+
+## Level 2 candidates
+
+**Logging and Tracing** — Covers the mechanics of recording every model call, tool invocation, retrieved document, and decision point, and stitching them into end-to-end request traces. Worth a deep dive because the schema of what you log determines what questions you can later answer, and most teams discover the gaps only when they're already debugging a production incident.
+
+**Evaluation and Test Sets** — Covers how to define "correct" for an application that doesn't have deterministic outputs, and how to build test cases that survive model changes. Worth deeper treatment because evaluation strategy (exact match, LLM-as-judge, rubric scoring, human review) is itself a design space with real trade-offs, and getting it wrong gives you false confidence in regressions or improvements.
+
+**A/B Testing and Canary Deployments** — Covers the patterns for rolling out prompt, model, or retrieval changes to a slice of traffic and comparing metrics before full rollout. Worth deeper treatment because the statistical machinery (sample sizes, significance, guardrail metrics) and the operational machinery (traffic routing, rollback triggers) are both non-trivial, and naive A/B tests will mislead you.
+
+**Cost Attribution and Token Accounting** — Covers how to track token spend down to the feature, user, or workflow level so optimization decisions are data-driven. Worth deeper treatment because cost in AI systems is unusually fluid — it shifts with prompt size, model choice, retrieval depth, and agent loop length — and attribution requires deliberate instrumentation that most frameworks don't give you for free.
+
+**Silent Model Drift Detection** — Covers the specific problem of provider-side model updates that change behavior without changing the API contract, and the monitoring needed to detect them. Worth deeper treatment because it sits at the intersection of evaluation and observability, and it's one of the most common production failure modes that teams are entirely unprepared for.
+
+---

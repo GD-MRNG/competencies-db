@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 09_retrieval_augmented_generation_as_a_pattern.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-09 · Retrieval-Augmented Generation (RAG) as a Pattern
+
+A language model knows what it was trained on, and nothing else. It doesn't know your company's internal documentation, the contract you signed last Tuesday, or what happened in the news this morning. For a long time, the assumed answer to this was fine-tuning — take the base model, feed it your data, push the knowledge into the weights. That assumption was wrong, or at least wrong for most cases. The dominant pattern that emerged is almost embarrassingly simple: when the user asks a question, go find the relevant documents first, paste them into the prompt, and let the model read them before it answers. That's RAG. The reason it took over isn't elegance — it's that it sidesteps almost every hard problem with fine-tuning while solving the actual problem users have.
+
+The mental shift you need to make is from thinking about the model as a database to thinking about it as a reader. A fine-tuned model is trying to memorize; a RAG system is handing the model an open book at inference time. This reframing matters because it changes what you optimize. You stop worrying about whether the model "knows" something and start worrying about whether your retrieval step surfaced the right paragraph. The intelligence of the system is split: the model handles reasoning and language, your retrieval pipeline handles knowledge. Two systems, two failure modes, two things to tune independently.
+
+The pattern itself has three moves. First, you preprocess your knowledge — documents, wiki pages, support tickets, whatever — by splitting them into chunks and converting each chunk into a vector (an embedding) using an embedding model. Those vectors get stored in a vector database. Second, at query time, you embed the user's question using the same embedding model, and ask the vector database for the chunks whose vectors are closest to it. "Closest" here usually means cosine similarity — a geometric measure of how aligned two vectors are in high-dimensional space. Third, you take those retrieved chunks, stuff them into the prompt as context, and ask the model to answer the question using that context. The model never sees your full document store. It sees the handful of paragraphs you decided were relevant.
+
+This is where the trade-offs start biting. Every retrieved document is tokens, and tokens cost money and eat context window. Retrieve too few and you'll miss the relevant passage; retrieve too many and you pay more, wait longer, and risk burying the useful chunk among noise the model has to read past. Retrieval quality dominates output quality in a way that surprises people their first time building a RAG system — the model can be brilliant, but if your retriever returned the wrong three paragraphs, the answer will be confidently wrong. The fix is almost never "use a smarter model." It's "fix your chunking, your embeddings, or your retrieval threshold."
+
+The other thing worth internalizing is when RAG is the right tool versus when it isn't. RAG is for knowledge — facts, documents, things that change, things that are too specific or too fresh to have been in training data. It's for "what does our refund policy say" and "what did this customer email us about last month." It is not for behavior. If you want the model to write in your company's voice, follow a specific reasoning pattern, or always format output a certain way, RAG won't get you there cleanly — you're trying to shape how the model thinks, not what it knows. That's fine-tuning territory (or, often, just better prompting). The decision tree is roughly: does the answer depend on something the model couldn't possibly have seen? RAG. Does the answer depend on how the model should behave? Prompt or fine-tune.
+
+The reason RAG has become the workhorse pattern — quietly powering most production Q&A systems, internal search tools, customer support bots, and document assistants you've interacted with in the last two years — is that it inherits the strengths of both sides. The model stays general and swappable; you can switch from one provider to another tomorrow without retraining anything. Your knowledge stays in your own system, where you can update it, audit it, and delete things from it. When a document changes, you re-embed one chunk, not retrain a model. When you want to add a new source, you ingest it. The whole pipeline is composable in a way that fine-tuning isn't.
+
+What you're really building, once you commit to this pattern, is a small information retrieval system bolted onto a language model. That framing is useful because it tells you where to invest. The model is mostly a commodity at this point — you're calling someone else's API or running an open-weight model locally. The differentiation, the part that determines whether your system actually works, is the retrieval pipeline: how you chunk, what you embed, how you rank, what metadata you attach, how you decide what to send. Get good at that layer and RAG goes from a buzzword to the most reliable way to ship factual, grounded, up-to-date AI systems you have.
+
+## Level 2 candidates
+
+**Embedding-Based Retrieval (Vector Databases)** — How documents become dense vectors via an embedding model and how vector proximity (cosine similarity) finds semantically related content rather than keyword matches. Worth deep diving because the choice of embedding model, the geometry of similarity search, and the indexing strategies (HNSW, IVF) all materially affect retrieval quality and cost.
+
+**Chunking and Metadata** — How to split long documents into retrieval-sized pieces and what metadata (source, date, author, section) to attach to each chunk. Worth deep diving because chunking strategy is the single most common reason a RAG system underperforms — chunks that are too big bury the answer, chunks too small lose context, and bad boundaries cut sentences in half.
+
+**Retrieval Quality vs. Token Waste** — The tuning problem of how many chunks to retrieve and what similarity threshold to enforce, balancing recall against cost and context dilution. Worth deep diving because this is where you'll spend most of your iteration time once a RAG system is live, and the right answer depends on your specific corpus and query distribution.
+
+**RAG vs. Fine-Tuning Trade-off** — When knowledge belongs in retrieved context versus baked into model weights, and why these solve fundamentally different problems (factual freshness vs. behavioral adaptation). Worth deep diving because the decision shapes your entire architecture, and many teams pick the wrong one and spend months learning the lesson the hard way.
+
+**Hybrid Retrieval (Semantic + Keyword)** — Combining vector similarity with traditional keyword search (BM25) to catch cases where semantic embeddings miss exact terms like product codes, names, or jargon. Worth deep diving because pure vector search has well-known failure modes on specific tokens, and hybrid approaches are increasingly the production default.
+
+**Re-ranking and Multi-Stage Retrieval** — Using a cheap retriever to fetch a broad candidate set, then a more expensive cross-encoder model to re-rank the top results before sending them to the LLM. Worth deep diving because it's one of the highest-leverage quality improvements available once basic retrieval is in place, and it changes the cost-accuracy curve significantly.
+
+---
