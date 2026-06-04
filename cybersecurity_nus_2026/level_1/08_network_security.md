@@ -1,42 +1,44 @@
 ## Metadata
-- **Date:** 18-05-2026
+- **Date:** 04-06-2026
 - **Source:** 08_network_security.txt
 - **Model:** claude-opus-4.7
 - **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
 
 ## LLM Processed Content
 
-# Web Security
+# Network Security
 
-The web is the most exposed surface your organisation has, and it is exposed for a structural reason that no amount of patching will fix: it was never designed to be secure. HTTP was designed to fetch documents. Cookies were bolted on to give it memory. JavaScript was bolted on to give it behaviour. Databases were bolted on to give it data. Every layer of the modern web is a feature retrofit on top of a protocol that assumed a polite, academic user. The attackers know this. The defenders are still catching up.
+Cryptography is the part of security that gets the elegant lectures. It has the prime numbers, the famous names, the satisfying sense that mathematics is doing the work. Network security is what you actually deal with when something goes wrong. It is the discipline of admitting that even a perfectly encrypted message has to travel across an infrastructure built in the 1970s by people who assumed everyone on the network was trustworthy — and then figuring out what to do about that.
 
-The cleanest way to hold web security in your head is to recognise that a web application is three things stacked on top of each other, and each of the three has its own kind of failure. There is the architecture (the LAMP stack or its equivalent — operating system, web server, database, scripting layer), there is the session (the way the application pretends to remember who you are across stateless requests), and there is the input (every byte the user sends you, all of which is hostile until proven otherwise). Almost every well-known web attack lives in exactly one of these three zones, and almost every defensive technique is a response to a specific failure within one of them.
+The premise you have to internalise first is that the Internet's plumbing was not designed to be secure. TCP/IP was designed to be functional, modular, and resilient against equipment failure. It was not designed against adversaries. Every protocol you rely on every day — DNS to find a server, ARP to find a machine on your local network, IP to route packets, even the three-way handshake that starts a TCP connection — assumes the other party is telling the truth about who they are. Security on top of this stack is an addition, not a foundation. This is sometimes called architectural debt, and it is the thing that explains why network security is structured the way it is: defensively, in layers, with the assumption that any single control will eventually be bypassed.
 
-The architecture problem is the one developers are least likely to think about and most likely to lose to. Your code may be flawless, but it runs on a Linux box you did not configure, behind an Apache server you did not tune, talking to a MySQL instance someone set up two years ago. A misconfigured server or an unpatched OS gives an attacker access that no amount of clean PHP can prevent. Defence here is not clever; it is hygienic. Patch the layers, harden the defaults, and stop assuming that "it isn't your job."
+The mental model that makes the rest tractable is the layered stack — OSI's seven layers in theory, TCP/IP's five in practice — combined with the idea of encapsulation. A piece of data starts as an application payload, then each layer beneath it wraps the payload in its own header before handing it down. The headers are metadata: source and destination addresses, ports, sequence numbers, checksums. When you understand this, you understand that an attacker has a separate attack surface at every layer, and each surface looks different. At Layer 1, an adversary can physically sniff cables or wireless signals. At Layer 2, they can lie about MAC addresses. At Layer 3, they can spoof source IPs. At Layer 4, they can exhaust connection tables or race legitimate replies. At Layer 7, they can phish, inject, or impersonate. The reason security people draw the stack on a whiteboard so often is that the stack is the map. A vulnerability you cannot place on the map is a vulnerability you cannot reason about.
 
-The session problem is more interesting because it is genuinely intrinsic. HTTP is stateless — every request arrives without memory of the last one — and yet users expect to log in once and stay logged in. The web's answer is the cookie: a small token the browser carries on every subsequent request that says, in effect, "this is who I am." This works, but it creates a brutal asymmetry. The cookie is a bearer credential, meaning whoever holds it is the user, full stop. An attacker who steals your session cookie does not need your password and does not need to defeat your multi-factor authentication. They simply ride the session you already authenticated. This is why modern session cookies must be marked HttpOnly (so JavaScript cannot read them), Secure (so they only travel over HTTPS), and SameSite (so other sites cannot trigger them) — three flags that cost nothing to set and are still missing from production systems every day.
+Name resolution is where the trust problem becomes most painful, because name resolution is what turns human-readable intent into network reality. When you type a domain into a browser, DNS translates it into an IP address, and your packets go wherever that address points. DNS in its original form has no authentication — a client that asks "where is this domain?" will trust the first plausible-looking answer that arrives. That race condition is the entire basis of DNS hijacking. The Sea Turtle campaign in 2019 used this against more than forty countries, redirecting national-level traffic through attacker-controlled servers and silently sitting in the middle of supposedly secure connections. ARP, which resolves IPs to MAC addresses on a local network, has the same problem at smaller scale. DNSSEC exists to fix some of this; adoption is patchy. Until that changes, you should assume that name resolution is a soft target.
 
-The input problem is where most of the famous attacks live, and it has a single underlying cause: browsers and databases cannot tell the difference between your code and a user's text. If a user's name is rendered into a page, and that name happens to contain a `<script>` tag, the browser will execute it — that is cross-site scripting (XSS), and a stored version of it is how the Samy worm took down MySpace. If a user's input is concatenated into a database query, and that input happens to contain SQL syntax, the database will execute it — that is SQL injection, and it is how TalkTalk lost 150,000 customer records and COMELEC lost 55 million. If an attacker can trick your already-authenticated browser into submitting a request to your bank, the bank cannot tell that you did not mean to send it — that is cross-site request forgery (CSRF). All three attacks are the same mistake at different layers: trusted code and untrusted data sharing the same channel with no separator.
+Availability is the other thing cryptography cannot help you with. A denial-of-service attack does not need to break your encryption — it just needs to drown your servers in traffic, or exhaust some finite resource like connection slots, until legitimate users cannot get through. Mirai and the botnet generation that followed it demonstrated that you can rent attack volume that exceeds the capacity of most organisations to absorb. Encryption protects confidentiality and, with the right constructions, integrity. It does nothing for the third leg of the CIA triad. Network-level defences — rate limiting, filtering, upstream scrubbing, and the architectural decisions that come before any of those — are where availability is won or lost.
 
-The defences mirror the attacks. Against SQL injection, use prepared statements — parameterised queries that send the structure of the command and the user's data to the database on separate tracks, so the data can never be interpreted as a command. Against XSS, encode all output: convert `<` to `&lt;` so the browser renders the script as harmless text instead of executing it. Against CSRF, attach an unguessable token to every state-changing request, so an attacker cannot forge a valid one from another origin. Underneath all of this sits the browser's Same-Origin Policy, which segregates data by protocol, host, and port and is the reason web security has not collapsed entirely.
+The practical toolkit splits neatly into two: tools for seeing what is on the network, and tools for controlling what passes through it. Wireshark lets you capture and dissect actual packets, watching the headers and payloads of real conversations and reconstructing what happened during an incident. Nmap maps a network from the outside, telling you which hosts are reachable, which ports they have open, and often which software versions are listening. Both tools are described as double-edged because attackers use them for reconnaissance and defenders use them for hardening, and the techniques are identical. If you do not run Nmap against your own perimeter regularly, someone else will run it for you, and they will not send you the report. Visibility is a prerequisite for defence; you cannot protect what you cannot see.
 
-The practical move, once you hold this model, is to stop reading attack lists and start reading the OWASP Top 10 — the industry's running consensus on which categories of failure are causing the most damage right now — and to use a structured threat-modelling approach like STRIDE (spoofing, tampering, repudiation, information disclosure, denial of service, elevation of privilege) when you design something new. The frameworks matter less than the habit they enforce, which is asking, before you ship: where is the trust boundary, what crosses it, and what happens if what crosses it is hostile?
+On the control side, the dominant constructs are firewalls and network segmentation. A firewall enforces a policy about what traffic is allowed to cross a boundary. The discipline behind a good firewall ruleset is deceptively simple: rules are evaluated in order, you write the most specific allow rules first, and you end with a catch-all deny. This is the default-deny stance, and it inverts the naive instinct to block known-bad things; instead, you permit only known-good things, and everything else is rejected. Segmentation extends this idea architecturally. Public-facing servers — web, mail, anything the Internet must reach — sit in a demilitarised zone between two firewalls, isolated from the internal network so that a compromise of a public service does not give an attacker free movement inside. Next-generation firewalls add application awareness and inspection, but the underlying philosophy is the same: explicit policy, enforced at boundaries.
 
-The deeper lesson is that web security is not a checklist you complete; it is a posture you adopt. The web treats every request as untrusted by default, and the application has to earn the trust back, request by request, input by input, session by session. Developers who internalise this stop writing "if (user is admin)" and start writing "prove, on this request, that this user is still the admin they were a minute ago." That shift — from authenticate-once to verify-continuously, from sanitise-sometimes to encode-always, from trust-by-default to zero-trust — is what separates a web application that survives contact with the internet from one that does not.
+The boundary itself, though, is dissolving. Remote work, BYOD, cloud services, and the routine hijackability of DNS all mean that "inside the network" is no longer a meaningful security claim. The response is Zero Trust: stop treating network location as evidence of trustworthiness and start authenticating every request, every time, regardless of where it comes from. This is the direction the field is moving, and it is a direct consequence of the points above. If your protocols cannot be trusted, your perimeter is porous, and your visibility is partial, then trust has to be earned per-request rather than granted per-network. That is the shift you are training your instincts for.
 
 ## Level 2 candidates
 
-**SQL Injection and Prepared Statements** — Covers how injection actually works at the query-parser level, the difference between escaping and parameterisation, and why ORMs do not automatically protect you. Worth deeper treatment because the gap between "I know what SQLi is" and "I can audit a codebase for it" is wide, and the failure modes (second-order injection, stored procedures, dynamic table names) are not obvious from the basic definition.
+**The OSI and TCP/IP layered model with encapsulation** — Covers how each layer wraps the payload below it in headers and how attacks map cleanly to specific layers. Worth a deep dive because the layered model is the organising framework for every other network security topic, and a fluent grasp of it turns vague threats into precisely located ones.
 
-**Cross-Site Scripting (XSS) and Output Encoding** — Covers the three flavours (reflected, stored, DOM-based), the contexts in which encoding rules differ (HTML body, attribute, JavaScript, URL), and why Content Security Policy exists. Worth going deeper because correct XSS defence is context-sensitive in a way most developers underestimate, and getting it wrong silently fails.
+**DNS and name resolution attacks** — Covers how DNS resolution works, why it lacks authentication by default, the race-condition mechanics of DNS spoofing and hijacking, and what DNSSEC and DoH change. Worth going deeper because DNS is both the most fragile and most consequential piece of Internet infrastructure most people never think about, and the Sea Turtle case study rewards detailed examination.
 
-**Session Management and Cookie Security** — Covers session lifecycle, the HttpOnly/Secure/SameSite flags in detail, token rotation, session fixation, and the rise of "pass-the-cookie" attacks that bypass MFA. Worth depth because session theft is now the dominant credential attack and the defences are subtle.
+**Denial-of-service and distributed denial-of-service attacks** — Covers volumetric attacks, protocol-exhaustion attacks, botnet architecture (Mirai and successors), and the layered mitigations from rate limiting to upstream scrubbing. Worth a deep dive because DoS is the category of attack that cryptography explicitly cannot address, which makes it conceptually distinct from most other security topics.
 
-**Cross-Site Request Forgery (CSRF) and the Same-Origin Policy** — Covers how browsers decide what counts as a same origin, how CSRF tokens are generated and validated, and how SameSite cookies have changed the threat landscape. Worth depth because the SOP has many edge cases (CORS, postMessage, subdomain trust) that are routinely misunderstood.
+**Wireshark and packet analysis** — Covers capture mechanics, promiscuous mode, filtering and dissection, and the workflow of reconstructing an incident from packets. Worth going deeper because packet-level fluency is the difference between guessing what happened and knowing, and the skill compounds across every other network topic.
 
-**The OWASP Top 10 and Threat Modelling Frameworks** — Covers the current OWASP categories, how to read them as a prioritisation tool rather than a checklist, and how STRIDE and PASTA structure proactive threat analysis. Worth depth because these are the lingua franca of professional security work and the difference between using them well and using them ritualistically is significant.
+**Nmap and network reconnaissance** — Covers host discovery, port scanning techniques, service and version fingerprinting, and how the same tool serves attackers and defenders. Worth a deep dive because reconnaissance is the first phase of every serious attack, and understanding it from the offensive side is the only way to defend the perimeter intelligently.
 
-**HTTPS, TLS, and the Untrusted Network** — Covers why HTTPS is non-optional, what TLS actually guarantees (and what it does not), certificate validation, and the "malicious cafe owner" threat model that makes the network itself an attacker. Worth depth because the assumptions HTTPS makes are routinely violated in practice and developers need to know where the guarantees end.
+**Firewalls, DMZs, and ruleset design** — Covers packet filters versus stateful inspection versus application proxies, NIST classifications, the default-deny discipline, rule ordering, and the two-firewall DMZ architecture. Worth going deeper because firewall design is where network security policy becomes concrete, and most real-world firewall failures are failures of ruleset hygiene rather than technology.
+
+**Zero Trust Network Architecture** — Covers the move away from perimeter-based trust, the principles of continuous verification, and how ZTNA interacts with endpoint security and identity. Worth a deep dive because Zero Trust is the dominant architectural shift in the field right now and reframes most of the assumptions the older topics rest on.
 
 ---
 
@@ -44,94 +46,112 @@ The deeper lesson is that web security is not a checklist you complete; it is a 
 
 ## Why This Conversation Is Happening
 
-Web security exists because the web stack keeps accepting input from places you do not control and then doing powerful things with it: rendering it in a browser, executing it in an app, using it in a database query, or attaching it to an authenticated user session. That combination is what makes the web so useful, and also what makes it so fragile. The problem is not just “bugs happen.” The problem is that the web is built out of layers that were not originally designed with hostile traffic in mind, so security failures tend to emerge at the joins between those layers.
+Network security matters because the network itself is not naturally trustworthy. Most of the systems your software depends on to send, receive, and route traffic were designed to make communication possible, not to prove that every participant is honest. That means a system can be "working as designed" and still be easy to misdirect, impersonate, overwhelm, or observe. If you do not hold that model clearly, you will keep assuming that successful delivery implies safe delivery, when in fact those are different things.
 
-When engineers do not have a clear model of this, they defend the wrong thing. They focus on application code but ignore server misconfiguration. They implement login correctly but treat the session cookie casually. They validate some inputs but miss the deeper rule that code and data must stay separated. The result is that systems which look fine in happy-path testing fail immediately when exposed to real traffic from attackers.
+What goes wrong in practice is rarely exotic. Traffic gets redirected because a resolver accepts a forged answer. A public-facing service gets overwhelmed even though its encryption is fine. An exposed port stays open because nobody mapped the perimeter from the outside. A compromised web server becomes a stepping stone into internal systems because the network was laid out for convenience rather than containment. Engineers who do not understand the mechanics of the network tend to trust boundaries, names, and locations more than they should — and those are exactly the things attackers learn to exploit first.
 
-This topic matters because web security is not a specialist concern sitting off to the side of normal engineering. It changes how you design request flows, how you store trust, how you move data across layers, and how you think about “user input.” If you do not have that model, security feels like an endless list of attacks. If you do have it, the attack list collapses into a small number of recurring engineering mistakes.
+---
 
 ## What You Need To Know First
 
-**HTTP is stateless.**  
-HTTP treats each request as independent. If your browser loads a page, then clicks a button, the server does not automatically “remember” that those two requests came from the same person. Any sense of continuity — being logged in, having a cart, keeping preferences — has to be added on top.
+### Packets, headers, and payloads
 
-**A cookie is usually how the web fakes memory.**  
-A cookie is a small piece of data the browser stores and sends back with later requests. In practice, a session cookie often acts like “proof” that the server already authenticated you. That means the cookie is valuable: if someone else can use it, they can often act as you.
+Network communication happens by breaking data into packets. Each packet carries the actual content being sent, called the payload, plus metadata in headers, such as source and destination addresses, ports, and sequencing information. This matters because many network attacks do not target the content directly; they target the metadata that tells the network where traffic should go and how it should be treated.
 
-**Browsers and databases parse structure, not intent.**  
-A browser does not know whether some text “was meant to be content” if it looks like HTML or JavaScript. A database does not know whether some string “was meant to be a name” if it looks like SQL syntax. These systems follow syntax rules, not developer intention, which is why mixing untrusted input into commands is dangerous.
+### The layered model
 
-**A trust boundary is any point where outside data enters a more trusted system.**  
-When a browser sends a form, when an API accepts JSON, when a service reads headers, when an app uses a cookie to identify a user — each of these is a trust boundary. The basic security question is always: what crossed the boundary, and how do we stop it from being treated as more trustworthy than it is?
+Networks are usually understood as a stack of layers. Higher layers deal with application behavior, while lower layers deal with transport, addressing, and physical transmission. Each layer adds its own information and depends on the layer below. You do not need to memorise every layer to follow this article; you just need the mental model that different kinds of trust assumptions and different kinds of attacks live at different layers.
+
+### Identity versus location
+
+On a network, "where traffic came from" is not the same as "who should be trusted." IP addresses, MAC addresses, and domain names are routing and lookup mechanisms, not proof of identity on their own. This distinction becomes important because much of classic networking behaves as if location or naming is good enough evidence, while modern security increasingly assumes it is not.
+
+### Basic security goals: confidentiality, integrity, availability
+
+Security is often framed as protecting confidentiality, integrity, and availability. Confidentiality means keeping data secret, integrity means preventing or detecting unauthorised changes, and availability means keeping systems reachable and usable. This article leans on the fact that some controls, especially cryptography, help strongly with the first two but do not solve the third.
+
+---
 
 ## The Key Ideas, Connected
 
-**A web application is easiest to understand as three security zones: architecture, session, and input.**  
-This is a simplifying model, but it is a useful one because it groups failures by where they happen. Some attacks happen because the underlying stack is weak or misconfigured. Some happen because the app has to remember users across stateless requests. Others happen because untrusted input gets interpreted as commands. Once you see those zones, attack categories stop feeling random, which sets up the first zone: architecture.
+### The Internet’s core protocols were built for reliable communication, not hostile environments.
 
-**The architecture layer can lose the whole game before your application logic even matters.**  
-Your code runs inside an operating system, behind a web server, connected to a database, often with framework and runtime dependencies in between. If one of those layers is unpatched, overexposed, or badly configured, an attacker may not need an application bug at all. That leads to an important shift: security is not only about writing correct business logic; it is also about hardening the environment that business logic depends on. Once you accept that the platform itself can fail, the next question becomes how the app manages user identity across requests.
+The article starts here because this is the root condition that makes the rest of network security necessary. TCP/IP was designed to move packets between machines and recover from failures in links or hardware. It was not built around the assumption that participants would lie. So when a protocol accepts information like an address, a name, or a reply, it often does so because the system needs to keep moving, not because that information has been strongly verified.
 
-**The session layer exists because users expect continuity on top of a stateless protocol.**  
-HTTP does not preserve identity from one request to the next, so applications create sessions to simulate continuity. Usually that means the browser sends a session cookie with each request, and the server maps that token to an authenticated user. This is convenient, but it creates a sharp security property: the token itself becomes the thing that proves identity. That naturally leads to the next idea.
+Once you see that, network security stops looking like a neat built-in property and starts looking like a set of compensating controls layered onto a system that was permissive by default. That directly leads to the next idea: if trust is weak at the foundation, you need a way to locate where the weakness appears.
 
-**A session cookie is often a bearer credential, so possession is enough.**  
-“Bearer credential” means the system treats whoever presents it as the legitimate user. The server usually does not ask, “Did the real user intend this request right now?” It asks, “Did this request arrive with the valid session token?” That is why stolen cookies are so dangerous: they bypass the need to re-enter a password or repeat MFA if the session is already established. Once you see how much power sits in the cookie, the purpose of flags like `HttpOnly`, `Secure`, and `SameSite` becomes much clearer.
+### The layered stack is the map of the attack surface.
 
-**Cookie security flags are cheap ways to reduce how easily sessions are stolen or misused.**  
-`HttpOnly` helps by preventing JavaScript from reading the cookie directly, which limits some session theft paths after XSS. `Secure` restricts the cookie to HTTPS, reducing exposure over insecure transport. `SameSite` limits when the browser will attach the cookie to cross-site requests, which helps against CSRF-style abuse. These do not “solve sessions,” but they narrow the easiest attack paths. That brings us to the third zone, where many famous web attacks live: input.
+The reason engineers keep returning to OSI or TCP/IP diagrams is not academic habit; it is because the layers tell you what kind of thing can be attacked and how. Each layer wraps the one above it with its own headers and behaviors. That means each layer exposes different assumptions: physical access at the bottom, local identity at Layer 2, routing identity at Layer 3, connection state at Layer 4, and human or application logic at the top.
 
-**Input becomes dangerous when untrusted data can be interpreted as code or commands.**  
-The underlying mistake is not “users send weird strings.” The mistake is that the application allows those strings to enter places where the receiving system has executable syntax. If the browser interprets user-controlled content as script, you get XSS. If the database interprets user-controlled content as SQL, you get SQL injection. If the server accepts a forged browser request because it only sees a valid session, you get CSRF. These are different manifestations of the same deeper failure: trusted instructions and untrusted data are sharing a channel without a reliable separator.
+This matters mechanically because attackers do not attack "the network" in the abstract. They exploit a specific trust assumption in a specific layer. If you cannot place a problem on the stack, you cannot tell what data is being trusted, what component enforces it, or what mitigation would actually help. And once you start looking at those trust assumptions, name resolution becomes one of the clearest examples of the problem.
 
-**XSS happens when the browser is allowed to treat user-controlled content as active page logic.**  
-If attacker-controlled input lands in a page in the wrong way, the browser may execute it as script instead of displaying it as text. That matters not just because scripts run, but because they run in the security context of your site: they may read page data, act as the user, or exploit the session indirectly. Seeing XSS this way makes the defense intuitive: do not let arbitrary input become executable page structure. That leads directly to output encoding.
+### DNS and ARP show what happens when the network accepts plausible answers without strong authentication.
 
-**Output encoding works by forcing the browser to treat input as text, not markup or script.**  
-When you encode special characters before rendering untrusted content, the browser displays them literally instead of interpreting them as instructions. The key idea is that the defense happens at output, in the context where interpretation would occur. You are not asking whether the input “looks safe in general”; you are making it non-executable for the specific place it is being rendered. The same separation principle appears again in databases, which leads to SQL injection.
+DNS turns a human-meaningful name into an IP address, and ARP turns a local IP address into a MAC address. Both are translation systems that help traffic reach the intended destination. But in their basic forms, both were designed for environments where answers were assumed to be honest enough. If a client asks a question and accepts the first plausible answer, then an attacker does not need to break encryption to win; they only need to answer faster or insert themselves into the conversation.
 
-**SQL injection happens when user input is merged into a query as if it were part of the query’s structure.**  
-If you build SQL by concatenating strings, the database parser receives one mixed stream containing both command structure and untrusted data. If the input contains SQL syntax, the parser has no way to know it was “just data” in your mind. It sees a legal query and executes it. Once you understand that the parser is the real audience, the correct defense becomes obvious.
+That is why name resolution is such a soft target. It sits early in the chain of communication and determines where traffic goes before higher-level protections have much chance to help. If you can poison the answer to "where is this service?", you can redirect traffic, impersonate infrastructure, or insert a man-in-the-middle position. This leads naturally to the next idea: even if you protect the correctness or secrecy of communication, you still have to deal with whether communication can happen at all.
 
-**Prepared statements solve SQL injection by sending command structure and data separately.**  
-Instead of constructing one big SQL string, parameterized queries define the query shape first and bind user values separately. That means the database knows which parts are instructions and which parts are values, so the values cannot change the meaning of the command. This is stronger than hoping correct escaping was applied everywhere, because it preserves the code/data boundary structurally. That same “prove intent, do not assume it” logic appears in CSRF.
+### Cryptography does not solve availability.
 
-**CSRF happens when a server trusts an authenticated browser request without proving the user intentionally initiated it.**  
-Browsers automatically attach relevant cookies to requests, including ones triggered from another site in some cases. So if a user is logged in and visits a malicious page, that page may cause the browser to send a valid-looking request to the target site. From the server’s point of view, the session is real — but the user’s intent is missing. This shows that authentication alone is not enough for sensitive actions, which leads to anti-CSRF mechanisms.
+Encryption can keep content secret and signatures can help verify integrity, but neither prevents an attacker from exhausting bandwidth, CPU, memory, or connection state. A denial-of-service attack works by consuming finite resources until legitimate users cannot be served. That mechanism is important: the attacker is not required to understand your data, only your bottlenecks.
 
-**CSRF tokens add proof that the request came from the legitimate application flow, not just from a browser carrying the cookie.**  
-A synchronizer token or equivalent anti-CSRF value is hard for an attacker’s site to guess or supply correctly. So even if the browser sends the session cookie, the forged request still fails without the additional token. The important idea is that the server stops treating “valid session present” as sufficient evidence for state-changing requests. This sits on top of an even broader browser rule that quietly supports much of web security.
+This is why availability lives differently from confidentiality and integrity in network security. You cannot "encrypt your way out" of a volumetric flood or a connection-exhaustion attack. The system has to absorb, reject, rate-limit, or divert abusive traffic before scarce resources are consumed. Once that becomes clear, another requirement follows: you need visibility into what traffic exists and control over what traffic is allowed.
 
-**The Same-Origin Policy is a baseline browser containment rule, not a complete security system.**  
-It restricts how documents and scripts from one origin can interact with data from another origin. Without it, the web would be dramatically less defensible. But it is only a baseline: applications still need encoding, parameterization, CSRF protections, and session controls. Understanding SOP this way prevents a common mistake, which is assuming the browser will “just block bad cross-site behavior” for you. That leads to the practical mindset shift the article is driving toward.
+### Network defence depends on both visibility and policy enforcement.
 
-**The real lesson is to think in trust boundaries and continuous verification, not isolated attack names.**  
-OWASP Top 10 and STRIDE are useful not because they give you a checklist to memorize, but because they train you to ask structured questions: what is trusted here, what is untrusted, what crosses the boundary, and how could that crossing be abused? Once you adopt that posture, security stops being something you bolt on after features are built. It becomes a property of how requests, sessions, and data flows are designed from the start.
+You cannot secure traffic you cannot observe. Tools like Wireshark and Nmap matter because they reveal different sides of network reality. Wireshark lets you inspect actual packet flows and reconstruct what happened on the wire. Nmap lets you see your exposed surface from the outside: which hosts respond, which ports are open, and what services appear to be there. The same mechanics serve attackers and defenders because reconnaissance is morally neutral; it is simply the act of learning what the network exposes.
+
+But seeing is not enough. Once you know what traffic exists and what surfaces are exposed, you need a way to decide what should be permitted. That is where firewalls and segmentation come in, as concrete expressions of policy.
+
+### Firewalls and segmentation turn security intent into enforced boundaries.
+
+A firewall is not just a box that "blocks bad traffic." It is a place where you encode decisions about which communications are allowed to cross a boundary. The key discipline is default deny: allow only what is specifically needed, and reject everything else. Mechanically, this works because network traffic is regular enough to match against addresses, ports, protocols, states, or even application-level characteristics.
+
+Segmentation takes that same logic and applies it to architecture rather than just packet filtering. Instead of assuming all internal systems can trust one another, you divide the network so that compromise in one zone does not automatically become compromise everywhere. A DMZ is a classic example: public-facing services are reachable from the internet, but they are separated from the more trusted internal environment. This leads to the final idea because modern systems increasingly make even these boundaries less reliable than they once seemed.
+
+### The old idea of a trustworthy “inside” network no longer holds, so trust shifts from location to continuous verification.
+
+If users work remotely, devices are unmanaged, services live in the cloud, and infrastructure depends on weakly trusted protocols, then network position is a poor proxy for legitimacy. Being "on the corporate network" does not tell you enough about whether a request should be allowed. Zero Trust is the response to that reality: trust is not granted because of location; it is established per request through identity, context, and policy.
+
+This is not a fashionable add-on to perimeter security so much as a consequence of everything before it. If foundational protocols are weakly authenticated, if boundaries are porous, and if compromise can move laterally when trust is inherited too freely, then each access decision has to stand on its own. Zero Trust is what you get when you take the mechanics seriously instead of preserving the old mental shortcut that inside means safe.
+
+---
 
 ## Handles and Anchors
 
-**1. Think of the web app as a building with three doors: infrastructure, identity, and content.**  
-One door is the building itself: server, OS, database, runtime. One door is identity: how the app keeps recognizing you. One door is content: everything users send in. Most attacks are just different ways of getting through one of those doors.
+### 1. The network is a delivery system, not a truth machine.
 
-**2. The core failure is “the system cannot tell instructions from input.”**  
-If you remember one sentence, make it this one. XSS, SQL injection, and a surprising amount of adjacent web security pain reduce to the same pattern: untrusted data reached a place where it could be interpreted as something authoritative.
+A useful way to hold this topic is: the original network stack is good at moving packets, not proving honesty. If you remember that, many security behaviors make immediate sense. DNS, ARP, source addresses, and even connection setup become things to verify or constrain, not things to accept at face value.
 
-**3. A session cookie is closer to a badge than a password.**  
-A password proves you know something. A badge proves you are already admitted. If someone steals the badge, the guard often lets them through without asking how they got it. That is the right mental model for why cookie theft is so serious and why session protections matter.
+### 2. Every layer has its own lie.
+
+Use this as a diagnostic handle. At the physical layer, someone can observe or interfere with the medium. At the local network layer, someone can lie about hardware identity. At the routing layer, they can lie about source or destination. At the transport layer, they can abuse state or connection setup. At the application layer, they can impersonate a service or user. That framing helps you ask not just "what is vulnerable?" but "what assumption is being exploited, and at what layer?"
+
+### 3. Default trust expands blast radius; explicit trust shrinks it.
+
+This captures the design tension. Whenever the system implicitly trusts names, locations, or broad internal reachability, compromise spreads more easily. Whenever trust is explicit, narrow, and continuously checked, failures are contained better. You can use this sentence to explain firewalls, segmentation, and Zero Trust in one line.
+
+---
 
 ## What This Changes When You Build
 
-**An engineer who understands this will approach deployment differently because application correctness does not compensate for platform weakness.**  
-They will care about patch cadence, exposed services, database network reachability, framework/runtime versions, default server configuration, and secret handling as first-class parts of application security, not “ops details” outside the app boundary.
+### An engineer who understands this will treat network names and addresses as inputs to validate, not ground truth, because DNS, ARP, and source identity mechanisms can be manipulated.
 
-**An engineer who understands this will approach authentication flows differently because logging in securely is not the same as maintaining a secure session.**  
-They will pay attention to session rotation after login, cookie flags, idle and absolute timeouts, re-authentication for sensitive actions, and what happens if a session token is copied rather than guessed.
+The unaware engineer tends to inherit the assumption that if a service resolves correctly and packets arrive from an expected address, communication is probably legitimate. The more aware engineer asks what authenticates that mapping, what happens if the mapping is poisoned, and where additional verification belongs.
 
-**An engineer who understands this will approach data handling differently because the question is not “did we validate input?” but “where could this value be interpreted?”**  
-They will inspect every sink: SQL queries, HTML rendering, template interpolation, JavaScript contexts, headers, redirects, file paths, and shell commands. The implementation habit changes from generic sanitization to context-specific defenses like prepared statements and output encoding.
+### An engineer who understands this will design controls per layer instead of looking for a single “secure network” solution, because attacks target different headers, assumptions, and resources at different layers.
 
-**An engineer who understands this will approach browser-to-server actions differently because a valid session does not prove user intent.**  
-They will distinguish read actions from state-changing actions, add CSRF protections where needed, evaluate `SameSite` behavior intentionally, and avoid designing endpoints that can perform sensitive work on the basis of ambient cookies alone.
+The unaware engineer often reaches for one dominant control, such as TLS, and assumes the problem is mostly solved. The informed engineer knows TLS protects only part of the chain, so they think separately about name resolution, connection exhaustion, exposed ports, lateral movement, and application impersonation.
 
-**An engineer who understands this will approach design reviews differently because they can ask better security questions earlier.**  
-Instead of asking “are we protected against XSS and SQLi?”, they will ask “where are the trust boundaries, what parser or interpreter consumes this data next, what credential is actually authorizing this request, and what happens if an attacker controls this field, header, or browser context?” That changes outcomes because it catches structural failures before they become bugs in production.
+### An engineer who understands this will scan and observe their own environment regularly, because exposure is often created by drift rather than deliberate design.
+
+The default failure mode in real systems is inherited exposure: a port left open, a service version forgotten, a route added for expedience, a packet pattern nobody noticed. An engineer with a working model of network security uses tools like packet capture and external scanning not as occasional audits but as routine ways to compare intended architecture with actual behavior.
+
+### An engineer who understands this will use default-deny and segmentation earlier in system design, because containment is far easier to build in than to retrofit after compromise paths exist.
+
+The unaware engineer often starts from permissive connectivity and adds exceptions later when something bad happens. That creates broad east-west movement and makes public-service compromise far more costly. The aware engineer starts by asking which communications are truly necessary, then allows only those, reducing the number of paths an attacker can use.
+
+### An engineer who understands this will stop using network location as a shortcut for trust, because modern environments make “inside” too weak a security boundary to carry much meaning.
+
+The default inherited assumption is that internal traffic is lower risk and deserves broader access. In practice, that assumption breaks under remote work, cloud systems, contractor devices, and post-compromise lateral movement. An engineer who understands this designs access around identity, context, and narrowly scoped policy checks rather than subnet membership alone.
