@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 02_environment_variables_secrets_and_the_principle_of_least_privilege.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-02 · Environment Variables, Secrets, and the Principle of Least Privilege
+
+The fastest way to lose a startup is to commit an API key to a public GitHub repo. This happens constantly. Bots scan every public commit within seconds of it being pushed, and a leaked AWS key can rack up tens of thousands of dollars in crypto-mining charges before you've finished your morning coffee. The reason this keeps happening to smart engineers is that they're thinking about API keys the wrong way — as passwords, as strings, as configuration. An API key is none of those things. An API key is a passport to your cloud account, and you need to handle it like one.
+
+Once you internalise that reframing, the rest of secrets management follows. A password protects one user; a leaked password is an embarrassment. An API key, by contrast, can authorise spending, can delete production databases, can exfiltrate every customer record you store. The blast radius is asymmetric: the convenience of pasting `OPENAI_API_KEY="sk-..."` into a file is a few seconds; the cost of doing it in the wrong file is your company. So the discipline here is not about memorising tools. It is about building a habit where secrets and code are never, ever in the same place.
+
+The first layer of that discipline is environment variables. The idea is simple: your code reads its configuration from the runtime environment rather than from literals inside the source. When you write `os.environ["OPENAI_API_KEY"]`, the key itself lives outside the codebase — set by your shell locally, by your container orchestrator in staging, by a managed secret store in production. The code is identical across all three environments; only the values change. This is what people mean when they say "twelve-factor config." It is the difference between code that's safe to open-source and code that is one careless `git push` away from disaster.
+
+Locally, the convention is a `.env` file — a plain text file in your project root holding key-value pairs that get loaded into the environment when your app starts. The single most important thing about a `.env` file is that it goes in `.gitignore` before you ever put a secret in it. Treat `.env` as radioactive: useful, but never touched by version control. Teams usually commit a `.env.example` with the variable names and dummy values so new developers know what they need to fill in, without ever exposing the real secrets. If you're onboarding to a project and there's no `.env.example`, that's a smell — it means tribal knowledge is the only documentation of what your app needs to run.
+
+In production, `.env` files are not the answer. You graduate to a secret manager — AWS Secrets Manager, Google Secret Manager, HashiCorp Vault, or auth-and-secrets platforms like Clerk for user-facing credentials. These services give you three things a `.env` file can't: centralised access control (you can grant or revoke access without touching code), audit logs (you know who read which secret when), and rotation (you can swap out a leaked key in one place without redeploying anything). When a container starts up in production, it asks the secret manager for its secrets at boot time, holds them in memory, and never writes them to disk. The image itself stays clean — which matters, because container images get pushed to registries, copied across regions, and inspected by tools that you don't always control.
+
+All of this still leaves the deeper question: what should a leaked secret actually be able to do? This is where the principle of least privilege lives. Least privilege says every service, every function, every human, every container should have exactly the minimum permissions required to do its job — and no more. The Lambda function that reads from a single S3 bucket should have read access to that bucket and nothing else. Not write access. Not access to other buckets. Definitely not full S3 access, and absolutely never the AWS root credentials. This sounds obvious and it is routinely violated, because in the moment it is much faster to grant `AdministratorAccess` and move on. The cost of that shortcut shows up later, when one compromised key turns into a full breach instead of a contained incident.
+
+On AWS this is enforced through IAM — Identity and Access Management — which is the system of roles and policies that describes who can do what. IAM is famously verbose and easy to get wrong, but the mental model is simple: every action your code performs is checked against a policy, and if the policy doesn't explicitly allow it, it fails. Designing policies tightly is annoying. It is also the difference between a Tuesday afternoon incident and a Wall Street Journal headline. The same logic extends to the API keys you issue from your own service: scope them narrowly (read-only, specific endpoints), expire them by default, and make revocation a one-click operation rather than a code change.
+
+The skill you're building here is not "knowing how to use Secrets Manager." It is a posture toward credentials — paranoid by default, generous only with deliberate justification. Every time you handle a secret you should be asking three questions: where does it live, who can read it, and what's the worst thing someone could do with it if they had it? If you can't answer all three off the top of your head for every key in your system, you don't have a secrets management strategy. You have luck. And luck, in production, is a depreciating asset.
+
+## Level 2 candidates
+
+**Environment Variables and .env Files** — Covers the mechanics of loading config from the runtime environment, the `.env` convention for local development, and the `.gitignore`/`.env.example` workflow. Worth a deeper dive because the failure modes (accidentally committing, leaking through logs, shell-expansion bugs in values) are subtle and best learned through concrete examples.
+
+**Secret Managers and Rotation** — Covers AWS Secrets Manager, Vault, and equivalents, plus how rotation actually works end-to-end (issuing new credentials, dual-validity windows, propagating to running containers). Worth going deeper because rotation is where most teams break — they set up the manager but never test the rotation path until a real breach forces them to.
+
+**IAM Roles and Policies** — Covers the IAM model in depth: principals, policies, role assumption, trust relationships, and the difference between identity-based and resource-based policies. Worth its own treatment because IAM is the single most error-prone surface in AWS and the place where least-privilege either becomes real or stays aspirational.
+
+**API Key Scope, Expiration, and Revocation** — Covers how to design the API keys you issue from your own service: scoping by capability, time-bounded keys, revocation lists, and key rotation UX for your users. Worth deeper coverage because this is product design as much as security, and the patterns differ meaningfully from how you consume third-party keys.
+
+**Secrets in Containers and Infrastructure as Code** — Covers the specific problem of getting secrets into Docker containers without baking them into the image, plus how Terraform and similar tools handle secrets without leaking them into state files. Worth a dedicated dive because the naive approaches (build args, plain-text tfvars) silently leak secrets in ways that aren't obvious until an auditor finds them.
+
+---

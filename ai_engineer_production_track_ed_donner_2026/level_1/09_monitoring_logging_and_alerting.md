@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 09_monitoring_logging_and_alerting.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-09 · Monitoring, Logging, and Alerting (Observability)
+
+The moment your code leaves your laptop, you lose the ability to reason about it directly. On your machine, you can set a breakpoint, print a variable, re-run the function with different inputs. In production, the system is running right now, for users you've never met, on infrastructure you can't see, and it is either working or it isn't. The only window you have into what's happening is the one you built before you deployed. If you didn't build that window, you don't have one. You will learn about your outages from Twitter, from support tickets, from a customer who finally got frustrated enough to email the founder. This is the default state of every system that doesn't take observability seriously, and it is an embarrassing place to operate from.
+
+Observability is the practice of making a running system legible to the people responsible for it. It is not one tool or one technique; it is a discipline that combines three different kinds of signal, each of which answers a different question. Logs answer "what happened?" — a request came in, an error was thrown, a tool was called with these arguments. Metrics answer "how is the system behaving over time?" — latency is trending up, error rate spiked at 3pm, token spend doubled this week. Traces answer "where did the time go?" — this specific request spent 200ms in the API gateway, 8 seconds waiting for the LLM, and 50ms writing to the database. Each signal type is necessary; none of them is sufficient on its own. A system with great logs but no metrics will never tell you that p99 latency is degrading. A system with great metrics but no traces will tell you something is slow without telling you what.
+
+For AI systems specifically, the stakes are higher than for traditional CRUD apps, because the things that go wrong are weirder. A traditional bug is binary: the endpoint returns 500 or it doesn't. An AI bug is often a slow drift: the model's outputs are getting subtly worse, or token usage is creeping up because someone added context to a prompt, or one specific tool is hallucinating arguments. None of these will trip a "service is down" alert. You only catch them if you're actively measuring the right things — accuracy on an eval set, cost per request, tool-call success rate — and watching them over time.
+
+The components that turn raw signal into useful information are dashboards and alerts. A dashboard is where signals become a story you can tell at a glance: requests per minute on this chart, error rate on that one, average tokens per request below it. The discipline of building a good dashboard is the discipline of deciding what you actually care about, which is harder than it sounds. Most dashboards are graveyards of metrics nobody looks at. The dashboards that matter are the ones an on-call engineer opens at 3am and can interpret in thirty seconds. Alerts are the inverse: instead of you watching the system, the system watches itself and pages you when something crosses a threshold. The hard part of alerting is not setting up the pager. The hard part is calibrating the thresholds so you get woken up when something is actually wrong and not when a single user's request happened to take eight seconds.
+
+The biggest failure mode here, and one you should plan against from day one, is alert fatigue. If your pager goes off twenty times a day and nineteen of those are false positives, you will start ignoring it, and the twentieth — the real one — will get ignored too. Good alerting is ruthless about signal-to-noise. It alerts on symptoms users actually experience (error rate, latency, complete outages), not on every minor blip in an underlying metric. It uses sustained thresholds rather than instantaneous spikes. It distinguishes between "wake someone up now" and "look at this on Monday morning." Treat your alert configuration with the same care you treat your production code, because it is production code — for the humans running the system.
+
+The mental shift this topic asks for is the one that separates an AI engineer from an infrastructure engineer who happens to work with LLMs. You stop thinking about your system as code that you wrote and start thinking about it as a process that is running, right now, doing things you cannot see. Your job is to make those things visible. The skill you're building is the ability to answer, at any moment, three questions: Is the system healthy? If not, where is it broken? And is it getting better or worse over time? Every logging line, every metric, every dashboard you build should be in service of those three questions. Anything else is noise. Build the window before you ship; you cannot retrofit visibility into a system that is already on fire.
+
+## Level 2 candidates
+
+**Structured Logging** — Logging events as JSON with consistent fields (user ID, request ID, timestamp, severity) so they can be queried and correlated across services rather than grep'd line by line. Worth a deep dive because the difference between structured and unstructured logging is the difference between debuggable systems and unsearchable text dumps, and the conventions you adopt early are hard to change later.
+
+**Metrics and Time-Series Data** — Tracking quantitative signals (latency, cost per request, tokens consumed, accuracy scores) over time using tools like Prometheus, CloudWatch, or Datadog, and establishing baselines so anomalies are detectable. This deserves its own treatment because choosing what to measure, how to aggregate it (p50 vs p99), and how to store it efficiently is a craft with real cost and performance implications.
+
+**Distributed Tracing** — Following a single request as it flows through frontend, backend, LLM provider, vector store, and database, using trace IDs and span hierarchies to identify which hop is slow or failing. Worth going deeper on because tracing is the only signal type that answers "where did the time go in this specific request," and instrumenting it correctly across service boundaries is non-trivial.
+
+**Alerts and On-Call** — Designing alert thresholds that catch real problems without crying wolf, building escalation policies, and structuring an on-call rotation that doesn't burn out the team. Deserves a deep dive because alert design is where most teams quietly fail — they either over-alert and create fatigue, or under-alert and miss outages — and the patterns for getting this right are learnable.
+
+**Cost Attribution** — Tracing token spend and compute cost back to specific features, users, or model calls so optimization decisions are driven by data rather than guesses. Worth its own post because cost observability is uniquely important for AI systems (where a single feature can quietly burn six figures) and the techniques for attributing cost are different from attributing latency or errors.
+
+**Observability for Non-Deterministic Systems** — Specialized tracing and evaluation for agentic systems, where you need to capture not just what happened but why the model made the decisions it did. Covered separately in L1-15 because the tooling (Langfuse, Smithery, LangSmith) and the questions you're asking (Why did the agent loop? Why did it pick this tool?) are genuinely different from traditional observability.
+
+---

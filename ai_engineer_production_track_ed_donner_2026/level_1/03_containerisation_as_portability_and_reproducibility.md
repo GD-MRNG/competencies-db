@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 03_containerisation_as_portability_and_reproducibility.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-03 · Containerization (Docker) as Portability and Reproducibility
+
+The phrase "it works on my machine" is the oldest joke in software engineering, and like most old jokes it stopped being funny because it kept being true. The reason it kept being true is subtle: your code is almost never the thing that varies between environments. What varies is everything underneath it — the Python version, the system libraries, the locale settings, the version of OpenSSL that some transitive dependency happens to link against, the fact that your laptop has ffmpeg installed because you used it for a side project two years ago and forgot. Your code is a thin veneer on top of an enormous stack of assumptions about the machine it is running on, and those assumptions are invisible until they break.
+
+Containerization is the discipline of making those assumptions explicit. A container packages your application together with the exact runtime, the exact dependencies, and the exact system-level pieces it needs, into a single immutable artifact called an image. When that image runs, it runs the same way on your laptop, on a CI server, on a teammate's Linux desktop, and on a production server in AWS. Not "approximately the same way." The same way. The environment is no longer something the application discovers when it starts up; it is something the application carries with it.
+
+Docker is the tool that made this practical, and at this point it is the lingua franca of cloud deployment. Every major cloud provider accepts container images as a deployment unit. Every CI/CD system can build them. Every orchestration platform — Kubernetes, ECS, App Runner, Cloud Run — assumes them as input. If you are deploying anything more complex than a static website in 2026, you are almost certainly deploying a container, even if a managed platform is hiding that fact from you. Learning Docker is not optional infrastructure trivia; it is the interface between your code and every cloud you might ever deploy to.
+
+The mental model worth holding is that an image is a frozen filesystem plus a command to run. You start from a base image (something like a minimal Linux distribution with Python already installed), you layer your own changes on top (copy in your code, install your dependencies, set some environment variables), and you declare what command should run when the image starts. That recipe lives in a Dockerfile, which is checked into your repository alongside your code. The image itself is built from the Dockerfile and stored in a registry — Docker Hub for public images, AWS ECR or similar for private ones. Deployment becomes "tell the cloud to pull this image and run it," which is dramatically simpler than the older world of provisioning servers, installing dependencies, and copying code around.
+
+The portability promise comes with a few sharp edges worth knowing about up front. The most common one bites people building on Apple Silicon: your laptop has an ARM64 CPU, but most cloud servers run on x86_64. If you build an image on your Mac and push it without thinking, it will fail to start in AWS with a cryptic "exec format error." The fix is to specify the target architecture at build time (`--platform linux/amd64`) or to build multi-architecture images. The second edge is image size: naive Dockerfiles produce multi-gigabyte images that include build tools, compilers, and intermediate artifacts you do not need at runtime. The fix is multi-stage builds, where one stage compiles and downloads everything and a second, leaner stage copies in only the runtime essentials. Smaller images deploy faster, cost less to store, and present a smaller attack surface.
+
+There is also a local development angle that matters more than people initially realise. Real AI systems are rarely just one process — there is your application, probably a database, often a Redis cache, sometimes a vector store. Trying to run all of that natively on a developer machine is painful and produces environment drift across the team. Docker Compose lets you declare the whole topology in a single file and bring it up with one command, which means new engineers are productive on day one and your local environment looks structurally like production. This is a quietly enormous productivity win.
+
+The deeper reason to invest in Docker early is that it changes what "deployment" means. Without containers, deployment is a sequence of imperative steps that someone has to remember or script: install these packages, copy these files, restart this service, hope nothing else on the server conflicts. With containers, deployment is the replacement of one immutable artifact with another. Rollbacks become trivial — you redeploy the previous image. Reproducibility becomes the default — the image you tested is byte-for-byte the image that runs in production. And because the artifact is self-contained, you stop caring about the underlying server, which is exactly the precondition for everything else in this track: cloud platforms, infrastructure as code, auto-scaling, multi-region deployment. All of those assume your unit of deployment is a portable, immutable image. Containerization is what makes the rest of cloud engineering tractable.
+
+## Level 2 candidates
+
+**Dockerfile and Image Layers** — How to write a Dockerfile that specifies a base image, installs dependencies, and defines an entrypoint, and how Docker's layer caching makes iterative rebuilds fast. Worth going deeper because the difference between a naive Dockerfile and a well-ordered one is the difference between a 30-second rebuild and a 10-minute one, and most teams get this wrong for years before noticing.
+
+**Multi-Stage Builds** — Separating the build environment (with compilers, build tools, model download steps) from the runtime environment (lean, minimal, production-ready). Worth a deep dive because for AI workloads in particular — where you may be downloading model weights or compiling native extensions — single-stage images balloon to many gigabytes and slow every deploy.
+
+**Platform Mismatch and Architecture-Specific Images** — Why building on ARM64 (Apple Silicon) and deploying to x86_64 (most cloud servers) silently breaks, and how to build cross-platform or multi-arch images. Worth covering because this is the single most common "my Docker image won't run in production" failure and the error messages are unhelpful.
+
+**Image Registries and Versioning** — How images are stored and pulled (Docker Hub, AWS ECR, GitHub Container Registry), and the discipline of tagging with explicit versions instead of `latest`. Worth its own treatment because `latest` is a footgun that turns deployments into roulette, and registry permissions are a quiet but important part of your security posture.
+
+**Docker Compose for Local Development** — Declaring multi-container local environments (app, database, cache, vector store) in a single file so the whole team has an identical setup. Worth deeper coverage because most teams underuse Compose, leading to drift between developer machines and to onboarding friction that scales linearly with team size.
+
+**Secrets and Configuration in Containers** — How to pass API keys and configuration into a running container without baking them into the image itself. Worth its own treatment because the wrong pattern here (committing a `.env` file into your image) is both extremely common and a serious security failure, and the right pattern connects directly into the secret manager work in L1-02.
+
+---
