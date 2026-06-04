@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 09_the_model_context_protocol_as_a_standard_interface.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-09 · The Model Context Protocol (MCP) as a Standard Interface
+
+Every time you wire an agent to a new tool, you write the same kind of code twice. Once to describe the tool to the model — its name, its arguments, what it returns. Once to actually invoke it — the HTTP call, the SDK wrapper, the auth handshake, the response parsing. Multiply this across a dozen tools and three agents and you have a small integration codebase whose only job is translating between "what the model thinks it's calling" and "what the underlying system actually expects." This is the connector tax, and until recently everyone in the agentic ecosystem was paying it independently.
+
+The Model Context Protocol is an attempt to stop paying that tax. The premise is simple: if every tool spoke the same wire protocol — the same way of advertising what it does, the same way of receiving a call, the same way of returning a result — then any agent could use any tool without bespoke glue code. You'd write the tool once, as a server. You'd write the agent once, as a client. The protocol would handle the rest. This is the analogy people reach for when they call MCP the "USB-C of AI": before USB-C, every device had its own cable, its own port, its own charger; after, you have one shape that works everywhere. The point is not the cable. The point is what becomes possible when the cable stops being a decision.
+
+The mental model has three roles, and getting them straight matters more than any specific implementation detail. The Host is your agent — the application doing the reasoning, holding the loop, deciding what to do next. The Server is a tool provider — a process that exposes some capability (a database query, a file system, a web API, an internal service) in MCP's standard format. The Client is the mediator inside the Host that speaks the protocol on the Host's behalf, managing the connection to one or more Servers. You, as an agent engineer, mostly work at the Host level and occasionally write Servers. The Client is usually provided by a library and fades into the background once it works.
+
+What a Server advertises is more nuanced than just "here are my functions." MCP defines three primitives, and they map to genuinely different things an agent might want from an external system. Tools are functions the agent invokes with side effects or computation — call this, get a result, possibly change the world. Resources are read-only context the agent can pull in — files, records, documents, the kind of thing you'd want to load into the model's view without "calling" anything. Prompts are pre-canned instruction templates the Server suggests for common interactions with it. Most people start by thinking of MCP as "standardized tool calling" and only later realize Resources and Prompts are doing different work: Tools are verbs, Resources are nouns, Prompts are recipes. A well-designed Server uses all three deliberately.
+
+The transport layer is where MCP gets pragmatic. A Server can run locally, communicating with the Host over standard input and output — fast, secure, no network involved, ideal when the tool lives on the same machine as the agent. Or it can run remotely, communicating over HTTP with server-sent events — slower, requires authentication, but lets you share a Server across many Hosts and across the internet. The choice maps cleanly to your deployment model: local Stdio for desktop agents and developer tooling, remote SSE for shared infrastructure and SaaS-style tool providers. You'll usually want both available, and the protocol abstracts the difference well enough that your tool code doesn't change between them.
+
+The payoff compounds in two directions. On the building side, wrapping an existing Python function or API as an MCP Server is shallow work — libraries like FastMCP reduce it to decorators and type hints, and your tool is immediately usable by any MCP-aware agent. On the consuming side, there are now public marketplaces and registries of Servers for common systems (databases, version control, browsers, productivity tools, internal company systems), which means many of the integrations you would have written yourself are already available. You discover, evaluate, and connect rather than build. This is the part that changes how you architect: you stop thinking of tool integration as code you write and start thinking of it as infrastructure you compose.
+
+The caveats are the ones that come with any standard. Third-party Servers are third-party code running with whatever access you grant them — you need to evaluate them the way you'd evaluate any dependency, especially when they're exposed to a model that will call them autonomously. The protocol itself is young and will evolve; versions will shift, capabilities will expand, and some of what you build today will need to be revised. And MCP doesn't solve the harder problems of agentic systems — tool descriptions still need to be clear, the model still needs to choose the right tool, the loop still needs to terminate. MCP solves the connector problem, not the reasoning problem.
+
+What MCP buys you, ultimately, is the same thing every good interface buys: the freedom to stop thinking about the interface. Once your agent speaks MCP, adding a new capability becomes a configuration question rather than an engineering project. Once your tool speaks MCP, every agent in the ecosystem is a potential consumer. The skill to build here is recognizing when you're paying the connector tax — writing the same translation code for the fifth time — and reaching for the standard instead of the next bespoke integration.
+
+## Level 2 candidates
+
+**Client-Server-Host Architecture** — Covers the three-role separation in depth: what each role is responsible for, how they're typically deployed, and how connections are negotiated and maintained. Worth a deeper pass because the role boundaries shape every architectural decision downstream, and conflating Host with Client is a common early mistake that makes debugging unnecessarily hard.
+
+**Transport Mechanisms: Stdio vs. SSE** — Covers the two primary transports, their performance and security characteristics, and the auth and networking concerns each introduces. Worth going deeper because the choice has real operational consequences — local Stdio is essentially free and trusted, remote SSE drags in TLS, identity, rate limits, and the full surface of a network service.
+
+**Tool vs. Resource vs. Prompt** — Covers the three primitives a Server can expose and the design judgment of which to use when. Worth a deeper treatment because the distinctions are easy to gloss over but heavily affect how an agent perceives and uses your Server; misusing Resources as Tools (or vice versa) bloats context and degrades reasoning quality.
+
+**MCP Server Creation and FastMCP** — Covers the practical mechanics of wrapping existing functions or APIs as Servers, including schema generation, lifecycle management, and the conventions that make a Server feel idiomatic. Worth depth because this is the most common hands-on activity once you adopt MCP, and small choices in how you define your Server make a large difference in how reliably models use it.
+
+**Ecosystem Integration and Discovering Tools** — Covers how to find, evaluate, and adopt third-party MCP Servers, including marketplaces, registries, and the security and reliability criteria you should apply. Worth depth because the supply chain considerations are genuinely tricky — you're granting model-driven access to external code, and the evaluation discipline needed here is different from picking a normal library dependency.
+
+---

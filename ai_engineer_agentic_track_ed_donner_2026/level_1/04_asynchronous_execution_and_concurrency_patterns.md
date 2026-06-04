@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 04_asynchronous_execution_and_concurrency_patterns.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-04 · Asynchronous Execution and Concurrency Patterns
+
+The single biggest performance lie developers tell themselves about agents is that the model is the slow part. It usually isn't. The model is fast; the model is waiting. It is waiting for a search API to return, for a database query to finish, for another agent to think, for a webhook to acknowledge. If you write your agent loop the way you'd write a script — call a tool, wait, call the next tool, wait — you are not building a slow agent because the model is slow. You are building a slow agent because you stacked every external call end-to-end when most of them had no reason to wait for each other.
+
+The mental shift is to stop thinking of a tool call as a function you invoke and start thinking of it as a request you've dispatched. In a synchronous loop, each tool call blocks the entire reasoning engine while a remote system does work that has nothing to do with your CPU. Multiply that by an agent that takes ten or twenty steps, with several calls per step, and the wall-clock latency becomes the sum of every external system's worst day. Asynchronous execution breaks that sum into a max: instead of paying the cost of every call sequentially, you pay roughly the cost of the slowest one in each batch.
+
+The pattern itself is straightforward in shape. When the model's reasoning step produces a batch of tool calls — and frontier models will routinely emit several in one response when they recognise the calls are independent — you dispatch all of them concurrently, wait for the group to complete, assemble the results back into the message history, and only then return control to the model for its next thought. The loop stays sequential at the reasoning level (the model still thinks, acts, observes, thinks again), but the action step fans out. This is the difference between an agent that feels like it's typing one character at a time and one that feels like it's actually working.
+
+What makes this harder than it looks is that concurrency moves complexity from the runtime into your head. Synchronous code has one obvious failure mode: something threw, and you can see where. Concurrent code has a richer vocabulary of failures. One of your three parallel calls succeeded, one timed out, and one returned a malformed response — what do you tell the model on the next turn? Do you retry the failed call before continuing, surface the partial results and let the model decide, or abort the whole batch? There is no universally correct answer, but there is a universally wrong one, which is to not have thought about it. Agents that silently drop failed tool results will hallucinate around the gap; agents that crash on any partial failure will be brittle in exactly the environments where async matters most.
+
+Timeouts deserve their own moment of attention because they are where async systems quietly rot. A synchronous call that hangs will eventually wake someone up. An async call that hangs will sit in your event loop holding a slot, and ten thousand of them will sit there together until something else breaks first. Every external call in an agentic system needs a bounded wait, a clear policy for what happens when that bound is hit, and ideally a way to communicate "this tool didn't respond" back to the model as an observation it can reason about rather than an exception that kills the loop.
+
+Once you have parallel execution working, you'll find that the bottleneck has moved, and that you can no longer find it by reading code top-to-bottom. This is why observability becomes non-negotiable the moment you go async. You need distributed tracing — some way to look at a single agent run and see which calls happened when, which ones overlapped, which ones blocked the critical path, and where the actual time went. Without that, "the agent is slow" becomes an unanswerable question, because the work is no longer happening in a place a stack trace can describe. The good news is that traces of a well-instrumented async agent are deeply satisfying to read: you can see the fan-out, the gather, the moment the model resumes thinking, and exactly which tool was the long pole.
+
+For systems that scale beyond a handful of concurrent agents, or where tools themselves are slow enough that you don't want the reasoning loop coupled to their execution, the natural next step is to decouple further with a queue. The agent posts work to a queue, workers process it, results come back through another channel, and the reasoning loop is freed from holding state during long operations. This is more infrastructure than most prototypes need, but it is the architecture you converge on once you have many agents, slow tools, or both.
+
+The skill this topic builds is the instinct to look at any sequence of operations and ask, of every adjacent pair, "does this one actually need the result of that one?" Most of the time the answer is no, and most of the latency in agentic systems lives in the places where developers assumed the answer was yes. Master that instinct and your agents stop feeling like they're thinking out loud and start feeling like they're getting work done.
+
+## Level 2 candidates
+
+**Async/Await Patterns in Python** — Covers the mechanics of writing non-blocking code with coroutines, event loops, and the `asyncio` primitives that make concurrent tool calls possible. Worth deeper treatment because most developers learn async by cargo-culting examples, and the failure modes (mixing sync and async code, accidentally blocking the event loop, misusing `gather` vs `as_completed`) are subtle enough to deserve their own walkthrough.
+
+**Parallel Tool Execution** — Covers the specific pattern of detecting when a model has emitted multiple independent tool calls in a single response and dispatching them concurrently, then reassembling results in the order the model expects. Worth going deeper because the implementation details — how to preserve tool call IDs, how to interleave results back into the message history, how to handle ordering when the model cares about it — are where the pattern actually lives or dies.
+
+**Handling Partial Failures and Timeouts** — Covers the policy decisions around what to do when one of several parallel calls fails, times out, or returns garbage. Deserves a dedicated treatment because this is where async agents stop being a performance optimisation and start being a reliability problem, and the right answer is highly context-dependent (retry, fallback, degrade, escalate, or surface to the model).
+
+**Distributed Tracing and Observability for Async Agents** — Covers how to instrument concurrent agent execution so you can see overlapping operations, identify the critical path, and attribute latency to specific tools or model calls. Worth its own post because the tools and conventions (OpenTelemetry spans, trace propagation across async boundaries, visualising fan-out/gather patterns) are non-obvious and the alternative — guessing — does not scale.
+
+**Queue-Based Orchestration** — Covers decoupling the reasoning loop from tool execution via message queues like Redis or RabbitMQ, so that slow tools or many agents don't bottleneck on a single process. Worth deeper exploration because it's the architectural step between "an async script" and "a production agentic system," and the design decisions (which queue, at-least-once vs exactly-once, how results route back) shape everything downstream.
+
+---

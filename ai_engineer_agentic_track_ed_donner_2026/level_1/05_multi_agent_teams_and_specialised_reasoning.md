@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 05_multi_agent_teams_and_specialised_reasoning.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-05 · Multi-Agent Teams and Specialized Reasoning
+
+The instinct, when a single agent starts failing on hard tasks, is to reach for a better model. Swap the planner out, give it more context, sharpen the system prompt. Sometimes this works. But there is a ceiling, and you hit it faster than you expect: a single agent juggling planning, execution, and verification in one context window is doing three jobs badly, and no amount of model upgrades fixes the structural problem. The fix is not a smarter generalist. It is a team of specialists.
+
+The mental model worth holding is that an agent's reliability is inversely proportional to the breadth of what you ask it to do in one reasoning pass. A model asked to plan a five-step research task, execute each step, and verify the output is making dozens of micro-decisions in a single context, and any one of them can poison the rest. Split those responsibilities across agents — one plans, one executes, one verifies — and each agent now operates in a narrower context with a clearer goal. Narrow goals produce reliable behavior. This is the same logic that makes microservices more maintainable than monoliths, applied to reasoning instead of code.
+
+The payoff is not just reliability. It is also economic. Once you have separated roles, you can match each role to an appropriately-sized model. Planning is the hardest job — it requires the model to hold the goal, anticipate steps, and select tools, which is exactly where frontier reasoning models earn their cost. Execution is often narrower: calling a known API, running a calculation, summarizing a document. A cheaper model, or even a fine-tuned smaller one, often handles this well. Verification can be a third model entirely — sometimes deliberately a different model family, so it does not share the planner's blind spots. You are no longer paying frontier prices for the entire loop; you are paying frontier prices only where frontier reasoning matters.
+
+But the moment you have more than one agent, you have a new problem: how do they talk to each other? This is where most multi-agent systems quietly accumulate complexity. Communication patterns are design decisions with downstream consequences. Agents can share a single state object that everyone reads and writes; this is simple but creates contention and makes it hard to reason about who changed what. They can pass messages through queues, which decouples them but introduces ordering and delivery concerns. They can emit events on a shared stream and subscribe to what they care about, which scales well but makes debugging into archaeology. There is no universally correct choice — only choices that are appropriate for the size of the team and the criticality of the work.
+
+Alongside communication, you need orchestration logic: who runs next, and why? Two architectures dominate. In a hierarchical setup, a manager agent decides which subordinate to invoke, holds the overall plan, and reassembles results. This is intuitive and maps to how humans organize work, but the manager becomes a bottleneck and a single point of failure in reasoning. In a flat setup, agents coordinate peer-to-peer through shared state or a runtime that routes work based on rules. Flat architectures scale better but are harder to reason about — there is no single agent you can interrogate to ask "why did the team do that?" Most production systems end up hybrid: a manager for the high-level flow, peer coordination within sub-teams.
+
+Then there is the question nobody likes to think about until it breaks them: what happens when two agents disagree? One estimator returns $10, the other returns $15. One reviewer approves the draft, the other flags it. You need a conflict resolution strategy before you need it, not after. Voting works when you have an odd number of agents and the disagreement is bounded. Weighted ensembles work when you trust some agents more than others on certain task types. Escalation to a human works when the stakes justify the latency. Picking one is less important than having one — silent disagreements where the last agent to write wins are how multi-agent systems produce confidently wrong outputs at scale.
+
+State management is the quiet killer. With one agent, the conversation history is the state, and the model sees everything it has done. With multiple agents, each agent has its own slice of context, and the shared world state is something you have to maintain explicitly. If the planner thinks step three is done because the executor said so, but the executor's tool call actually failed silently, the planner builds the rest of the plan on a lie. Idempotency (running the same step twice should be safe) and atomicity (a step either completes or doesn't, with no half-states) stop being academic concerns and become daily ones. Agents undoing each other's work is a real failure mode, not a hypothetical.
+
+The skill this topic builds is the ability to look at a failing single-agent system and recognize when the answer is decomposition rather than upgrade. Not every problem benefits from a team — a two-step task with a clear path is almost always worse off as a multi-agent system, because you have added coordination overhead with no compensating reliability gain. But when a single agent is consistently failing at one of the three core jobs (planning, executing, verifying), splitting that job out and giving it its own context is often the cleanest fix. The trap to avoid is treating multi-agent design as a destination. It is a tool for managing reasoning complexity, and like all tools, it is overkill when the problem is small and indispensable when the problem is large.
+
+## Level 2 candidates
+
+**Agent Roles and Specialization** — How to decompose a task into Planner, Researcher, Reviewer, and Executor roles, and the tradeoffs between a single generalist agent and a team of narrow specialists. Worth a deep dive because the decomposition choice — what counts as a role, where the seams go — is where most multi-agent designs succeed or fail, and the heuristics for getting it right are not obvious.
+
+**Message Passing Between Agents** — The mechanics of how agents communicate: shared state objects, message queues, event streams, and the design implications of each. Worth deeper treatment because the choice between these patterns has cascading effects on debuggability, scalability, and failure modes that are not visible at the design stage.
+
+**Hierarchical and Flat Architectures** — The Director pattern (a manager agent dispatching to subordinates) versus peer-to-peer coordination through a shared runtime, and the hybrid forms that show up in practice. Deserves its own treatment because the architectural choice determines how the system fails under load and how you debug it when it does.
+
+**Consensus and Conflict Resolution** — Concrete strategies for resolving disagreement between agents — voting, weighted ensembles, confidence-based arbitration, human escalation — and when each is appropriate. Worth going deeper because most teams discover they need a strategy only after a silent conflict has already produced a bad output in production.
+
+**State Management Across Agents** — Tracking world state, ensuring idempotency and atomicity in tool calls, and preventing agents from overwriting or undoing each other's work. A meaty topic in its own right because the patterns borrow from distributed systems theory and most agent developers have not encountered them before.
+
+---

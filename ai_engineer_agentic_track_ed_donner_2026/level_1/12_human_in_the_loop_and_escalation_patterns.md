@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 12_human_in_the_loop_and_escalation_patterns.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-12 · Human-in-the-Loop and Escalation Patterns
+
+The most dangerous agent is the one that never asks. Full autonomy sounds like the goal — a system that takes a task and returns a result without bothering anyone — but in any domain where mistakes have real consequences, full autonomy is a liability dressed up as a feature. A wire transfer sent to the wrong account, a production table dropped, a customer refund issued at ten times the intended amount: these are not bugs you debug after the fact, they are incidents you explain in writing. The mature agentic system is not the one that decides everything; it is the one that knows which decisions are not its to make.
+
+This is what human-in-the-loop is really about. It is not a fallback for when the agent fails — it is a deliberate architectural choice about where the boundary of autonomy sits. You are designing a system with two kinds of actors: the agent, which is fast, tireless, and confidently wrong some percentage of the time, and the human, who is slow, expensive, and the only one accountable when something goes sideways. The interesting engineering question is not whether to involve the human, but when, how, and with what context. Get this wrong and you either annoy your operators with constant trivial approvals (which trains them to rubber-stamp everything) or you let the agent run free into territory it has no business deciding alone.
+
+The first design decision is the escalation criterion: the rule that determines when the agent must stop and ask. The crude version is a hard threshold — "any transfer over $10,000 requires approval" — and for many systems that is exactly right, because crude rules are auditable rules. More nuanced criteria might involve the agent's own confidence ("if you are less than 90% sure, escalate"), the reversibility of the action ("anything that deletes data, always ask"), or the novelty of the situation ("if this looks unlike anything you've handled before, flag it"). The pattern that fails most often is the one where the criterion lives implicitly in the system prompt as a vague instruction to "use your judgment." Models do not have judgment in the sense you need; they have probability distributions over tokens. Encode the criterion as something checkable in code, not something hoped for in prose.
+
+Once the agent decides to escalate, the next problem is presentation. A human reviewer who sees only "Approve this transfer of $47,000 to account 9182?" has been set up to fail. They have no context, no reasoning trail, no sense of what alternatives the agent considered or rejected. They will either approve reflexively because the agent has been right before, or reject defensively because they cannot tell what they are looking at. Good escalation presents the agent's full thought process: the goal it was pursuing, the evidence it gathered, the options it weighed, and the specific reason it stopped to ask. The human is not being asked to redo the work — they are being asked to validate a recommendation. That only works if the recommendation comes with its receipts.
+
+Then there is the feedback loop, which is the part most teams forget until it bites them. When the human approves, rejects, or modifies the agent's proposal, that decision needs to flow back into the system in a way the agent can use. At minimum, the agent needs to know the outcome so it can continue (approved: proceed; rejected: revise or abandon). More ambitiously, the decision becomes signal: a corpus of human judgments that you can use to refine prompts, adjust escalation thresholds, or eventually fine-tune the model on examples of when its instincts were off. Without this loop, you have built a system where humans repeatedly correct the same agent mistakes forever, with no compounding learning.
+
+The operational reality you cannot ignore is latency. An agent that escalates is an agent that waits, and the human on the other end is not sitting refreshing a dashboard. You need to design for the time dimension explicitly: how long can this decision wait before it becomes stale or actively harmful? A fraud check might need a response in minutes; a quarterly budget reallocation can wait until Monday. Different escalation classes need different routing, different SLAs, and different timeout behavior — and "timeout behavior" is itself a design decision, because the default of "the agent gives up and returns an error" is rarely what you want. Sometimes the right answer on timeout is to proceed with a safe default; sometimes it is to escalate further up the chain; sometimes it is to abandon the task entirely and notify the original requester. None of this happens by accident.
+
+The deeper skill this topic builds is the discipline of drawing the autonomy boundary deliberately. Most agentic systems start with the boundary in the wrong place — usually too permissive, because the demo is more impressive when the agent does everything itself. Production teaches you, often expensively, that the boundary belongs wherever the cost of an undetected mistake exceeds the cost of a human glancing at the screen. Once you internalize that, human-in-the-loop stops feeling like a limitation on your agent and starts feeling like what it actually is: the mechanism that lets you deploy the agent at all.
+
+## Level 2 candidates
+
+**Approval Workflows** — Covers the mechanics of defining trigger conditions, routing approval requests to the appropriate reviewer based on decision type or risk class, and structuring the approval interface itself. Worth deeper treatment because the routing logic (who approves what, with what authority, and what happens when they're unavailable) is where most production escalation systems quietly fail.
+
+**Reasoning Transparency** — Covers how to surface the agent's thought process to a human reviewer in a form that supports a real decision rather than rubber-stamping. Worth going deeper because there is real craft to designing the reviewer's view — what to show, what to summarize, what to hide — and it directly determines whether your humans add signal or noise.
+
+**Feedback Integration** — Covers how human approve/reject/modify decisions flow back into the agentic system, both as immediate signal (continue, revise, abort) and as long-term learning signal for prompt refinement or fine-tuning. Worth a deeper look because most teams implement only the immediate path and leave the learning loop on the table, which is where the long-term reliability gains actually live.
+
+**SLA and Latency for Escalation** — Covers the time dimension of human-in-the-loop: timeout policies, escalation chains when reviewers are unavailable, and how to classify decisions by urgency. Worth deeper treatment because timeout behavior is a design space in its own right (safe default, escalate further, abandon, retry) and the wrong choice can be worse than no escalation at all.
+
+**Escalation Criteria Design** — Covers the rules that determine when an agent must stop and ask, including hard thresholds, confidence-based triggers, reversibility heuristics, and novelty detection. Worth going deeper because the choice between encoding criteria in code versus in the system prompt has major downstream consequences for auditability, testability, and reliability.
+
+---

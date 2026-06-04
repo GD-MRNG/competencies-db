@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 07_agentic_sdks_and_frameworks_abstractions.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-07 · Agentic SDKs and Framework Abstractions
+
+There is a temptation, when you discover that LangChain or CrewAI or the Anthropic SDK can stand up a working agent in twenty lines, to skip the part where you build one yourself. Resist it. The frameworks are good. They are also a trap if you reach for them before you understand what they are hiding from you, because the day your agent does something inexplicable — and that day always comes — you will be debugging someone else's abstraction over a loop you never wrote.
+
+The thing to internalize is that an agent framework is not a new kind of system. It is scaffolding around the same Thought-Action-Observation loop you would write by hand: a while loop that calls a model, parses a tool call, executes it, appends the result to the message history, and goes around again. Everything a framework gives you — memory, retries, multi-agent coordination, tool registries, tracing hooks — is a convenience layer on top of that loop. If you know the loop, the framework is a productivity tool. If you don't, the framework is a black box that occasionally produces correct behavior for reasons you cannot explain.
+
+This matters because the failure modes of agentic systems are not the failure modes of normal code. When a regular library misbehaves, you read its source, set a breakpoint, and trace the call. When an agentic framework misbehaves, the bug is usually in the interaction between the model's output, the framework's parser, the prompt the framework silently injected, and the state it is quietly maintaining across calls. None of that is visible from your code. You will find yourself asking questions like "why is the agent suddenly answering in JSON?" and the answer will be in a default system message buried three classes deep.
+
+So the sequencing is: build a raw loop first, with the API of your choice, in plain Python. Make it work. Make it fail. Watch it loop infinitely once because you forgot a termination condition. Watch it crash because the model returned malformed JSON. Watch it run up a bill because you didn't cap iterations. These experiences are the actual curriculum. Once you have them, the framework's abstractions stop being magic and start being recognizable — that retry decorator is wrapping the call you already know how to make; that memory class is managing the message list you already know how to construct; that agent-to-agent message bus is passing strings between loops you have already written.
+
+When you do adopt a framework, adopt it pragmatically. The honest reason to use one is that you are tired of writing the same fifty lines of boilerplate for every project, or you need multi-agent coordination that would take a week to build correctly, or you want the tracing dashboard your team can actually look at. These are good reasons. The bad reasons are that the framework is trendy, that a tutorial used it, or that you assume it is the "right way" to build agents. There is no right way. There is the loop, and there are different ways to package it.
+
+Be especially careful about a few specific costs. The first is debugging difficulty: every layer between your code and the model call is a layer where something can go wrong silently, and frameworks tend to obscure exactly the kind of intermediate state — the actual prompt sent, the raw model response, the parsed tool arguments — that you need to see when things break. Insist on tracing. If the framework does not let you log the full prompt and the full response at every step, that is a serious problem, not a minor inconvenience. The second is lock-in: agentic frameworks are evolving fast in 2026, and code written against one major version often breaks in the next. Keep your domain logic — the tools themselves, the prompts, the business rules — separable from framework-specific glue, so you can swap out the scaffolding without rewriting the system. The third is the way frameworks auto-generate tool schemas from Python functions. This is convenient and slightly dangerous: the descriptions the model sees are derived from your docstrings and type hints, and the quality of those descriptions is the difference between an agent that picks the right tool and an agent that hallucinates one. The framework does not warn you when your docstring is too vague.
+
+The practical guidance, then, is a sequence rather than a choice. First, write the loop yourself, in raw Python, against a model API. Build something that calls two or three tools and terminates correctly. Once that works and you have felt it fail in a few interesting ways, evaluate frameworks against specific pain points you actually have — not against problems you imagine you might have later. Pick the one that gives you the best tracing and the cleanest path back to raw API calls when you need to drop down a level. Keep the loop visible in your mental model even when the framework is doing it for you, because the moment something breaks, the framework will not save you; your understanding of the loop will.
+
+The skill this topic builds is judgment about abstractions. You are not learning a framework. You are learning when a framework is helping you and when it is hiding the thing you need to see.
+
+## Level 2 candidates
+
+**When to Use Frameworks vs. Raw API Calls** — Covers the decision criteria for adopting a framework: team expertise, debugging requirements, the complexity of the multi-agent coordination you actually need, and the boilerplate you are tired of writing. Worth deeper treatment because the answer is rarely "always" or "never," and articulating the tradeoff for specific scenarios (single agent vs. team, prototype vs. production, solo vs. team codebase) is genuinely useful.
+
+**Memory and State Management in Frameworks** — Covers how frameworks handle conversation history, intermediate results, scratchpads, and shared context across agents, and where their built-in solutions stop being sufficient. Worth a deep dive because memory is the single most common place where framework defaults silently shape agent behavior in ways developers do not realize until something breaks.
+
+**Tool Registry and Schema Auto-Generation** — Covers how frameworks convert Python functions, type hints, and docstrings into the tool schemas the model actually sees. Worth going deeper because the translation is lossy and consequential — the model never sees your code, only the generated description — and most tool-selection failures trace back to schemas that looked fine in Python but were ambiguous to the model.
+
+**Debugging and Tracing in Abstraction Layers** — Covers how to instrument framework-based agents: accessing raw prompts and responses, capturing intermediate state, integrating with tracing tools, and forcing the framework to surface what it is doing internally. Worth a deep dive because this is the skill that separates engineers who can ship framework-based agents from those who give up and rewrite in raw Python after the first production incident.
+
+**Migration and Lock-In Risk** — Covers how to structure agent code so the framework is replaceable: clean separation between tools, prompts, business logic, and framework glue; abstractions that survive a major version bump or a switch to a different SDK entirely. Worth going deeper because the agentic framework landscape is unstable, and the architectural patterns that protect you are not obvious until you have been burned once.
+
+---

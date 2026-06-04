@@ -1,0 +1,41 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 14_agentic_ai_in_production_reliability_and_scaling.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-14 · Agentic AI in Production: Reliability and Scaling
+
+The prototype agent that impressed everyone in the demo is not the same system you are about to put in front of real users. The demo ran once, on a clean input, with a fresh API quota, while you watched it. Production is the opposite of all those things: the agent runs thousands of times a day, on inputs you did not anticipate, against infrastructure that occasionally fails, with no one watching most invocations. The shift from prototype to production is not about adding polish. It is about confronting the fact that every assumption your prototype quietly depended on is now a liability.
+
+The deepest shift in mindset is this: in production, your agent is not a single execution. It is a population of executions, and you need to reason about it statistically. A tool call that fails 0.1% of the time is invisible in a demo and catastrophic at scale. An agent that occasionally loops twice instead of once is a curiosity in development and a budget fire in production. The question stops being "did it work?" and becomes "what fraction of invocations succeed, at what cost, within what latency, and what happens to the ones that don't?" Everything that follows is downstream of taking that question seriously.
+
+Idempotency is the first property you need to internalise, because agents fail in the middle of things. A reasoning loop might crash after calling a tool but before recording the result. A retry might fire when the original request is still in flight. If the tool was "charge the customer" or "send the email" or "delete the file," running it twice produces a very different world than running it once. Idempotent tools — tools designed so that calling them with the same arguments twice has the same effect as calling them once — make the entire system safe to retry, resume, and replay. Closely related are atomic operations: a tool call either fully completes or fully fails, never leaving the world in a half-finished state where the database row was updated but the downstream notification never fired. Without atomicity, your agent's "self-correction" loop will spend its time cleaning up its own debris.
+
+Rate limiting is what protects you from your own agents. A loop that decides to call a search tool fifty times in quick succession will happily do so, and the API on the other end will not thank you. Worse, an agent calling your own internal services can take down the systems it depends on, creating a feedback loop where the agent's retries make the outage worse. You need throttling at the agent level (this agent gets N tool calls per minute), at the tool level (this endpoint accepts N requests per second), and ideally backpressure all the way through, so that when downstream systems are struggling, upstream agents slow down rather than pile on. The mental model is plumbing: every pipe has a maximum flow rate, and if you do not enforce it, something bursts.
+
+Caching is where the cost curve bends. Agents are repetitive — the same question asked twice produces the same tool calls, the same lookups, the same model invocations. A cache on tool results (keyed on arguments) eliminates the redundant work entirely; a cache on prompt prefixes lets the model skip recomputation it has already done. The discipline is invalidation: a cached "current stock price" that is six hours old is worse than no cache at all. Decide for each tool whether its results are immutable (cache forever), slow-changing (cache with TTL), or volatile (don't cache), and be explicit about it. A production agent that does not cache aggressively is leaving most of its cost-efficiency on the table.
+
+Graceful degradation is the acceptance that things will be broken. A tool will be down. An API will return 503s for an hour. A model provider will rate-limit you in the middle of a job. The question is not whether this happens but what your agent does when it does. The naive answer — let it crash — is rarely acceptable in production. The better answers are fallbacks (if the primary search tool fails, try the secondary), partial results (return what you have rather than nothing), and clear failure modes (the agent surfaces "I couldn't complete this because X" rather than spinning silently). The discipline is to think through each tool's failure mode at design time, not in the postmortem.
+
+Two more concerns sit alongside these. Checkpointing — periodically saving the agent's state so it can resume after a crash without losing the work it has already done — matters as soon as your agents run long enough that losing progress is expensive. And cold starts — the latency penalty of spinning up an agent process from nothing — become a real user-experience problem when agents run on serverless infrastructure, requiring warm pools or keep-alive heartbeats to keep response times acceptable.
+
+What ties all of this together is a change in what you are optimising for. In the prototype phase, you are optimising for capability: can the agent do the thing at all? In production, you are optimising for reliability per dollar: does the agent do the thing consistently, safely, at a cost that makes sense? Every pattern in this topic — idempotency, atomicity, rate limiting, caching, graceful degradation, checkpointing — is a tool for making the reliability number go up and the cost number go down without sacrificing the capability that got you here in the first place. The agents that survive contact with production are the ones whose designers took this seriously before launch, not after the first incident.
+
+## Level 2 candidates
+
+**Idempotency and Atomic Operations** — Covers how to design tools so that retries, resumptions, and concurrent calls don't corrupt state, using techniques like idempotency keys, transactional boundaries, and compensating actions. Worth a deeper dive because the patterns are subtle (true idempotency is harder than it looks) and the failure modes when you get it wrong are some of the most expensive in agentic systems.
+
+**Rate Limiting and Backpressure** — Covers the layered approach to throttling agents, tools, and downstream services, including token-bucket algorithms, queue depth signals, and how to propagate slowdown signals upstream. Worth deeper exploration because naïve rate limiting (a single global limit) breaks down quickly under multi-agent, multi-tenant load, and the right design depends on understanding the topology of your system.
+
+**Caching and Invalidation Strategies** — Covers what to cache (tool results, prompt prefixes, model completions), how to key it, and the invalidation policies that keep caches from going stale. Deserves its own treatment because cache design is where most of the cost savings in production agents come from, and the failure modes (serving stale data confidently) are particularly dangerous in agentic contexts.
+
+**Graceful Degradation and Fallback Design** — Covers patterns for handling tool outages, partial failures, and provider-side disruptions, including primary/secondary tool routing, circuit breakers, and how to surface partial results to users. Worth its own post because the design questions are largely about product decisions (what does "good enough" look like when things fail?) rather than just engineering ones.
+
+**Checkpointing and Recovery** — Covers how to persist agent state during long-running tasks, what to checkpoint (full message history, intermediate results, tool side effects), and how to resume cleanly. Worth a deeper dive once your agent runs are long enough or expensive enough that re-execution from scratch is unacceptable.
+
+**Cold Starts and Serverless Latency** — Covers the latency cost of spinning up agent processes, model client initialization, and tool connections in serverless environments, and the mitigations (warm pools, provisioned concurrency, persistent connections). Worth exploring separately because the tradeoffs between serverless economics and warm-instance latency are non-obvious and depend heavily on your traffic shape.
+
+---
