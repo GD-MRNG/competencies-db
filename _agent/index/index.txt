@@ -1,0 +1,1029 @@
+DOMAIN: AI as a Force Multiplier in Your Life
+SCOPE: Strategic leverage of AI tools to extend cognitive capacity, reduce friction, and amplify professional and creative output through human-in-the-loop workflows | Excludes: learning AI from scratch, model training, fine-tuning, deep technical machine learning theory, enterprise-scale AI engineering, and building custom AI models
+DEPENDS-ON: none
+
+[L1-01] The Capability-Reliability Frontier
+  L2: Hallucination vs. plausibility | Task-specific reliability patterns | The human-in-the-loop design pattern | When to distrust your intuition about AI output | Capability ceilings by domain
+
+[L1-02] Your Cognitive Moat: Where AI Cannot Replace You
+  L2: Mapping your work by replaceability | The difference between automation and augmentation | Decision leverage vs. decision volume | Expertise as pattern recognition | The judgment layer
+
+[L1-03] Prompt Coherence: The Forgotten Multiplier
+  L2: Context layers in prompts | Framing effects | Structured output formats | Example-driven prompting | The role of "thinking" in prompts
+  keys: JSON, CSV, markdown, few-shot examples
+
+[L1-04] Synthesis and Research
+  L2: Source quality vs. quantity tradeoff | The synthesis interview | Narrative generation vs. taxonomy generation | Detecting synthesis errors | Speed vs. depth in research
+
+[L1-05] Writing and Communication
+  L2: Voice and authenticity in AI-assisted writing | Iterative refinement at scale | Format-specific prompting for communication | The editing frontier | Ghostwriting vs. human-written
+
+[L1-06] Code and Technical Execution
+  L2: Specification as the real work | Code review competence | Architectural decisions and AI | Debugging with AI | Documentation and test generation
+  keys: Copilot, refactoring, test generation
+
+[L1-07] Analysis and Decision-Making
+  L2: Framework generation and adaptation | Scenario analysis and stress-testing | The assumptions audit | Quantification and model-building | Knowing what you don't know
+  keys: Porter's 5 forces, stakeholder mapping, option matrices
+
+[L1-08] Workflow Integration and Friction Design
+  L2: Tool selection by context | Context preservation and prompt versioning | Reducing friction in the happy path | Deliberate friction at decision points | Feedback loops and learning
+  keys: IDE plugins, API integrations, keyboard shortcuts
+
+[L1-09] Quality Control and Confidence Calibration
+  L2: Testing and validation frameworks | Source verification and fact-checking | Consistency and contradiction detection | Confidence calibration and epistemic humility | Red-teaming your own outputs
+  keys: Adversarial review
+
+[L1-10] Privacy, Dependency, and Long-Term Judgment
+  L2: Data sensitivity and risk assessment | Terms of service and data usage | Skill atrophy and intentional practice | Building institutional knowledge when AI handles execution | Reversibility and graceful degradation
+  keys: Open-source models, local models, data usage terms
+
+ORDER: L1-01 → L1-02 → L1-03 → L1-04 → L1-05 → L1-06 → L1-07 → L1-08 → L1-09 → L1-10
+
+---
+
+DOMAIN: AI Engineer Agentic Track
+SCOPE: Designing and architecting autonomous systems that reason dynamically, select tools, observe outcomes, and coordinate multi-agent teams | Excludes: basic model calling, prompting, context management, basic tool calling, and structured outputs (Core Track); containerization, deployment, scaling, and infrastructure operations (Production Track)
+DEPENDS-ON: Core Track
+
+[L1-01] The Agentic Loop (Thought-Action-Observation)
+  L2: The Thought Step: Planning and Tool Selection | The Action Step: Tool Calling and JSON Generation | The Observation Step: Tool Execution and Context Reconstruction | Loop Termination and Stop Conditions | The Role of the System Message in Agentic Contexts
+  keys: Python while loop, token budgets, iteration limits
+
+[L1-02] Workflows vs. Agents (Control vs. Autonomy)
+  L2: Prompt Chaining and Linear Workflows | Dynamic Agent Loops | Hybrid Patterns: Multi-Step Reasoning with Tool Use | Risk Tolerance and Cost Implications | Testing and Evaluation for Each Pattern
+  keys: Prompt Chaining, hybrid patterns
+
+[L1-03] Model Reasoning and the Cost-Capability Trade-off
+  L2: Reasoning Complexity and Model Selection | Tool Selection Reliability | Self-Correction and Recovery | Scaling Reasoning via Multi-Turn Interaction | Token Budgets and Cost Control
+  keys: 3B parameter models, frontier models, planner-worker pattern
+
+[L1-04] Asynchronous Execution and Concurrency Patterns
+  L2: Async/Await Patterns in Python | Parallel Tool Execution | Handling Partial Failures and Timeouts | Distributed Tracing and Observability | Queue-Based Orchestration
+  keys: Python async/await, Redis, RabbitMQ, coroutines, event loops
+
+[L1-05] Multi-Agent Teams and Specialized Reasoning
+  L2: Agent Roles and Specialization | Message Passing Between Agents | Hierarchical and Flat Architectures | Consensus and Conflict Resolution | State Management Across Agents
+  keys: Director pattern, peer-to-peer coordination, weighted ensemble, atomicity, idempotency
+
+[L1-06] Evaluator-Optimizer Patterns for Self-Correction
+  L2: Evaluation Criteria and Success Metrics | The Evaluator-Optimizer Loop | Confidence Scoring and Rejection Sampling | Prompting for Self-Critique | Ensemble and Voting Patterns
+  keys: Rejection sampling, self-critique, voting patterns
+
+[L1-07] Agentic SDKs and Framework Abstractions
+  L2: When to Use Frameworks vs. Raw API Calls | Memory and State Management in Frameworks | Tool Registry and Schema Auto-Generation | Debugging and Tracing in Abstraction Layers | Migration and Lock-In Risk
+  keys: LangChain, CrewAI, Anthropic SDK
+
+[L1-08] Tool Definition and Schema Enforcement
+  L2: Tool Signature Design | Pydantic Schemas and Type Safety | Constrained Decoding and Structured Outputs | Parameter Validation and Error Handling | Tool Descriptions and Semantic Clarity
+  keys: Pydantic, Constrained Decoding, Structured Outputs
+
+[L1-09] The Model Context Protocol (MCP) as a Standard Interface
+  L2: Client-Server-Host Architecture | Transport Mechanisms: Stdio vs. SSE | Tool vs. Resource vs. Prompt | MCP Server Creation and FastMCP | Ecosystem Integration and Discovering Tools
+  keys: MCP, Stdio, SSE, FastMCP, Smithery marketplace
+
+[L1-10] Tool Granularity and Composition
+  L2: High-Level vs. Low-Level Tool Design | Tool Composition and Emergent Behavior | Safety and Guardrails | Tool Observability and Tracing | Tool Caching and Memoization
+  keys: canaries, dry-run modes, memoization
+
+[L1-11] Graph-Based Workflows and LLM Routing
+  L2: Graph Definition and Visualization | Conditional Routing and Decision Points | Sub-Graphs and Hierarchical Composition | State Management in Graphs
+  keys: Langgraph, conditional routing
+
+[L1-12] Human-in-the-Loop and Escalation Patterns
+  L2: Approval Workflows | Reasoning Transparency | Feedback Integration | SLA and Latency for Escalation
+  keys: SLA, escalation criteria
+
+[L1-13] Observability, Debugging, and Tracing Agentic Systems
+  L2: Trace Capture and Export | Structured Logging and Metrics | Latency Profiling and Bottleneck Detection | Cost Attribution and Token Accounting | Alerting and Monitoring
+  keys: Langsmith, token accounting, latency profiling
+
+[L1-14] Agentic AI in Production: Reliability and Scaling
+  L2: Idempotency and Atomic Operations | Rate Limiting and Backpressure | Distributed Execution and Load Balancing | Checkpointing and Recovery | Cold Starts and Serverless Latency
+  keys: Idempotency, backpressure, checkpointing, cold starts, serverless latency
+
+[L1-15] Prompt Engineering for Agentic Contexts
+  L2: Goal Specification and Success Criteria | Tool-Specific Instructions | Constraints and Safety Boundaries | Iteration and Stability | Handling Loops and Stuck States
+  keys: System Message, stuck states, recovery instructions
+
+ORDER: L1-01 → L1-02 → L1-03 → L1-04 → L1-05 → L1-06 → L1-07 → L1-08 → L1-09 → L1-10 → L1-11 → L1-12 → L1-13 → L1-14 → L1-15
+
+---
+
+DOMAIN: AI Engineer Core Track
+SCOPE: Foundational AI engineering concepts including decoupled inference, tokenization, local and API-based model serving, prompt engineering, model agnosticism, tool calling, RAG, fine-tuning, structured outputs, basic agentic loops, and production observability/architecture. | Excludes: Advanced multi-agent orchestration (Agentic Track), enterprise containerization, cloud infrastructure deployment, and scaling (Production Track).
+DEPENDS-ON: none
+
+[L1-01] Decoupled Inference
+  L2: Local vs. Remote Trade-off | Model as a Function | The Statelessness Problem | The Illusion of Memory | Provider Agnosticism
+  keys: client.chat.completions.create, Ollama
+
+[L1-02] Tokenization and Context Windows
+  L2: Token Encoding (Tiktoken) | Context Window Limits | The Cost-Context Tradeoff | Batching and Streaming
+  keys: Tiktoken
+
+[L1-03] The Transformer Architecture as a Pattern Recognition Engine
+  L2: Self-Attention and "Understanding Context" | Emergent Capabilities | The Scaling Laws | From Text to Multimodal
+  keys: Vaswani et al.
+
+[L1-04] Local Inference: Ollama and Environment Hermeticity
+  L2: Model Weight Distribution and Quantization | Ollama as a Service | UV and Dependency Hell | The Hardware Bottleneck
+  keys: UV, VRAM
+
+[L1-05] API-Based Inference: Frontier Models and Vendor Ecosystems
+  L2: Pricing Models and Hidden Costs | Rate Limits and Quota Management | Latency and Tail Percentiles | API Key Management and Environment Variables
+  keys: .env
+
+[L1-06] Prompt Engineering as Architecture
+  L2: System Message Design | In-Context Learning (Few-Shot Prompting) | Chain-of-Thought and Reasoning Patterns | Structured Output Expectations
+
+[L1-07] Model Agnosticism and Provider Switching
+  L2: API Standardization (OpenAI Compatibility) | Model Capability Matrices | Fallback Strategies | Benchmarking and Vendor Lock-in Risk
+  keys: LMSYS Chatbot Arena, Hugging Face Open LLM Leaderboard
+
+[L1-08] Tool Calling (Function Calling) and the Bridge to Real Data
+  L2: Tool Definition Format | The Tool Loop | Constraining Tool Use | Parallel Tool Calls
+
+[L1-09] Retrieval-Augmented Generation (RAG) as a Pattern
+  L2: Embedding-Based Retrieval (Vector Databases) | Chunking and Metadata | Retrieval Quality vs. Token Waste | RAG vs. Fine-Tuning Trade-off
+  keys: cosine similarity
+
+[L1-10] Model Fine-Tuning: Baking Behavior into Weights
+  L2: Training Loop and Validation Strategy | Prompt Templates and Data Format | Overfitting and the Weights & Biases Valley | Parameter-Efficient Methods (LoRA, Adapters)
+  keys: LoRA, Weights & Biases
+
+[L1-11] Structured Outputs and Constrained Decoding
+  L2: Pydantic Schema Definition | Token Elimination During Generation | Performance Cost and Trade-offs | Recursive Schemas and Nested Data
+  keys: Pydantic
+
+[L1-12] Agentic AI and Autonomous Loops
+  L2: The Perception-Reasoning-Action-Observation Cycle | Agent Frameworks (LangChain, CrewAI) vs. First Principles | Goal Specification and Termination Conditions | Human-in-the-Loop Patterns
+  keys: LangChain, CrewAI
+
+[L1-13] Serving and Scaling: Infrastructure for Production
+  L2: Serverless GPU Infrastructure (Modal) | Caching and Semantic Deduplication | Monitoring and Observability | Cost Optimization at Scale
+  keys: Modal, Chroma, Pinecone, Gradio, FastAPI
+
+[L1-14] The System Architecture: Wiring It All Together
+  L2: Ensemble Approaches | RAG vs. Fine-Tuning vs. Hard-Coded Logic | Cost-Accuracy-Latency Surface | Error Handling and Graceful Degradation
+
+[L1-15] Observability and Iteration: Measuring What Matters
+  L2: Logging and Tracing | Evaluation and Test Sets | A/B Testing and Canary Deployments | Cost Attribution and Token Accounting
+
+ORDER: L1-01 → L1-02 → L1-03 → L1-04 → L1-05 → L1-06 → L1-07 → L1-08 → L1-09 → L1-10 → L1-11 → L1-12 → L1-13 → L1-14 → L1-15
+
+---
+
+DOMAIN: AI Engineer Production Track
+SCOPE: Infrastructure, deployment, scaling, reliability, observability, cost, security, and multi-agent orchestration in production | Excludes: model training, fine-tuning, basic prompting, context management, structured outputs (Core Track), basic agentic loops, tool calling, and multi-agent orchestration logic (Agentic Track)
+DEPENDS-ON: Core Track | Agentic Track
+
+[L1-01] The 80/20 Rule and Decoupled Architecture
+  L2: Frontend-Backend Decoupling | Async Streaming and Perceived Performance | State Management Across Services | Single Page Applications (SPAs) vs. Server-Side Rendering
+  keys: SSE, WebSocket, React, Next.js
+
+[L1-02] Environment Variables, Secrets, and the Principle of Least Privilege
+  L2: Environment Variables and .env Files | Secret Managers and Rotation | IAM and Granular Permissions | API Key Scope and Expiration | Secrets in Containers and Infrastructure as Code
+  keys: AWS Secrets Manager, Clerk, IAM roles, Terraform
+
+[L1-03] Containerization (Docker) as Portability and Reproducibility
+  L2: Dockerfile and Image Layers | Multi-Stage Builds | Platform Mismatch and Architecture-Specific Images | Image Registry and Versioning | Docker Compose for Local Development
+  keys: pip, uv, ARM64, x86, --platform flag, ECR, Docker Hub
+
+[L1-04] Async Backends and Streaming (FastAPI, etc.)
+  L2: Async/Await in Python | Event Loops and Non-Blocking I/O | FastAPI and Dependency Injection | Streaming Responses (SSE and WebSocket) | Rate Limiting and Backpressure
+  keys: FastAPI, SSE, WebSocket, async/await
+
+[L1-05] Cloud Platforms and the IaaS vs. PaaS Trade-off
+  L2: PaaS (Vercel, Railway, Heroku) vs. IaaS (AWS, GCP, Azure) | Managed Services vs. Raw Compute | Cold Starts and Serverless Latency | Auto-Scaling and Load Balancing | Multi-Region and Disaster Recovery
+  keys: Vercel, Railway, Heroku, AWS, GCP, Azure, App Runner, EC2, Lambda
+
+[L1-06] Infrastructure as Code (Terraform) and GitOps
+  L2: Terraform Basics and State Management | Modules and Code Reuse | Environment Separation | Secrets in Terraform | GitOps and Change Control
+  keys: Terraform, AWS Secrets Manager, GitOps
+
+[L1-07] Databases and State Persistence
+  L2: Relational Databases and Schemas | Vector Databases for Embeddings | NoSQL and Document Stores | Caching and Redis | Data Retention and Compliance
+  keys: Aurora, Pinecone, Chroma, Weaviate, SQS, RabbitMQ, DynamoDB, MongoDB, Redis, GDPR deletion, similarity search
+
+[L1-08] Networking, APIs, and Rate Limiting
+  L2: VPCs and Network Isolation | HTTPS and TLS | API Gateway and Routing | API Key Management and Versioning | CORS (Cross-Origin Resource Sharing)
+  keys: VPC, API Gateway, CORS
+
+[L1-09] Monitoring, Logging, and Alerting (Observability)
+  L2: Structured Logging | Metrics and Time-Series Data | Distributed Tracing | Alerts and On-Call | Cost Attribution
+  keys: Prometheus, CloudWatch, JSON logging
+
+[L1-10] Error Handling, Retries, and Graceful Degradation
+  L2: Retry Logic and Exponential Backoff | Circuit Breakers and Fallbacks | Idempotency and Duplicate Prevention | Timeouts and Resource Limits | Error Budgets and Acceptable Failure Rates
+  keys: exponential backoff, circuit breakers, idempotency
+
+[L1-11] Testing and Validation in AI Systems
+  L2: Deterministic vs. Probabilistic Testing | Evaluation Benchmarks and Metrics | Regression Testing and Change Detection | Adversarial Testing and Security | A/B Testing and Canary Deployments
+  keys: evals, jailbreaks, prompt injection, canary deployments
+
+[L1-12] Cost Optimization and Budget Management
+  L2: Token Counting and Cost Estimation | Model Selection and Routing | Caching and Deduplication | Batch Processing | Resource Right-Sizing
+  keys: Tiktoken, classifier-based routing, batch API tiers
+
+[L1-13] Multi-Agent Architecture and Decomposition
+  L2: Hierarchical vs. Flat Architectures | System Prompt Specialization | Independent Evaluation and Metrics | Parallel Execution and Synchronization | State Management Across Agents
+  keys: Planner-Worker, peer-to-peer coordination
+
+[L1-14] Distributed Execution and Job Queues
+  L2: Job Queues and Message Passing | Worker Pools and Concurrency | Idempotency and At-Least-Once Delivery | Result Storage and Polling | Lambda vs. Container Workers
+  keys: SQS, Redis, dead-letter queue, webhooks, ECS, App Runner
+
+[L1-15] Observability for Non-Deterministic Systems
+  L2: Trace Capture and Visualization | Annotation and Human Feedback | Cost and Latency Attribution | Drift Detection | PII and Privacy in Traces
+  keys: Langfuse, Smithery, drift detection, PII masking
+
+[L1-16] Security, Compliance, and the "Lethal Trifecta"
+  L2: Prompt Injection and Jailbreaks | Tool Sandboxing and Least Privilege | Input Validation and Sanitization | Audit Logging and Compliance | Data Privacy and Encryption
+  keys: prompt injection, jailbreaks, SOC 2, HIPAA, GDPR, sandboxing
+
+ORDER: L1-01 → L1-02 → L1-03 → L1-04 → L1-05 → L1-06 → L1-07 → L1-08 → L1-09 → L1-10 → L1-11 → L1-12 → L1-13 → L1-14 → L1-15 → L1-16
+
+---
+
+DOMAIN: Autonomous Agentic Delivery Pipelines
+SCOPE: Engineering principles, architectural patterns, and pipeline designs for delegating software development tasks (implementation, review, testing, iteration) to autonomous agents operating inside existing development workflows | Excludes: general AI tool usage, basic prompt engineering, manual agent execution, model training or fine-tuning, and standard CI/CD setup without agentic integration
+DEPENDS-ON: none
+
+[L1-01] Shift Left on Feedback
+  L2: Feedback loop latency | Defect amplification | Static vs. dynamic analysis | The test pyramid | Self-review as a quality gate
+  keys: linters, type checkers, unit tests, integration tests, deployment gates
+
+[L1-02] Deterministic Gates Around Probabilistic Outputs
+  L2: Input validation vs. output validation | Hard stops vs. soft signals | Idempotency | Schema enforcement | Sandboxing
+  keys: hooks, test runners, content moderation, fraud detection, recommendation systems
+
+[L1-03] Separation of Concerns Across Layers
+  L2: Cohesion and coupling | Configuration as code | The single responsibility principle | Interface boundaries | Policy vs. mechanism
+  keys: Larry Constantine, Unix design principle
+
+[L1-04] Event-Driven Architecture
+  L2: Event sourcing | Pub/sub vs. point-to-point messaging | Idempotent event handling | Trigger design | Dead letter queues
+  keys: GitHub Actions, AWS Lambda
+
+[L1-05] Context Isolation
+  L2: Process isolation | Session memory and anchoring bias | Bulkhead pattern | Stateless vs. stateful workers | Context window as a scarce resource
+  keys: anchoring bias, bulkhead pattern, context window contamination
+
+[L1-06] Principle of Least Privilege
+  L2: Permission scoping | Blast radius | Token-based vs. role-based access | Audit logging | Fail-safe defaults
+  keys: Jerome Saltzer, Michael Schroeder
+
+[L1-07] DRY and the Encoding of Decisions
+  L2: Single source of truth | Configuration drift | Abstraction as DRY | Skill and template libraries | Documentation as code
+  keys: Hunt and Thomas, Pragmatic Programmer, skill libraries, template libraries
+
+[L1-08] Human-in-the-Loop Design
+  L2: Checkpoint selection | Automation bias | Escalation paths | Merge gates and branch protection | Accountability without presence
+  keys: branch protection, merge gates, automation bias
+
+[L1-09] Feedback Loop Architecture
+  L2: Loop gain and stability | Signal vs. noise in review | Convergence criteria | Infinite loop guards | Latency vs. thoroughness
+  keys: control theory, Norbert Wiener, PID controllers, PR comment loop, infinite loop guards
+
+[L1-10] Observability and Auditability
+  L2: Structured logging | Distributed tracing | The three pillars: logs, metrics, traces | Alerting on absence | Audit trails for autonomous actions
+  keys: Charity Majors, Honeycomb, structured logging, distributed tracing
+
+ORDER: L1-01 → L1-02 → L1-03 → L1-04 → L1-05 → L1-06 → L1-07 → L1-08 → L1-09 → L1-10
+
+---
+
+DOMAIN: CS Fundamentals
+SCOPE: Mathematical, theoretical, and architectural foundations of computer science across computation theory, discrete math, basic programming constructs, data structures, algorithms, hardware architecture, operating systems, networking, databases, language theory, software engineering, machine learning math, and security | Excludes: Specific programming language syntax, framework-specific APIs, cloud provider-specific infrastructure (AWS/GCP/Azure), and practical frontend/backend web development.
+DEPENDS-ON: none
+
+[L1-01] Computation Basics
+  L2: What is an algorithm | The Turing Machine | Church-Turing Thesis | Binary and information encoding
+  keys: Euclid, al-Khwarizmi, Shannon's 1948 paper
+
+[L1-02] Discrete Mathematics
+  L2: Logic and boolean algebra | Set theory | Graph theory | Proof techniques | Combinatorics
+  keys: AND, OR, NOT, implication, induction, contradiction, direct proof
+
+[L1-03] Programming Fundamentals
+  L2: Variables, types, and memory | Control flow | Functions and scope | Recursion
+  keys: Stack vs heap allocation, determinism, mathematical induction in code
+
+[L1-04] Data Structures
+  L2: Arrays | Linked lists | Stacks and queues | Hash tables | Trees | Heaps | Graphs
+  keys: Contiguous memory, LIFO, FIFO, hash collisions, load factors, binary search trees, priority queues
+
+[L1-05] Algorithms
+  L2: Big-O complexity | Sorting algorithms | Searching | Divide and conquer | Dynamic programming | Greedy algorithms | Graph algorithms
+  keys: Quicksort, mergesort, heapsort, linear vs binary search, BFS, DFS, Dijkstra's shortest path, minimum spanning trees
+
+[L1-06] Computer Architecture
+  L2: Logic gates and circuits | The von Neumann architecture | CPU internals | Memory hierarchy | Assembly language | Instruction set architectures
+  keys: Transistors, ALU, L1/L2/L3 cache, x86, ARM
+
+[L1-07] Operating Systems
+  L2: Processes and threads | Scheduling | Memory management | File systems | System calls | Concurrency primitives
+  keys: Round-robin, virtual memory, paging, segmentation, inodes, journaling, mutexes, semaphores, condition variables, deadlocks, race conditions
+
+[L1-08] Networking
+  L2: The OSI and TCP/IP models | IP addressing and routing | TCP vs UDP | DNS | HTTP | TLS and encryption in transit
+  keys: BGP, subnets, statelessness, HTTP/1.1, HTTP/2, HTTP/3, certificates, certificate authorities
+
+[L1-09] Databases
+  L2: The relational model | SQL | Normalisation | Indexing | Transactions and ACID | Query planning | NoSQL and alternatives
+  keys: Codd's 1970 paper, 1NF, 2NF, 3NF, B-trees, Atomicity, Consistency, Isolation, Durability, document stores, key-value stores, column stores
+
+[L1-10] Programming Languages Theory
+  L2: Syntax and grammars | Parsing | Type systems | Compilers vs interpreters | Memory models | Functional vs imperative paradigms
+  keys: Context-free grammars, BNF notation, lexing, tokenising, abstract syntax trees, static vs dynamic, strong vs weak, structural vs nominal, garbage collection, ownership (Rust)
+
+[L1-11] Computability and Complexity
+  L2: Decidability | Complexity classes | NP-completeness | Reductions
+  keys: Halting problem, P vs NP, polynomial time
+
+[L1-12] Software Engineering
+  L2: Design patterns | SOLID principles | Version control internals | Testing theory | System design
+  keys: Gang of Four, factory, observer, strategy, Git DAG, TDD
+
+[L1-13] Machine Learning and AI
+  L2: Linear algebra foundations | Statistics and probability | Gradient descent | Neural network architecture | The historical arc
+  keys: Vectors, matrices, Bayes' theorem, expectation, variance, perceptrons, AI winters, deep learning renaissance
+
+[L1-14] Security
+  L2: Cryptography | Authentication and authorisation | Common vulnerability classes | Threat modelling
+  keys: Symmetric vs asymmetric encryption, hashing, digital signatures, key exchange, OAuth, JWTs, SQL injection, XSS, buffer overflows, CSRF
+
+[L1-15] Distributed Systems
+  L2: The CAP theorem | Consensus algorithms | Eventual consistency | Clock synchronisation | Failure modes
+  keys: Paxos, Raft, Lamport clocks, vector clocks, network partitions
+
+ORDER: L1-01 → L1-02 → L1-03 → L1-04 → L1-05 → L1-06 → L1-07 → L1-08 → L1-09 → L1-10 → L1-11 → L1-12 → L1-13 → L1-14 → L1-15
+
+---
+
+DOMAIN: Cybersecurity — Integrated with AI
+SCOPE: Core cybersecurity principles, threat modeling, cryptographic foundations, authentication, network/web/system/cloud security, ethical hacking, AI-driven security operations, and generative AI threats and defenses | Excludes: general software engineering, basic network administration, non-security machine learning model training, and general corporate compliance frameworks outside of security-specific standards (e.g., ISO 27001, MAS TRM)
+DEPENDS-ON: none
+
+[L1-01] Introduction to Cybersecurity
+  L2: The C-I-A triad in depth | Assets, vulnerabilities, threats, controls | The weakest-link principle and attack surface | Security trade-offs and Security-by-Design | The Mosaic Effect and inference attacks on privacy | Threat actors and adversary profiling
+  keys: Arup deepfake, $25M wire transfer
+
+[L1-11] Attacks, Malware & Mitigation
+  L2: The MITRE ATT&CK Framework | The Cyber Kill Chain and its critiques | Vulnerability management: CVE, CWE, CVSS, and KEV | Malware taxonomy and behaviour | Patch management as an operational discipline | MITRE ATLAS and AI-specific attack surfaces
+  keys: WannaCry, EternalBlue, NSA exploit, prompt injection, model poisoning, training data attacks
+
+[L1-02] Cryptography
+  L2: Kerckhoffs' Principle versus security by obscurity | Shannon's information theory and perfect secrecy | Classical ciphers and their cryptanalysis | Computational vs information-theoretic security
+  keys: Caesar cipher, Vigenère cipher, frequency analysis, one-time pad
+
+[L1-03] Modern Ciphers
+  L2: Block cipher modes of operation (CBC, CTR, GCM) | Nonce management and keystream reuse | Confusion, diffusion, and the avalanche effect | Authenticated Encryption with Associated Data (AEAD) | Cryptographic agility in system design
+  keys: ECB penguin, ChaCha20-Poly1305, AES-GCM
+
+[L1-04] Entity Authentication
+  L2: Password storage: salting, hashing, and modern KDFs | Multi-factor authentication design | Bootstrapping and credential provisioning | Social engineering and the human attack surface | Biometric authentication and its limits
+  keys: Mirai, LinkedIn breach, bcrypt, scrypt, Argon2, FIDO2, WebAuthn, SIM swapping, NIST guidelines
+
+[L1-05] Public Key Systems and Cryptographic Hashes
+  L2: RSA: trapdoor functions and key size selection | Elliptic curve cryptography | Hash function properties: preimage and collision resistance | Keyed hashes and HMACs | Post-quantum cryptography
+  keys: Diffie-Hellman, RSA-2048, Shor's algorithm, NIST PQC
+
+[L1-06] Data Origin Authentication & Public Key Infrastructure
+  L2: MAC vs digital signature: choosing for the use case | Certificate lifecycle management | Certificate Transparency and CA accountability | Hash-then-sign and signing large documents | Replay attacks and freshness mechanisms
+  keys: OCSP, CRL, CT logs
+
+[L1-07] Protocol Security
+  L2: Challenge-response and the design of freshness | Authenticated key exchange and session binding | Man-in-the-middle attacks and mutual authentication | Logical flaws in protocol design (XOR and algebraic manipulation) | Lightweight protocols for RFID and IoT | Token-based API security: OAuth 2.0, JWT, PKCE | Zero-knowledge proofs
+  keys: forward secrecy, downgrade resistance, OAuth 2.0, JWT, PKCE
+
+[L1-08] Network Security
+  L2: The OSI and TCP/IP layered model with encapsulation | DNS and name resolution attacks | Denial-of-service and distributed denial-of-service attacks | Wireshark and packet analysis | Nmap and network reconnaissance | Firewalls, DMZs, and ruleset design | Zero Trust Network Architecture
+  keys: TCP/IP, DNSSEC, DoH, Sea Turtle 2019, Wireshark, Nmap, DMZ, Mirai botnet
+
+[L1-09] Web Security
+  L2: The same-origin policy and CORS | XSS in depth: stored, reflected, DOM-based | SQL injection and parameterised queries | CSRF and SameSite cookies | Session management and token security | Content Security Policy and the browser as a security boundary
+  keys: CORS, XSS, CSRF, SQL injection, SameSite cookies, CSP, ORMs
+
+[L1-10] System Security and Access Control
+  L2: Access control representations (ACM, ACL, capabilities) | Linux/Unix permissions in practice | Controlled invocation and privilege escalation | DAC vs MAC vs RBAC | The principle of least privilege as a design discipline
+  keys: Colonial Pipeline, reference monitor, setuid, sudo, chmod, umask, sticky bit
+
+[L1-12] Cloud Security
+  L2: Shared responsibility model across IaaS/PaaS/SaaS | Cloud IAM and least-privilege access | DevSecOps: security in the CI/CD pipeline | Multi-tenancy, side-channel attacks, and confidential computing | SIEM, SOAR, and detection at cloud scale
+  keys: S3 bucket, Meltdown, Spectre, SGX, TrustZone, CI/CD pipeline, Infrastructure-as-Code
+
+[L1-13 & L1-14] AI in Cybersecurity
+  L2: Supervised vs unsupervised detection: choosing the right frame | Feature engineering for security data | Precision, recall, and the cost of each error type | Recurrent architectures for sequence-aware detection | Explainable AI in SIEM (the AMIDES pattern) | AI-driven penetration testing and continuous red teaming
+  keys: LSTMs, AMIDES pattern, APT detection
+
+[L1-15] Generative AI for Cybersecurity
+  L2: Prompt injection and AI-native attack vectors | Deepfakes and synthetic media in social engineering | LLM-assisted red teaming and vulnerability discovery | Responsible disclosure and AI security governance
+  keys: Arup deepfake, prompt injection, training data poisoning
+
+[L1-16] Ethical Hacking
+  L2: The attack lifecycle and cyber kill chain | The Metasploit framework and exploitation workflows | Privilege escalation techniques | Rules of engagement and the legal framework | Reporting, CVSS, and remediation translation
+  keys: Metasploit, Nmap, Singapore's Computer Misuse Act, buffer overflow
+
+[L1-17] Ethics, Governance and the Future of Cybersecurity
+  L2: Security principles as design heuristics | ISO 27001 and the ISMS | Singapore's Cybersecurity Act and MAS TRM | IoT security as a systemic problem | Post-quantum cryptography and migration planning
+  keys: ISO 27001, NIST CSF, Singapore's Cybersecurity Act 2018, MAS TRM guidelines
+
+[L1-18] Capstone: Thinking Like a Defender Who Has Done the Attack
+  L2: Active Directory enumeration as an attack surface | Critical use of AI in security workflows | Translating on-prem controls to cloud equivalents | Writing security findings for mixed audiences | The CIA triad as an analytical lens, not a definition
+  keys: Active Directory, SMB, LDAP, Kerberos, Azure AD, GPO, PIM, Conditional Access
+
+ORDER: L1-01 → L1-11 → L1-02 → L1-03 → L1-04 → L1-05 → L1-06 → L1-07 → L1-08 → L1-09 → L1-10 → L1-12 → L1-13 & L1-14 → L1-15 → L1-16 → L1-17 → L1-18
+
+---
+
+DOMAIN: Data Science
+SCOPE: End-to-end data science systems, predictive modeling, causal inference, and production ML pipelines | Excludes: Deep learning model training from scratch, generative AI application development (prompt engineering, RAG orchestration), and core data engineering infrastructure setup (Spark/Hadoop administration)
+DEPENDS-ON: none
+
+[L1-01] Python for Data Work
+  L2: Polars over Pandas | Vectorization and broadcasting | Type hints and debugging | Writing fast iteration loops | Profiling: memory and time
+  keys: Polars, DuckDB, NumPy
+
+[L1-02] SQL: The Lingua Franca
+  L2: Window functions and CTEs | Query optimization and explain plans | Handling nulls and missing data in SQL | Denormalization and design tradeoffs | Date and time arithmetic
+  keys: BigQuery, Snowflake, DuckDB, COALESCE, PARTITION BY, cohort analysis
+
+[L1-03] Statistics as Calibration
+  L2: Sampling and power analysis | Confidence intervals and uncertainty | Multiple testing and correction | Bayesian thinking (informal) | A/B testing and causal inference
+  keys: p-value, Markov chain, frequentist, statistical power
+
+[L1-04] Supervised Learning: Prediction
+  L2: Problem formulation and framing | Train-test splits and leakage | Feature engineering vs. feature learning | Linear models and their assumptions | Tree ensembles: Random Forest, Gradient Boosting, XGBoost | Hyperparameter tuning and cross-validation | Imbalanced data and threshold tuning
+  keys: XGBoost, Kaggle, binary classification, multiclass, ranking, AUC, RMSE
+
+[L1-05] Unsupervised Learning: Structure and Similarity
+  L2: Distance metrics and similarity | K-means clustering and initialization | Hierarchical clustering and dendrograms | Dimensionality reduction: PCA, UMAP, t-SNE | Evaluation without labels | Semantic embeddings and vector similarity
+  keys: UMAP, t-SNE, silhouette score, Davies-Bouldin index, Jaccard distance, cosine similarity
+
+[L1-06] Causal Inference: From Correlation to Action
+  L2: Causal graphs and confounding | Randomized experiments and RCTs | Propensity score methods | Synthetic controls and difference-in-differences | Instrumental variables | Causal interpretability in models
+  keys: DAG, SHAP, doubly robust estimation, exclusion restriction, propensity score matching
+
+[L1-07] Feature Stores and Data Pipelines
+  L2: ETL vs. ELT and idempotency | Incremental computation and slowly changing dimensions | Data quality monitoring | Feature versioning | Data lineage and governance
+  keys: ELT, slowly changing dimensions, data lineage, feature store
+
+[L1-08] Model Evaluation and Monitoring
+  L2: Offline evaluation and metrics | Offline-online gaps | A/B testing with models | Production monitoring and alerting | Retraining strategies | Model cards and documentation
+  keys: concept drift, prediction drift, data drift, model cards
+
+[L1-09] Machine Learning Infrastructure
+  L2: Containerization and versioning | Experiment tracking and hyperparameter logging | Model serving: batch vs. online | Resource allocation and scaling | Dependency management | Debugging production failures
+  keys: Docker, OCI containers, GPUs, MLOps
+
+[L1-10] Business Acumen and Problem Decomposition
+  L2: Translating questions to metrics | Cost-benefit and ROI | Stakeholder management | Prioritization under constraints | Ethical considerations and bias
+  keys: ROI, bias mitigation
+
+[L1-11] Domain-Specific Deep Dives
+  L2: Recommendation systems | Fraud detection and anomaly detection | Time series and forecasting | NLP and text data | Computer vision and images
+  keys: collaborative filtering, transformers, convolutional structure, transfer learning
+
+ORDER: L1-02 → L1-01 → L1-03 → L1-04 → L1-06 → L1-05 → L1-07 → L1-08 → L1-09 → L1-10 → L1-11
+
+---
+
+DOMAINS: Deep Learning & Generative AI
+SCOPE: Deep neural network architectures, training dynamics, transfer learning, transformers, LLMs, prompting, computer vision (CNNs, ViTs), multimodal models, model deployment, generative applications (RAG, agents), and deep learning system monitoring | Excludes: Classical machine learning (regression, random forests), basic statistics, non-deep NLP (TF-IDF), general software engineering, and cloud infrastructure setup
+DEPENDS-ON: none
+
+[L1-01] Neural Network Architecture and Training
+  L2: Activation functions and their properties | Weight initialization and its impact on training | Backpropagation and computational graphs | Learning rate and optimization algorithms | Batch normalization and layer normalization | Regularization: dropout, weight decay, early stopping | Residual connections and skip connections
+  keys: ReLU, GELU, Swish, Xavier initialization, He initialization, Adam, SGD with momentum, MLPs
+
+[L1-02] Convolutional Neural Networks (CNNs) for Vision
+  L2: Convolution, padding, and strides | Pooling and downsampling | Standard architectures: VGG, ResNet, EfficientNet | Visualizing learned features | Data augmentation for vision | Common failure modes
+  keys: VGG, ResNet, EfficientNet, translation invariance, spatial locality
+
+[L1-03] Recurrent and Sequential Models: LSTM and GRU
+  L2: RNN fundamentals: unrolling and backprop through time | Vanishing gradients in RNNs | LSTM cells and gates | GRU: a simpler alternative | Sequence-to-sequence models | Bidirectional RNNs | Common pitfalls: packed sequences, variable length input
+  keys: LSTM, GRU, backpropagation through time, forget gate, packed sequences
+
+[L1-04] Transformers and Attention Mechanisms
+  L2: Self-attention: keys, queries, values | Multi-head attention | Positional encodings | Scaled dot-product attention and softmax | Cross-attention vs. self-attention | Causal masking and autoregressive generation | Transformer efficiency and variants
+  keys: self-attention, sinusoidal encodings, causal masking, autoregressive generation
+
+[L1-05] Pre-Trained Models and Transfer Learning
+  L2: Pre-training objectives: MLM, CLM, contrastive | Fine-tuning strategies and overfitting | Adapter modules and parameter-efficient fine-tuning | LoRA and other low-rank adaptation | Knowledge distillation | Domain-specific vs. task-specific fine-tuning
+  keys: BERT, GPT-2, LLaMA, MLM, CLM, SimCLR, LoRA, parameter-efficient fine-tuning, PEFT
+
+[L1-06] Large Language Models (LLMs) and Prompting
+  L2: Prompt engineering: clarity, examples, constraints | Few-shot prompting and in-context learning | Chain-of-thought prompting | Prompt templates and retrieval-augmented generation (RAG) | Structured outputs and parsing | Hallucinations and factuality | Cost and latency optimization
+  keys: GPT-4, Claude, Gemini, few-shot prompting, chain-of-thought, RAG, JSON parsing
+
+[L1-07] Natural Language Processing (NLP) Tasks and Fine-Tuning
+  L2: Text classification and sentiment analysis | Named entity recognition (NER) and sequence labeling | Semantic similarity and embedding-based retrieval | Abstractive summarization and paraphrasing | Machine translation and multilingual models | Information extraction and relation extraction
+  keys: NER, BLEU, ROUGE, mBERT, XLM-RoBERTa, cosine similarity
+
+[L1-08] Image Processing and CNN Fundamentals
+  L2: Pixel representation and color spaces | Image preprocessing: normalization and resizing | Data augmentation for images | Imbalanced datasets in vision | Common preprocessing pitfalls
+  keys: RGB, HSV, grayscale, color-jittering
+
+[L1-09] Transfer Learning in Vision: Pre-trained Architectures
+  L2: ImageNet pre-trained weights and their utility | Common architectures: ResNet, DenseNet, EfficientNet | Vision Transformers (ViTs) | Fine-tuning strategies: frozen backbone vs. end-to-end | Domain shift and when transfer learning fails
+  keys: ImageNet, DenseNet, Vision Transformers, ViTs, frozen backbone
+
+[L1-10] Multimodal Models: Vision and Language Together
+  L2: Contrastive learning and embedding spaces | Vision-language models: architecture and training | Image captioning and visual question answering | Retrieval with multimodal embeddings | Hallucinations in multimodal models
+  keys: CLIP, GPT-4V, Gemini, contrastive learning, visual question answering, VQA
+
+[L1-11] Model Deployment and Serving
+  L2: Inference optimization: quantization and pruning | Batch vs. online serving | Model serving frameworks: TensorFlow Serving, Triton, KServe | API design and latency budgets | Model versioning and A/B testing | Containerization with Docker | Edge deployment: TensorFlow Lite, ONNX, CoreML
+  keys: quantization, pruning, TensorFlow Serving, Triton, KServe, Docker, TensorFlow Lite, ONNX, CoreML
+
+[L1-12] Generative Model Applications: RAG, Fine-tuning, and Agents
+  L2: Retrieval-Augmented Generation (RAG) | RAG implementation: embedding models, vector databases, ranking | Fine-tuning vs. RAG: when to use each | Agents and agentic workflows | Function calling and tool use | Long-context windows and retrieval tradeoffs | Evaluation of generative outputs
+  keys: vector databases, ReAct pattern, function calling, tool use
+
+[L1-13] Monitoring and Debugging Deep Learning Systems
+  L2: Data quality and drift detection | Model prediction drift | Concept drift | Logging and instrumentation | Automated retraining | Debugging inference failures
+  keys: data drift, prediction drift, concept drift
+
+ORDER: L1-01 → L1-04 → L1-05 → L1-06 → L1-07 → L1-08 → L1-09 → L1-10 → L1-11 → L1-12 → L1-13
+
+---
+
+DOMAIN: Generative & Agentic AI for Business Leaders
+SCOPE: Strategic framing, high-level architectural trade-offs (RAG, fine-tuning, workflows), and leadership, delivery, and organizational design for AI initiatives | Excludes: Hands-on coding, technical implementation details, mathematical foundations of machine learning, and specific cloud infrastructure configuration
+DEPENDS-ON: none
+
+[L1-01] The Outputs-to-Outcomes Shift
+  L2: Agentic AI as a governance problem | The consultant-vs-delegate framing | Human-in-the-loop design
+  keys: 2023–24 enterprise deployments
+
+[L1-02] Where Competitive Advantage Actually Lives
+  L2: Data, workflow, or model: where the alpha comes from | Frontier vs open-source: the deployment decision | The thin wrapper failure mode
+  keys: closed/open-weights, API lock-in
+
+[L1-03] Value Taxonomy: Automation, Augmentation, Differentiation
+  L2: ROI modelling for AI: the true denominator | Risk as a structural consequence of benefit | The efficiency narrative trap
+  keys: Klarna, Morgan Stanley, drift management
+
+[L1-04] Retrieval-Augmented Generation (RAG)
+  L2: Vector databases and semantic search | Chunking strategy and retrieval quality | RAG vs fine-tuning: the decision rule
+  keys: Lewis et al., Meta (2020)
+
+[L1-05] Fine-Tuning: When It Actually Wins
+  L2: Catastrophic forgetting and why weight updates aren't additive | The data prerequisites for successful fine-tuning | Inference efficiency: distillation and quantisation
+  keys: 8B parameter model, GPU infrastructure
+
+[L1-06] Agents vs Workflows: The Autonomy Spectrum
+  L2: Tool use and function calling | Agent frameworks: the abstraction-debt argument | Inference-time scaling and the cost of "thinking"
+  keys: Anthropic (2024), LangGraph, AutoGen, evaluator-optimiser patterns
+
+[L1-07] AI Delivery Is R&D Wearing Product Clothes
+  L2: Phase-gated AI roadmapping mechanics | The "date for a date" as a stakeholder communication tool | North Star metrics vs model metrics
+  keys: "date for a date" technique, feasibility uncertainty
+
+[L1-08] Team Scaffolding and the Data Pipeline Prerequisite
+  L2: The data scientist vs data engineer vs ML engineer distinction | Centralised CoE vs embedded teams vs hub-and-spoke | Build vs buy: how the decision shifts team requirements
+  keys: MLOps, role taxonomy
+
+[L1-09] Adoption, Drift, and the Operational Tax of Production AI
+  L2: Model drift: what it is and how to monitor it | Change management framing for AI adoption | Governance cadences for AI initiatives
+  keys: Morgan Stanley, Klarna, concept drift, steering-committee structures
+
+ORDER: L1-01 → L1-02 → L1-03 → L1-04 → L1-05 → L1-06 → L1-07 → L1-08 → L1-09
+
+---
+
+DOMAINS: Generative AI: Fundamentals to Advanced Techniques
+SCOPE: Core mathematical foundations, deep learning architectures (CNNs, Transformers), generative modeling paradigms (VAEs, GANs, Diffusion, RLHF/DPO), and applied generative systems (CLIP, Stable Diffusion, RAG, Multi-Agent orchestration) | Excludes: General software engineering, non-ML Python programming, traditional database administration, cloud infrastructure deployment (AWS/GCP/Azure DevOps), non-generative classical AI (e.g., search algorithms, expert systems)
+DEPENDS-ON: none
+
+[L1-01] Python for Data and ML Work
+  L2: Object-oriented programming in Python | Pandas data manipulation | Matplotlib and visualisation | Exception handling and Python execution model
+  keys: NumPy, Pandas, Matplotlib
+
+[L1-02] Machine Learning Fundamentals
+  L2: Supervised vs unsupervised learning | K-means clustering | Linear regression and loss functions | K-nearest neighbours classification | Bias-variance tradeoff
+  keys: MSE loss, curse of dimensionality, overfitting
+
+[L1-03] Artificial Neural Networks
+  L2: Backpropagation | Activation functions (ReLU, sigmoid, tanh) | Gradient descent variants (SGD, Adam) | Overfitting, regularisation, and dropout
+  keys: SGD, Adam, ReLU, sigmoid, tanh, vanishing gradients
+
+[L1-04] Deep Convolutional Neural Networks
+  L2: Convolutional layers and receptive fields | Pooling and translation invariance | Transfer learning with pre-trained CNNs | DCNN for tabular vs image data
+  keys: AlexNet, ImageNet, spatial locality, parameter sharing
+
+[L1-05] Transformer Architecture and Attention Mechanisms
+  L2: Self-attention as query-key-value | Multi-head attention | Positional encoding | Encoder-decoder vs encoder-only vs decoder-only | Feedforward sublayers | Training dynamics: data preparation and training strategies
+  keys: QKV, sinusoidal encoding, rotary positional embedding, T5, Vaswani
+
+[L1-06] BERT and GPT: Pre-trained Language Models
+  L2: Masked language modelling (MLM) | Causal language modelling (CLM) | Fine-tuning vs prompting | BERT applications: classification, NER, QA | GPT scaling behaviour | Model combinations and extensions
+  keys: RoBERTa, DistilBERT, T5, chain-of-thought, emergent capabilities
+
+[L1-07] Reinforcement Learning for Generative AI
+  L2: Markov Decision Processes | Policy gradient methods (PPO) | Reinforcement Learning from Human Feedback (RLHF) | Direct Preference Optimisation (DPO) | Reward hacking and alignment failure modes
+  keys: MDPs, PPO, RLHF, DPO, InstructGPT, reward hacking
+
+[L1-08] Variational Autoencoders and GANs
+  L2: Autoencoders and latent representations | VAE reparameterisation trick | GAN training dynamics and mode collapse | Conditional generation
+  keys: VAE, GAN, reparameterisation trick, mode collapse
+
+[L1-09] Diffusion Models
+  L2: Forward and reverse diffusion processes | U-Net architecture for denoising | Classifier-free guidance | Latent diffusion (LDM) | Sampling methods (DDPM vs DDIM)
+  keys: U-Net, DDPM, DDIM, Stable Diffusion, DALL-E 2, Midjourney, Markov chain
+
+[L1-10] Vision Transformers and CLIP
+  L2: Patch embedding in ViT | Contrastive learning objective | CLIP as a text encoder for diffusion | Zero-shot transfer from CLIP
+  keys: ViT, CLIP, contrastive learning, zero-shot transfer
+
+[L1-11] Text-to-Image Generation: DALL-E and Stable Diffusion
+  L2: DALL-E's autoregressive image generation | Stable Diffusion's architecture in full | Prompt engineering for image generation | Fine-tuning: DreamBooth and LoRA | Ethical considerations and misuse vectors
+  keys: DreamBooth, LoRA, cross-attention, negative prompts, NSFW filters
+
+[L1-12] LLMs in Applications: LangChain and RAG
+  L2: RAG architecture: retriever + reader | Vector embeddings and similarity search | Vector databases (FAISS, Pinecone, Chroma) | LangChain chains and agents | Context window management
+  keys: LangChain, RAG, FAISS, Pinecone, Chroma, cosine similarity
+
+[L1-13] Multi-Agent Systems with LLMs
+  L2: Task decomposition and planning | Agent communication protocols | Multi-agent reinforcement learning (MARL) | LLMs as planners vs executors | Security and prompt injection in agentic systems
+  keys: AutoGPT, CrewAI, MARL, prompt injection, agentic systems
+
+ORDER: L1-01 → L1-02 → L1-03 → L1-04 → L1-05 → L1-06 → L1-07 → L1-08 → L1-09 → L1-10 → L1-11 → L1-12 → L1-13
+
+---
+
+DOMAIN: Geopolitical Economy
+SCOPE: Theoretical foundations of historical materialism, critiques of capitalism and the state, classical theories of imperialism, dollar hegemony, monetary imperialism, debt, austerity, IMF/World Bank models, multipolarity, US imperial decline, China's developmental state, Global South coalitions, financialisation, rentier economy, and critiques of neoclassical economics and liberal IR theory | Excludes: mainstream neoclassical economic modeling, quantitative finance, standard international relations theories (except as critique), microeconomics, business administration, corporate finance, and non-materialist/idealist histories
+DEPENDS-ON: none
+
+[L1-01] Historical Materialism
+  L2: The base and superstructure | The mode of production | Class and class struggle | Ideology and false consciousness | Combined and uneven development
+  keys: Desai, Trotsky, dependency theory
+
+[L1-02] The Nature of Capitalism
+  L2: Labour theory of value | Surplus value and exploitation | Capital accumulation and crisis | Productive vs. rentier capitalism | Fictitious capital
+  keys: Marx's Capital, Hudson, Desai
+
+[L1-03] The State and Capital
+  L2: Relative autonomy of the state | The state and currency | Nationalism and the national question | The developmental state | State competition and multipolarity
+  keys: Asian developmental states, Norton
+
+[L1-04] Classical Imperialism Theory
+  L2: Finance capital and monopoly | Capital export | The labour aristocracy | Rosa Luxemburg's accumulation theory | Ultra-imperialism vs. inter-imperial rivalry
+  keys: Hobson, Hilferding, Lenin, Kautsky
+
+[L1-05] Dollar Hegemony and Monetary Imperialism
+  L2: Bretton Woods and the gold-dollar standard | The Nixon shock (1971) | Treasury bond recycling | Sanctions as monetary weapon | Dedollarisation and the multipolar monetary order
+  keys: Super Imperialism, SWIFT, BRICS payment systems
+
+[L1-06] Debt, Austerity, and the IMF Model
+  L2: Compound interest and the mathematics of debt | Structural adjustment programmes | Odious debt | The debt trap narrative (and its inversion) | Debt jubilee as historical norm
+  keys: World Bank, debt jubilee
+
+[L1-07] Geopolitical Economy as a Framework
+  L2: Capitalism and nationality | Hegemony and its limits | The multipolar transition | The West as a political construct | Unequal exchange
+  keys: Radhika Desai, Arghiri Emmanuel, Samir Amin
+
+[L1-08] US Imperialism: Structure and Decline
+  L2: The military-industrial complex as economic system | NATO as imperial instrument | Sanctions as imperial tool and self-harm | Colour revolutions and regime change | Imperial overstretch
+  keys: Multipolarista, Paul Kennedy
+
+[L1-09] China and the Challenge to Western Hegemony
+  L2: The Chinese developmental state model | Belt and Road Initiative as geopolitical economy | The yuan internationalisation project | The technology war | Sino-Russian alignment
+  keys: Washington Consensus, SOEs, capital controls
+
+[L1-10] The Global South and Multipolarity
+  L2: BRICS and its expansion | Africa's monetary sovereignty project | Latin American pink tide and its contradictions | The Non-Aligned Movement as precedent | Commodity power and the resource curse
+  keys: CFA franc, pink tide
+
+[L1-11] Financialisation and the Rentier Economy
+  L2: The FIRE sector | Economic rent vs. earned income | Student debt and healthcare as financialisation | Quantitative easing and asset price inflation | The classical economists vs. the neoclassical turn
+  keys: Ricardo, Mill, George, Marx's Capital Volume III
+
+[L1-12] Critique of Mainstream Economics and IR Theory
+  L2: Comparative advantage and free trade ideology | The Washington Consensus | Realism, liberalism, and constructivism in IR | The depoliticisation of economics | Media and think tank ecosystem
+  keys: Ricardian free trade
+
+ORDER: L1-01 → L1-02 → L1-03 → L1-04 → L1-05 → L1-06 → L1-07 → L1-08 → L1-09 → L1-10 → L1-11 → L1-12
+
+---
+
+DOMAIN: Political Economy of Liberation
+SCOPE: Historical, structural, and strategic frameworks of anti-capitalist struggle, alienation, class exploitation, state theory, revolutionary strategy, prefigurative politics, and expansions (race, gender, social reproduction) | Excludes: mainstream neoclassical economics, microeconomics, electoral campaign management, policy-specific legislative analysis, contemporary geopolitical news.
+DEPENDS-ON: none
+
+[L1-01] Alienation
+  L2: The four estrangements | Species-nature | The self-concealment of alienation | Alienation beyond the workplace | Reification
+  keys: 1844 manuscripts, Lukács
+
+[L1-02] Class and the Structure of Exploitation
+  L2: Surplus value | The means of production | Class fractions and the middle | Reproduction of class | The reserve army of labour
+  keys: professional-managerial class, petit bourgeoisie, labour aristocracy, Bourdieu
+
+[L1-03] Ideology and Hegemony
+  L2: Hegemony | The war of position | Naturalisation | Capitalist realism | Meritocracy
+  keys: Gramsci, Mark Fisher
+
+[L1-04] Theories of the State
+  L2: The liberal state | The state as instrument of class rule | Lenin's State and Revolution | The relative autonomy of the state | The anarchist abolition position
+  keys: Poulantzas, Bakunin
+
+[L1-05] Reform and Its Limits
+  L2: Social democracy | Luxemburg's Reform or Revolution | The Keynesian settlement | Co-optation | The horizon problem
+  keys: Rosa Luxemburg, Keynesianism
+
+[L1-06] Revolutionary Theory and Its Splits
+  L2: Vanguardism | Workers' councils and soviets | Anarchism's critique of power | The party form | Rosa Luxemburg's spontaneism
+  keys: Leninism, Bakunin, German councils of 1918, Russian soviets of 1905
+
+[L1-07] Prefigurative Politics
+  L2: The commune form | Mutual aid | The cooperative economy | The relationship between means and ends | Dual power
+  keys: Paris Commune of 1871, Zapatistas, Kropotkin, Mondragon
+
+[L1-08] Colonialism, Race, and the World System
+  L2: Primitive accumulation and colonialism | The Black radical tradition | The wages of whiteness | World-systems theory | Decolonial theory
+  keys: W.E.B. Du Bois, C.L.R. James, Frantz Fanon, Angela Davis, Wallerstein
+
+[L1-09] Gender, Social Reproduction, and Feminism
+  L2: Social reproduction theory | Federici's primitive accumulation of the body | The double shift | Socialist feminism | Care as political terrain
+  keys: Silvia Federici, Caliban and the Witch, wages for housework
+
+[L1-10] Praxis: The Unity of Theory and Action
+  L2: Consciousness-raising | The union as school | Reflexive impotence | Organising vs mobilising | The long game
+  keys: Mark Fisher, war of position
+
+ORDER: L1-01 → L1-02 → L1-03 → L1-04 → L1-05 → L1-06 → L1-07 → L1-08 → L1-09 → L1-10
+
+---
+
+DOMAIN: Quantum Computing Fundamentals
+SCOPE: Quantum computational models, quantum complexity classes, mathematical foundations of quantum states, physical principles of computation (superposition, interference, entanglement), quantum gate sets, quantum algorithms, physical qubit implementations, decoherence, and quantum error correction | Excludes: Classical computer science foundations (Turing machines, classical logic gates, standard P vs NP, classical cryptography implementations), general physics/quantum mechanics without computational application, and hands-on programming tutorials for specific SDKs (Qiskit, Cirq)
+DEPENDS-ON: CS Foundations
+
+[L1-01] The Computational Model Shift
+  L2: Classical vs quantum bits | The quantum circuit model | Why reversibility matters | Measurement and collapse | The extended Church-Turing thesis
+  keys: Landauer's principle
+
+[L1-02] Quantum Complexity Theory
+  L2: BQP (bounded-error quantum polynomial time) | QMA (quantum Merlin-Arthur) | Oracle separations | Quantum supremacy vs quantum advantage
+  keys: 2019 Google experiment
+
+[L1-03] The Mathematics of Quantum States
+  L2: Complex vector spaces and Hilbert spaces | Dirac notation (bra-ket) | Unitary matrices and why gates must be unitary | Tensor products and multi-qubit systems | Eigenvalues and quantum measurement
+  keys: Dirac notation, bra-ket, Hermitian matrices
+
+[L1-04] Superposition and Interference
+  L2: Probability amplitudes vs classical probabilities | The Bloch sphere | Interference in algorithm design | The double-slit analogy and its limits
+  keys: Deutsch-Jozsa algorithm
+
+[L1-05] Entanglement
+  L2: Bell states | Bell's theorem and no local hidden variables | Entanglement as a computational resource | Quantum teleportation | Entanglement entropy
+  keys: Bell's 1964 theorem, CHSH inequality, superdense coding
+
+[L1-06] Quantum Gates and Circuit Design
+  L2: The Hadamard gate | Pauli gates (X, Y, Z) | The CNOT gate and two-qubit entanglement | Universality and gate sets | Circuit depth and gate count | The Toffoli gate
+  keys: Hadamard, Pauli, CNOT, Toffoli, Clifford + T
+
+[L1-07] Query Algorithms and Quantum Speedup
+  L2: The oracle model | Deutsch's algorithm | Bernstein-Vazirani | Simon's algorithm
+  keys: Deutsch-Jozsa, Bernstein-Vazirani, Simon's algorithm, query complexity
+
+[L1-08] Grover's Search Algorithm
+  L2: Amplitude amplification | The diffusion operator | Optimality of Grover's | Applications beyond search
+  keys: Grover's algorithm, O(√N) bound, symmetric encryption, AES, collision finding
+
+[L1-09] Shor's Factoring Algorithm
+  L2: Reduction of factoring to period-finding | The Quantum Fourier Transform (QFT) | Quantum Phase Estimation | Post-quantum cryptography | Current hardware requirements vs current hardware reality
+  keys: Shor's algorithm, QFT, RSA-2048, CRYSTALS-Kyber, CRYSTALS-Dilithium, NIST standardization
+
+[L1-10] Qubits: Physical Implementations
+  L2: Superconducting qubits | Trapped ion qubits | Gate fidelity and error rates | Connectivity graphs
+  keys: IBM, Google, IonQ, Quantinuum, SWAP gates, photonic qubits, topological qubits
+
+[L1-11] Decoherence and Noise
+  L2: The Lindblad master equation | Bit flip vs phase flip errors | The threshold theorem | NISQ (Noisy Intermediate-Scale Quantum)
+  keys: Lindblad master equation, Preskill (2018)
+
+[L1-12] Quantum Error Correction
+  L2: The no-cloning theorem | Stabiliser codes | The surface code | Logical vs physical qubits and overhead | Fault-tolerant gate sets
+  keys: Shor's code, Steane code, Gottesman (1997), Clifford + T, magic state distillation
+
+[L1-13] Open Problems in Quantum Complexity
+  L2: Is BQP inside NP? | QPCP conjecture | The quantum PCP vs NLTS gap | Dequantisation
+  keys: NLTS theorem, Tang's 2018 dequantisation, Hamiltonian complexity
+
+[L1-14] The Quantum Advantage Question
+  L2: Sampling problems and classical simulability | Variational quantum algorithms (VQAs) and NISQ utility | Quantum advantage in quantum chemistry | The fault-tolerance timeline
+  keys: QAOA, VQE, tensor network methods, molecular electronic structure simulation
+
+[L1-15] Open Problems in Quantum Error Correction
+  L2: Good quantum LDPC codes | Magic state distillation overhead | Biased noise and hardware-tailored codes | Bosonic codes
+  keys: LDPC codes, Panteleev and Kalachev (2022), cat codes, GKP codes
+
+[L1-16] Quantum Algorithms: The Unsolved Discovery Problem
+  L2: The algorithm zoo | Quantum walks | HHL and quantum linear systems | Quantum machine learning: promise vs evidence
+  keys: Quantum Algorithm Zoo, Stephen Jordan, HHL algorithm, quantum RAM, quantum PCA, quantum SVM
+
+ORDER: L1-01 → L1-02 → L1-03 → L1-04 → L1-05 → L1-06 → L1-07 → L1-08 → L1-09 → L1-10 → L1-11 → L1-12 → L1-13 → L1-14 → L1-15 → L1-16
+
+---
+
+DOMAIN: Software Engineering (From Coder to Engineer)
+SCOPE: Operational engineering, foundational networking, compute abstractions, service architecture, source control, testing strategies, CI/CD, configuration, IaC, observability, DevSecOps, reliability engineering, and cloud cost optimization | Excludes: application-level programming, language-specific syntax, database schema design, frontend development, and basic algorithm design
+DEPENDS-ON: none
+
+[L1-01] Networking Fundamentals
+  L2: The OSI Model and TCP/IP Stack | IP Addressing and Subnetting (CIDR) | DNS: The Resolution Chain | TCP vs UDP: The Reliability Tradeoff | HTTP and TLS: The Application Layer in Detail | Load Balancing: Layer 4 vs Layer 7 | Network Security Boundaries: Firewalls, Security Groups, and NACLs | NAT and Private Networking
+  keys: OSI model, CIDR, DNS resolution chain, TLS, Layer 4 vs Layer 7, NACLs, NAT, VPC
+
+[L1-02] Compute Abstractions
+  L2: Virtual Machines and the Hypervisor Model | Containers: Namespaces, cgroups, and the Isolation Model | The Container Image: Layers, Registries, and Immutability | Container Orchestration: The Scheduling Problem | Serverless and the Event-Driven Compute Model | Compute Resource Models: CPU, Memory, and I/O as First-Class Constraints
+  keys: Hypervisor, namespaces, cgroups, Kubernetes, CPU/Memory limits
+
+[L1-03] Service Architecture Awareness
+  L2: The Monolith vs Microservices Spectrum | Synchronous vs Asynchronous Communication | The API as a Contract: REST, gRPC, and Event Schemas | Service Discovery: How Services Find Each Other | Idempotency and Distributed State | The Data Ownership Problem: Why Shared Databases Break Service Independence | Failure Modes in Distributed Systems: Partial Failure and Cascading Failure
+  keys: gRPC, REST, service discovery, idempotency, cascading failure
+
+[L1-04] Source Control and Collaboration
+  L2: The Git Object Model: Commits, Trees, and Refs | Branching Strategies: Trunk-Based Development vs GitFlow | Merge Strategies: Merge Commits, Rebase, and Squash | The Pull Request as a Quality Gate | Conflict Resolution: Textual vs Semantic Conflicts | Monorepo vs Polyrepo: Repository Structure as an Architectural Decision
+  keys: DAG, GitFlow, Trunk-Based Development, rebase, squash, monorepo, polyrepo
+
+[L1-05] Testing Strategy
+  L2: The Testing Pyramid: Cost, Speed, and Coverage as a Design Constraint | Test Doubles: Mocks, Stubs, Fakes, and Spies | What Test Coverage Measures and What It Misses | Contract Testing: How Services Agree on Interfaces | Testing in Production: Feature Flags, Canary Analysis, and Observability as Tests | The Cost of Flaky Tests
+  keys: Mocks, stubs, fakes, spies, contract testing, canary analysis, flaky tests
+
+[L1-06] Continuous Integration (CI)
+  L2: What CI Actually Means: The Discipline vs the Tool | The Anatomy of a CI Pipeline: Triggers, Stages, and Feedback Loops | Build Reproducibility: Why the Same Source Should Always Produce the Same Artifact | Fast Feedback as a Design Constraint | The CI/CD Boundary: What CI Produces and Where It Goes
+  keys: CI pipeline, build reproducibility, non-determinism
+
+[L1-07] Artifact and Dependency Management
+  L2: What an Artifact Is: The Unit of Deployment | Semantic Versioning: What a Version Number Communicates | Dependency Graphs and Transitive Dependencies | Artifact Registries: Storage, Distribution, and Promotion | Dependency Pinning vs Version Ranges: The Reproducibility Tradeoff | Supply Chain Security: Why Your Dependencies Are Your Attack Surface
+  keys: SemVer, transitive dependencies, dependency pinning, SolarWinds, Log4Shell
+
+[L1-08] Continuous Delivery and Deployment (CD)
+  L2: Delivery vs Deployment: The Most Important Distinction in CD | Deployment Strategies: Blue/Green, Canary, Rolling, and Recreate | The Environment Pipeline: Promoting an Artifact Through Stages | Rollback vs Roll Forward: Two Philosophies for Handling Bad Releases | The Release as a Decoupled Event: Feature Flags and Dark Launches
+  keys: Blue/Green, Canary, Rolling, Recreate, dark launches, feature flags
+
+[L1-09] Configuration and Feature Management
+  L2: The Twelve-Factor Config Principle: Why Configuration Is Not Code | Configuration Hierarchy and Override Models | Secrets Management: Why Secrets Are Different from Configuration | Feature Flags: The Full Operational Model | Configuration Drift: How Reality Diverges from Declared State
+  keys: Twelve-Factor App, secrets rotation, configuration drift, feature flags
+
+[L1-10] Infrastructure as Code (IaC)
+  L2: Declarative vs Imperative Infrastructure: The Model That Changes Everything | State: The Source of Truth and Source of Risk | Idempotency: Why Applying Twice Must Be Safe | The Plan/Apply Cycle: Preview as a Safety Mechanism | Modules and Code Reuse in Infrastructure | Drift Detection: When Reality Diverges from Code
+  keys: Declarative vs imperative, state file locking, plan/apply cycle, drift detection
+
+[L1-11] Observability and Monitoring
+  L2: Monitoring vs Observability: Known Unknowns vs Unknown Unknowns | The Three Pillars: Metrics, Logs, and Traces | Metrics: Counters, Gauges, Histograms, and What Gets Lost in Aggregation | Distributed Tracing: How Requests Travel Across Service Boundaries | The SLI/SLO/SLA Framework: Defining Reliability from the User's Perspective | Alerting Philosophy: Symptoms Over Causes, and the Cost of Alert Fatigue
+  keys: SLI, SLO, SLA, metrics aggregation, distributed tracing, alert fatigue
+
+[L1-12] Security (DevSecOps)
+  L2: Shifting Security Left: From Audit to Embedded Practice | Threat Modeling: Thinking About What Can Go Wrong Before You Build | The OWASP Top 10: The Recurring Vulnerability Classes | Static and Dynamic Analysis: SAST and DAST | The Principle of Least Privilege: Why Permissions Should Be Minimal by Default | Secrets and Credential Management: Injection, Rotation, and Audit | Supply Chain Security: SBOMs, Signing, and Dependency Provenance
+  keys: OWASP Top 10, SAST, DAST, least privilege, SBOMs, code signing
+
+[L1-13] Reliability Engineering
+  L2: SLIs, SLOs, and Error Budgets: The Language of Reliability | Failure Modes in Distributed Systems: Partial Failure and Cascading Failure | Circuit Breakers, Retries, and Timeouts: The Resilience Primitives | Chaos Engineering: Deliberately Breaking Things | Toil: The Invisible Reliability Tax | Runbooks and Incident Response: Operationalizing the Failure Model
+  keys: Error budgets, circuit breakers, retry storms, chaos engineering, toil, runbooks
+
+[L1-14] Cost Awareness (FinOps Thinking)
+  L2: The Cloud Billing Model: On-Demand, Reserved, and Spot | Resource Right-Sizing: Utilization vs Allocation | Cost Attribution: Tagging, Showback, and Chargeback | The Cost of Data Transfer: Architecture Decisions and Network Egress | Reserved Instances and Savings Plans: Commitment as a Financial Tool | Waste Identification: Idle Resources, Orphaned Assets, and Oversized Instances
+  keys: FinOps, Spot instances, egress costs, Savings Plans, showback, chargeback
+
+[L1-15] Emerging Technology
+  L2: The Tradeoff Map: What Every New Technology Is Actually Buying and Paying | Stack Layer Diagnosis: Locating a New Technology in the Known Problem Space | The Maturity Gradient: Understanding Where a Technology Sits in Its Lifecycle | Separating Signal from Momentum: Identifying Genuine Architectural Shifts | Transfer Learning: How Foundational Knowledge Extends to New Contexts | The Adoption Decision: A Framework for Engaging With Emerging Technology in Production
+  keys: Tradeoff map, maturity gradient, transfer learning, adoption framework
+
+ORDER: L1-01 → L1-02 → L1-03 → L1-11 → L1-04 → L1-05 → L1-06 → L1-07 → L1-08 → L1-09 → L1-10 → L1-12 → L1-13 → L1-14 → L1-15
+
+---
+
+DOMAIN: Sustainability Strategies and Green Economy
+SCOPE: Macroeconomic sustainability frameworks, corporate green strategy, circular economy, ESG reporting, green finance, regulatory instruments, and the political economy/structural critique of voluntary corporate sustainability | Excludes: Technical engineering of renewable energy systems, carbon capture chemistry, micro-level waste management operations, general corporate finance without green mandates, and standard non-ESG financial accounting
+DEPENDS-ON: none
+
+[L1-01] Externalisation and the Cost Attribution Problem
+  L2: True-cost accounting | The social production of consumer subjectivity | Scope 1, 2, and 3 emissions | Planned obsolescence | The externality of waste
+  keys: Scope 1 2 3 emissions, industrial symbiosis
+
+[L1-02] Capital Accumulation as Structural Imperative
+  L2: Absolute vs. relative decoupling | The systemic necessity of capital accumulation | Degrowth and sufficiency economics | The thermodynamic constraint | Green capitalism's empirical track record
+  keys: Serge Latouche, Tim Jackson, Herman Daly, Nicholas Georgescu-Roegen, entropic biosphere
+
+[L1-03] Circular Economy and Throughput Reduction
+  L2: ReSOLVE and Regenerate-Rewire-Inspire frameworks | Industrial symbiosis (Kalundborg model) | The rebound effect (Jevons paradox) | Material flow analysis | Biological vs. technical cycles
+  keys: Ellen MacArthur Foundation, Kalundborg model, Jevons paradox
+
+[L1-04] Extended Producer Responsibility and Regulatory Instruments
+  L2: Command-and-control vs. market-based instruments | Regulatory capture (George Stigler, 1971) | The Packaging Ordinance (Germany, 1991) | Scope of producer responsibility | International regulatory arbitrage
+  keys: George Stigler, Packaging Ordinance 1991, take-back obligations, deposit systems
+
+[L1-05] ESG Reporting, Disclosure, and Accountability
+  L2: Voluntary vs. mandatory disclosure standards | Greenwashing as rational corporate behaviour | Independent verification and auditing | Materiality definitions | Scope 3 emissions disclosure
+  keys: GRI standards, ISSB, CSRD, UN Global Compact
+
+[L1-06] Green Finance and Capital Allocation
+  L2: Green bonds and use-of-proceeds requirements | Carbon markets (cap-and-trade vs. carbon tax) | ESG fund composition and fossil fuel exposure | Fiduciary duty and the sustainability obligation | The carbon price required for 1.5°C
+  keys: green bonds, cap-and-trade, carbon tax, fiduciary duty, 1.5°C carbon pricing
+
+[L1-07] Sustainable Operations and Supply Chain Accountability
+  L2: Supplier auditing and its limits | The race to the bottom in labour and environmental standards | Industrial symbiosis at scale | Sense-response sourcing | Border carbon adjustment mechanisms
+  keys: Kalundborg Symbiosis, sense-response sourcing, border carbon adjustment
+
+[L1-08] Political Economy of Ecological Crisis
+  L2: Polanyi's "double movement" | Commodification of non-reproducible natural resources | Primitive accumulation and the enclosure of commons | The state's role in constituting markets
+  keys: Karl Polanyi, The Great Transformation, fictitious commodities, land grabbing
+
+[L1-09] Regulatory Theory and Institutional Failure
+  L2: Regulatory capture (Stigler, 1971) | The revolving door between industry and regulator | International regime theory and its limits | The IMF and World Bank conditionality problem
+  keys: George Stigler, COP summits, IMF, World Bank conditionality
+
+[L1-10] Structural Change: Historical Mechanisms and Leverage Points
+  L2: Erik Olin Wright's transformation strategies | The labor movement as historical case | The US environmental movement (1970s) | Mondragon cooperative network | Nordic co-determination
+  keys: Erik Olin Wright, EPA, Clean Air Act, Mondragon, Nordic co-determination
+
+ORDER: L1-01 → L1-02 → L1-03 → L1-04 → L1-05 → L1-06 → L1-07 → L1-08 → L1-09 → L1-10
+
+---
+
+DOMAIN: Systems Design and Architecture
+SCOPE: Conceptual software architecture, distributed systems patterns, data systems design, and cross-cutting systems reasoning | Excludes: low-level code implementation, specific cloud provider configurations (AWS/GCP/Azure), Kubernetes-specific manifest syntax, and basic programming concepts
+DEPENDS-ON: none
+
+[L1-01] What Architecture Actually Is
+  L2: Architecture vs. design | The laws of software architecture | The role of the architect | Architecture and DevOps intersection
+  keys: Richards & Ford, cost of change
+
+[L1-02] Architectural Characteristics
+  L2: Operational characteristics | Structural characteristics | Cross-cutting characteristics | Identifying and prioritising characteristics | Composite characteristics
+  keys: operational characteristics, structural characteristics, cross-cutting characteristics
+
+[L1-03] Modularity and Coupling
+  L2: Cohesion and coupling defined | Connascence | Measuring modularity | From modules to components | Component coupling patterns
+  keys: connascence, abstractness, instability, distance from the main sequence, acyclic dependencies
+
+[L1-04] Architecture Styles
+  L2: Styles vs. patterns | Layered architecture | Event-driven architecture | Microservices architecture | Modular monolith | Choosing the right style
+  keys: microkernel, space-based, service-based, pipeline
+
+[L1-05] Architectural Decision-Making
+  L2: Architecture Decision Records (ADRs) | Analyzing tradeoffs | Anti-patterns in architectural decisions | Fitness functions
+  keys: ADRs, fitness functions, email-driven architecture
+
+[L1-06] Foundations of Distributed Systems
+  L2: The fallacies of distributed computing | APIs and RPCs | Reliability and delivery semantics | Idempotency in distributed systems | Latency as a first-class constraint
+  keys: Burns, at-most-once, at-least-once, exactly-once
+
+[L1-07] Single-Node Patterns
+  L2: The sidecar pattern | The ambassador pattern | The adapter pattern | Modular container design
+  keys: sidecar, ambassador, adapter
+
+[L1-08] Multi-Node Distributed Patterns
+  L2: Replicated load-balanced services | Session stickiness and its costs | Sharded services | Scatter/gather | Leader election and ownership | Functions and event-driven processing (FaaS)
+  keys: scatter/gather, FaaS, leader election
+
+[L1-09] Batch and Stream Processing Patterns
+  L2: Work queue systems | Event-driven batch processing | Coordinated batch processing | Kafka as a pipeline primitive
+  keys: work queues, Kafka, partitioned logs
+
+[L1-10] Foundations of Data Systems
+  L2: Reliability, scalability, maintainability defined | Describing load and performance | Data models and query languages | Encoding and data evolution
+  keys: Kleppmann, percentiles, schema evolution
+
+[L1-11] Storage and Retrieval
+  L2: Hash indexes | SSTables and LSM-trees | B-trees | OLTP vs OLAP | Column-oriented storage
+  keys: SSTables, LSM-trees, B-trees, RocksDB, Cassandra, OLTP, OLAP
+
+[L1-12] Replication
+  L2: Single-leader replication | Replication lag and its consequences | Multi-leader replication | Leaderless replication | Conflict resolution strategies
+  keys: Dynamo-style, write conflict, replication lag, read-your-own-writes, monotonic reads, consistent prefix reads
+
+[L1-13] Partitioning and Transactions
+  L2: Partitioning strategies | Secondary indexes and partitioning | Rebalancing partitions | ACID properties in depth | Isolation levels | Serializability implementations
+  keys: range partitioning, hash partitioning, write skew, phantom reads, two-phase locking, serializable snapshot isolation
+
+[L1-14] Consistency and Consensus
+  L2: Linearizability | The CAP theorem precisely stated | Ordering guarantees | Consensus algorithms: Paxos and Raft | Distributed transactions and two-phase commit
+  keys: CAP theorem, Lamport clocks, Paxos, Raft, two-phase commit
+
+[L1-15] Batch and Stream Processing at the Data Layer
+  L2: MapReduce and the batch processing model | Dataflow engines beyond MapReduce | Stream processing and messaging systems | Change Data Capture (CDC) | Combining batch and stream: the Lambda and Kappa architectures
+  keys: MapReduce, Spark, Flink, CDC, Lambda architecture, Kappa architecture
+
+[L1-16] Tradeoff Reasoning
+  L2: The tradeoff matrix | Consistency vs. availability | Scalability vs. simplicity | Coupling vs. autonomy | Performance vs. correctness
+  keys: tradeoff matrix
+
+[L1-17] Failure Reasoning
+  L2: Partial failure and cascading failure | Failure domain analysis | The trouble with distributed clocks | Byzantine faults | Designing for recoverability
+  keys: cascading failure, Byzantine faults, distributed clocks
+
+[L1-18] Evolutionary Architecture
+  L2: Fitness functions as architectural tests | Schema evolution and backward compatibility | The strangler fig pattern | Technical debt as architectural erosion | Team topology and architecture
+  keys: strangler fig pattern, Conway's Law
+
+[L1-19] Cross-Layer Reasoning
+  L2: Tracing a failure across layers | Architectural style and data model alignment | Service boundaries and data ownership | Consistency models and user experience | The cost of distributed transactions across layers
+  keys: distributed monolith, sagas
+
+ORDER: L1-01 → L1-02 → L1-03 → L1-04 → L1-05 → L1-06 → L1-07 → L1-08 → L1-09 → L1-10 → L1-11 → L1-12 → L1-13 → L1-14 → L1-15 → L1-16 → L1-17 → L1-18 → L1-19
