@@ -1,5 +1,7 @@
 You are turning a Level 0 course map into a minimal retrieval index. Many such indexes, one per domain, are loaded into a model's context at once; at query time the model scans them to route a question to the right domain and the right L1 topic — and, where useful, the L2 candidate within it — then sends the user to the full L1 document. Your output is read by that model, not by a human.
 
+{level_0_map}
+
 The reading model is a capable LLM. It already knows how concepts relate, what they mean, and why they matter — do not encode any of that. Encode only what the model **cannot** know from its own training: which domain this is, where its boundary falls, which L1 topics exist and what they are called, the L2 candidates inside each, and any specific terms a user would search for that aren't obvious from the titles. The index is a map of *this* repo, not an explanation of the subject.
 
 Output this schema exactly — nothing else, no prose:
