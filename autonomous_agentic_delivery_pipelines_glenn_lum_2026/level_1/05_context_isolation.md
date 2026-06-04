@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 05_context_isolation.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-05 · Context Isolation
+
+The most expensive mistake you can make with an autonomous reasoner is to assume that more context makes it smarter. It often makes it worse, in ways that are hard to detect from the outside. An agent that has been working on a problem for twenty turns is not a more informed version of the agent that started the session — it is a different agent, operating under the accumulated weight of every dead end it has explored, every assumption it has provisionally accepted, and every framing it has not thought to question. The output you get from that agent is conditioned on all of it, whether or not any of it is still relevant.
+
+This is not a new problem. It is the oldest problem in concurrent systems, wearing a different costume. Operating systems give processes separate memory spaces because two processes writing to the same address produce undefined behaviour. Microservices put network boundaries between components because in-process coupling makes failures cascade. Databases define isolation levels because transactions that see each other's uncommitted state corrupt each other's results. In every case, the underlying claim is the same: when concurrent actors share mutable state, the system as a whole becomes unpredictable, and the unpredictability is not proportional to the amount of sharing — it compounds.
+
+Language model agents are concurrent actors with shared mutable state, and the state is the context window. Everything the agent has read, every tool result it has received, every intermediate reasoning step it has produced — all of it is in the same flat buffer, all of it influences the next token. There is no encapsulation. There is no scope. There is no garbage collection for ideas the agent has finished with. If the agent spent the first half of a session convinced that the bug was in the authentication layer, that conviction is still in the context when it later examines the database layer, subtly weighting its attention toward authentication-shaped explanations. This is anchoring bias, and it is structural rather than psychological — it falls out of how attention mechanisms weigh prior tokens.
+
+The practical consequence is that context isolation in an agentic system serves two distinct purposes, and conflating them leads to bad design. The first purpose is the familiar one: parallelism and fault containment. If two agent subprocesses are working on independent tasks, you want them isolated for the same reason you want two threads isolated — so that a failure or a runaway in one cannot corrupt the other. The second purpose is cognitive hygiene, and it has no analogue in deterministic systems. You isolate contexts not because the agents would interfere with each other if you didn't, but because a fresh context reviews more reliably than a stale one. The agent that wrote the code is the worst possible reviewer of it, not because it lacks information, but because it has too much of the wrong kind.
+
+This is the same insight that makes human code review valuable, and it generalises for the same reason. When a colleague reviews your pull request, they are not smarter than you. They are operating on a clean prior. They have not spent three hours convincing themselves that this approach was the right one, so they can notice in thirty seconds that it isn't. A reviewing agent invoked with a fresh context window, given only the artefact and the criteria, is structurally closer to that colleague than the agent that produced the artefact. Reusing the original session for review collapses this distinction and silently degrades the quality of the check.
+
+Once you take this seriously, a set of design moves becomes obvious. Spawn subagents with narrowly scoped context for tasks that can be cleanly delimited, rather than passing every step through the main reasoning thread. Treat the context window as a finite resource — a working memory budget, not a logfile — and be deliberate about what enters it and what is summarised away. Separate the agent that writes from the agent that reviews, not as a workflow nicety but as a correctness mechanism. Prefer stateless workers where the task allows, accepting the loss in continuity in exchange for predictability. When you do need a long-running stateful agent, build in explicit context resets at natural boundaries, the way you would restart a long-running process to clear accumulated memory leaks.
+
+What this builds toward, ultimately, is a different default. Most people designing agent systems start from the assumption that the agent should see as much as possible — every file, every prior turn, every relevant document — on the theory that more information yields better decisions. Context isolation reframes the question. The right amount of context is the minimum required to do the current task well, delivered fresh, with everything else excluded by default. This is not a constraint on what the agent can do; it is what makes its outputs trustworthy enough to act on without re-reading them yourself.
+
+## Level 2 candidates
+
+**Session memory and anchoring bias** — How accumulated reasoning in a long context window biases subsequent outputs toward earlier framings, and the mechanics by which attention over prior tokens produces this effect. Worth a deep dive because it is the specifically non-deterministic failure mode that distinguishes agent context isolation from its OS-level ancestors, and it determines when a session reset is actually necessary versus merely tidy.
+
+**Context window as a scarce resource** — Treating the attention window as a working memory budget to be managed rather than a buffer to be filled, including the design implications for summarisation, retrieval, and subagent spawning. Worth going deeper because most practical agent design errors are budget errors — too much irrelevant context crowding out the signal — and the disciplines for managing this are not yet standard practice.
+
+**Process isolation** — The OS-level boundary between processes, what it buys you in fault containment, and what it costs in inter-process communication overhead. Worth covering at Level 2 because the tradeoff between isolation strength and communication cost recurs at every layer of an agent system and the OS-level instance is where the tradeoff is best understood.
+
+**Bulkhead pattern** — Partitioning a system so that failure in one component cannot cascade to others, applied to both distributed services and agent subprocesses. Worth its own treatment because it gives you a concrete vocabulary for designing the boundaries between agent subtasks, and the failure modes it prevents are exactly the ones that make unsupervised operation unsafe.
+
+**Stateless vs. stateful workers** — What you gain in scalability and predictability by designing workers that hold no session state, and what capability you give up. Worth a deep dive because the choice between stateless and stateful agents is the most consequential architectural decision in a pipeline and the tradeoffs are different from the equivalent decision in conventional services.
+
+**Reviewer/writer separation as a correctness mechanism** — The structural argument for why the agent that produces an artefact should never be the one that signs off on it, and how this maps to existing code review practice. Worth going deeper because it generalises beyond review into any check-your-own-work step in an agent pipeline, and the design patterns for enforcing it cleanly are not obvious.
+
+---

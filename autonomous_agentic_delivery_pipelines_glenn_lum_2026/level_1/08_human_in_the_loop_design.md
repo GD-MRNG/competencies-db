@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 08_human_in_the_loop_design.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-08 · Human-in-the-Loop Design
+
+The phrase "human-in-the-loop" gets used as if it were a safety feature you can sprinkle onto an automated system to make it trustworthy. It isn't. It is a design constraint that, applied carelessly, produces the worst of both worlds: a pipeline slow enough to feel manual and automated enough that no one is really paying attention. The interesting engineering question is not whether to keep humans in the loop, but where — and the answer is almost always "in fewer places than you think, but more deliberately than you currently do."
+
+Start from a sharper framing. Automation does not remove human judgment from a system; it moves it. Every decision an automated pipeline makes was made once, by someone, at design time, and is now being replayed at runtime. The judgment is still there — it has been compiled into rules, thresholds, prompts, and gates. What you are actually deciding when you "add a human checkpoint" is which decisions are too contextual, too consequential, or too ambiguous to be encoded ahead of time and must instead be made live, with a person in the seat. Everything else is a candidate for automation, whether you have automated it yet or not.
+
+This reframing matters because the two pathological designs in this space both stem from getting it wrong. A system that requires human approval at every step is not an automated system with safety; it is a manual system with extra latency. The human becomes the bottleneck, and worse, becomes the rubber stamp — because when approvals are constant and mostly routine, attention degrades and the checkpoint stops functioning as one. At the other extreme, a system that involves humans nowhere is not lean; it is unaccountable. When it produces a bad outcome, no one is positioned to have caught it, and the post-mortem reveals that the decision was never explicitly anyone's. Both failures look like discipline from the inside.
+
+The discipline that actually works is checkpoint selection. You are looking for the irreducible decisions — the ones where human judgment is both highest-value and non-substitutable. In a code delivery pipeline these tend to cluster in three places: architectural choices that commit you to a direction (because the cost of reversing them is high and the signal is rarely captured in any test), ambiguous requirements (because resolving them requires negotiating with another human about what they actually meant), and the final merge into a protected branch (because that is where the system crosses from reversible to deployed). Almost everything else — linting, type checking, test execution, formatting, dependency updates, draft PR generation, even most code review feedback — can be automated or delegated to an agent without losing anything essential, provided the upstream gates are real.
+
+The trap to watch for once you have placed your checkpoints well is automation bias. This is the documented tendency for human reviewers to accept automated outputs without scrutiny when the automation is generally trusted. It is not a moral failure; it is what attention does under load. If an agent has been producing reasonable PRs for three weeks, the reviewer on PR number forty-seven is not reading it the way they read PR number three. The interface itself has to fight this — by surfacing what changed, what the agent was uncertain about, what assumptions it made, what tests it skipped. A good human checkpoint is one where the reviewer is given exactly the information they need to make the call, and not so much that they retreat into pattern-matching.
+
+The complementary mechanism is the escalation path. A well-designed automated system knows the boundary of its competence and routes to a human when it crosses it, rather than proceeding with low confidence. This is the inverse of the rubber-stamp problem: instead of asking humans to validate things the system was certain about, you ask them to decide things the system was honest enough to flag. The agent that says "I tried three approaches and none of them passed the integration tests, here is what I learned" is doing the job correctly. The agent that picks the least-bad option and merges it is not. Building the former requires the system to have a model of its own confidence, and the workflow to have somewhere for low-confidence outputs to go that is not "ship it anyway."
+
+The final piece — and the one most teams discover the hard way — is accountability without presence. When no human was involved in producing a specific output, someone still owns the outcome. That ownership has to be assigned explicitly, in advance, to a person or team responsible for the automation itself: its prompts, its tools, its guardrails, its escalation policy. The deployment that goes wrong at 3 a.m. because an agent merged something subtly broken is not the agent's fault, and it is not no one's fault. It is the fault of whoever designed the pipeline to allow that class of change without a checkpoint, and pretending otherwise erodes the engineering discipline that makes any of this work.
+
+What you take away from this topic, then, is a question you can ask of any automated workflow: where in this pipeline is human judgment irreducible, and is the rest of the system designed to flow past every other point without interruption? If the answer is "humans are required everywhere," you have a manual process wearing automation as a costume. If the answer is "humans are required nowhere," you have an unaccountable system one bad day away from a serious incident. The middle path — a small number of well-chosen, well-instrumented checkpoints with everything else automated past them — is what a working agent pipeline looks like.
+
+## Level 2 candidates
+
+**Checkpoint selection** — How to identify which decisions in a workflow genuinely require human judgment vs. which ones have been kept human by inertia, and what criteria distinguish them. Worth deeper treatment because the criteria themselves — reversibility, ambiguity, blast radius, frequency — form a usable decision framework that can be applied across pipelines beyond code delivery.
+
+**Automation bias** — The documented tendency for human reviewers to accept automated outputs without scrutiny when the automation is trusted, and what interface design can do to counteract it. Worth deeper treatment because the mitigations (diff highlighting, confidence surfacing, forced attention checks) are concrete, well-studied, and rarely applied in agent review interfaces.
+
+**Escalation paths** — How a well-designed automated system recognises the boundaries of its competence and routes to a human rather than proceeding with low confidence. Worth deeper treatment because building this requires a model of self-confidence and a workflow that has somewhere for uncertainty to go — both of which are non-trivial design problems with multiple viable patterns.
+
+**Merge gates and branch protection** — Why the final integration step is the natural human checkpoint in a code delivery pipeline, and what it means to design everything upstream of it as automatable. Worth deeper treatment because the specific mechanics of branch protection rules, required reviewers, and status checks have direct implications for how you structure agent permissions and PR flow.
+
+**Accountability without presence** — How you maintain clear responsibility for system behaviour when no human was involved in producing the specific output being deployed. Worth deeper treatment because the organisational and legal dimensions here go well beyond the technical pipeline design and become more pressing as autonomous operation scales.
+
+---

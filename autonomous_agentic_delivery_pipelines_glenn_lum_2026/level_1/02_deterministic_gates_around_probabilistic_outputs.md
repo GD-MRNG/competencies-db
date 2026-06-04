@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 02_deterministic_gates_around_probabilistic_outputs.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-02 · Deterministic Gates Around Probabilistic Outputs
+
+The mistake most people make when they first ship a system built around a language model is treating the model as if it were a function. Functions have contracts. You call them with inputs of a known shape and they return outputs of a known shape, or they raise. A model does neither. It generates a candidate — a plausible-looking artefact that may or may not satisfy the constraints you care about — and hands it back to you with no signal about whether those constraints hold. If you wire the output of a model directly into a downstream system, you have not built an automation; you have built a generator of unverified suggestions and given it production credentials.
+
+Every ML system that operates reliably in production solves this the same way. The model produces candidates. Something deterministic decides whether those candidates are allowed through. Content moderation pipelines run classifier outputs past hard-coded policy rules. Fraud detection scores get clamped by business logic that overrides the model in known-edge cases. Recommendation systems pass model outputs through filters that strip ineligible items before they reach a user. The shape is always the same: probabilistic generator on the inside, deterministic validator on the outside. The model is never the last line of defence.
+
+This is not a workaround for current model limitations that will become unnecessary when models get better. It is a structural property of how you compose non-deterministic components into reliable systems. A probabilistic process can be made arbitrarily accurate and it still cannot offer the guarantee that a deterministic check offers, because the two things are different in kind. A model that is right 99.9% of the time will still be wrong one time in a thousand, and you cannot tell which time without an external check. The gate is what converts "usually correct" into "verifiably correct or rejected."
+
+The reason this matters more in an agentic pipeline than in a human-operated one is that humans bring an enormous amount of implicit constraint-checking that is invisible until you remove it. When a developer writes code, they are continuously checking — against the style of the surrounding file, against their memory of the build system, against an intuition about what will look wrong in code review, against the question "would I be embarrassed to commit this?" None of that exists for an agent. The agent will happily produce code that imports a library that isn't in your dependencies, calls a function with the wrong signature, or violates a convention the rest of the codebase has followed for years. Not because it is incompetent, but because nothing in its generation process is structurally required to check those things. The implicit gates the human ran are simply absent.
+
+So you make them explicit. A linter is a deterministic gate: it doesn't care what the agent intended, it checks the output against a fixed rule set and passes or fails. A type checker is a gate. A test runner is a gate. A pre-commit hook that rejects commits touching files outside an allow-list is a gate. A schema validator on a tool call's arguments is a gate. Each of these is doing the same job — taking a probabilistic candidate and applying a deterministic predicate to it — and each of them is, individually, almost trivial. The architectural insight is not that any one of them is clever; it is that without them, every downstream consumer of the agent's output is now also a probabilistic system, because it is operating on inputs that have not been checked.
+
+The discipline this asks of you as a system designer is to identify, for every place the model's output flows, what the actual constraint is and where it gets enforced. If the constraint is "the generated code must compile," then compilation is the gate, and it must run before anything else consumes the output. If the constraint is "the agent must not touch the production database," then a permission boundary is the gate, and it must exist at the level of credentials, not at the level of an instruction in a prompt. Telling the model "please don't do X" is not a gate. It is a suggestion to a probabilistic system, and a probabilistic system will, eventually, ignore it. The gate is the thing that makes ignoring it impossible.
+
+This reframes a lot of design choices that otherwise look like belt-and-braces overengineering. Why run tests after an agent has just spent ten minutes writing code that it claims is correct? Because the agent's claim is probabilistic and the tests are deterministic. Why validate the JSON the agent emitted against a schema when the prompt explicitly described the schema? Because the prompt is a suggestion and the schema check is enforcement. Why sandbox the agent's shell access when you've told it to only run safe commands? Because the sandbox is a boundary and the instruction is a hope. None of these checks need to be expensive or sophisticated. They need to be deterministic, and they need to be unavoidable.
+
+The practical skill this topic builds is the habit of looking at any agentic system and asking, for each constraint that matters: where is the gate? If the answer is "in the prompt," there is no gate. If the answer is "the model is usually good at this," there is no gate. If the answer is a piece of code that runs unconditionally and returns pass or fail, there is a gate, and you can reason about the system's reliability. Everything else is theatre.
+
+## Level 2 candidates
+
+**Input validation vs. output validation** — The distinction between constraining what reaches the model and constraining what leaves it, and the failure modes specific to each. Worth its own treatment because the two are often conflated in practice, and the choice of where to validate has direct consequences for cost, latency, and the class of failures you can catch.
+
+**Hard stops vs. soft signals** — What separates a gate that blocks execution from a gate that emits a warning, and why the distinction is often blurred in real systems. Worth deeper exploration because most teams discover, mid-incident, that the thing they thought was a hard stop was actually a logged warning that nobody read.
+
+**Idempotency** — Why operations that can be safely retried are dramatically easier to wrap in automated gates, and what you have to redesign when an operation is not idempotent. Worth going deeper because the property is easy to state and surprisingly hard to engineer, especially across systems you don't fully control.
+
+**Schema enforcement** — How constraining the shape of a model's output before downstream systems consume it eliminates an entire class of integration failure. Worth a dedicated treatment because schemas are the most leveraged deterministic gate available to most agent pipelines, and the design space (strict vs. lenient, fail-fast vs. coerce, where in the pipeline to enforce) is richer than it appears.
+
+**Sandboxing** — What it actually means to bound the blast radius of a probabilistic system by controlling what it can read, write, and execute. Worth deeper exploration because the implementation details matter enormously — a sandbox that leaks in one dimension (filesystem, network, environment variables, subprocess spawning) provides much weaker guarantees than its designers usually realise.
+
+---

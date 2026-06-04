@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 09_feedback_loop_architecture.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-09 · Feedback Loop Architecture
+
+Most engineers think of feedback loops as a metaphor — a way of describing iterative improvement, or the rhythm of code review, or the cadence of a sprint. This is a mistake. Feedback loops are a formal engineering object with measurable properties, and the moment you start treating them that way, a whole class of pipeline failures stops being mysterious. The CI run that keeps re-triggering itself, the agent that ping-pongs between two equally wrong solutions, the review cycle that takes longer than just writing the thing from scratch — these are not bad luck. They are predictable failures of an under-engineered loop.
+
+The discipline you're borrowing from is control theory, formalised by Norbert Wiener in 1948 and lived in every thermostat, autopilot, and PID controller since. The premise is simple: take some output of the system, route it back as input, and let it influence future behaviour. The interesting part is that this innocuous-sounding arrangement has only a handful of stable configurations and a great many unstable ones. A loop can converge to a target, oscillate around it forever, or diverge catastrophically — and which of these happens is determined by properties of the loop itself, not the cleverness of its components. A thermostat with too aggressive a response overshoots and undershoots and never settles. A CI pipeline with too aggressive an auto-fix agent does the same thing, just slower and more expensively.
+
+The three properties that matter are latency, gain, and stability. Latency is how long it takes for an output to come back around as input — the gap between a change and its consequence. Gain is how strongly the loop responds to a given signal — a small nudge produces a small correction or a large one. Stability is the emergent property: does the loop settle toward a useful state, or does it bounce around or explode? These three interact. Long latency tolerates lower gain. Short latency invites overcorrection. High gain with long latency is the recipe for oscillation, because by the time the system observes the result of its correction, it has already overcorrected several more times.
+
+In an agent pipeline, the loop you'll meet first is the PR comment loop. You leave a review; the agent reads it; the agent produces a new commit; you review again. This is a feedback loop with all the same properties as a thermostat, and most of the same failure modes. The latency is the time between you writing a comment and you seeing the revised code. The gain is how much the agent changes in response to a given piece of feedback — a vague nudge that triggers a 400-line rewrite is a high-gain response and almost always a bad one. The stability question is whether the loop converges on something you'd merge, or whether each iteration introduces as many new problems as it fixes.
+
+There is a second loop running alongside it, and you need to see both: the CI-to-agent loop. Tests fail, the agent reads the failure, the agent pushes a fix, CI runs again. This loop is faster and tighter than the human one, which is good, but it is also where the most spectacular failures happen, because there is no human in it to notice when the corrections stop making sense. An agent that responds to a failing test by deleting the test, then responds to the resulting coverage drop by generating a new test that passes trivially, has entered a loop with no convergence criterion. It will happily run forever, or until your billing alert fires.
+
+Convergence is the property you have to design in deliberately, because nothing about a feedback loop guarantees it. Every automated loop needs an explicit definition of done — a passing test suite, an approved review, a confidence threshold, a turn limit — and the absence of such a definition is the single most common reason agent pipelines misbehave overnight. Closely related are infinite loop guards: structural mechanisms (branch naming conventions that exclude agent-created branches from re-triggering the agent, hard caps on iterations per task, trigger conditions that distinguish human pushes from automated ones) that exist specifically to make runaway behaviour structurally impossible rather than merely unlikely. You want the loop to be incapable of running away, not just usually well-behaved.
+
+The other design decision that earns its keep is signal quality. A feedback loop is only as useful as the signal travelling around it, and "fix the tests" is a much weaker signal than "the assertion on line 42 expects a sorted list but you're returning insertion order." Vague feedback combined with a capable generator produces high-gain instability — the agent makes large, speculative changes because it has nothing precise to respond to. Specific, narrow feedback produces low-gain, convergent behaviour. This is true for human reviewers receiving agent output too, which is why review fatigue degrades pipelines: tired reviewers emit noisier signals, and noisier signals destabilise the loop.
+
+The practical skill this topic builds is the habit of looking at any iterative process in your pipeline and asking four questions of it. What is the latency from output to next input? How much does the system change in response to a unit of feedback? What is the explicit criterion for stopping? What structurally prevents it from re-triggering itself? If you cannot answer all four, you do not have a feedback loop — you have a feedback hope. The difference shows up in your bill, your merge queue, and eventually your incident review.
+
+## Level 2 candidates
+
+**Loop gain and stability** — Covers why a loop that overcorrects oscillates rather than converges, and what tuning gain looks like in a CI auto-fix pipeline where the controller is a probabilistic agent rather than a deterministic function. Worth a deep dive because the analogy to control theory is exact enough to import real techniques (damping, hysteresis, rate limiting) rather than reinvent them badly.
+
+**Signal vs. noise in review** — Covers what makes a piece of feedback actionable versus merely directional, and how the specificity of input determines the stability of the loop it travels through. Worth deeper treatment because most teams under-invest in feedback quality and then blame the agent for the resulting instability.
+
+**Convergence criteria** — Covers the explicit definition of "done" that every automated loop requires, and the failure modes that emerge when this is left implicit or substituted with a soft heuristic. Worth its own treatment because the design of convergence criteria is where most of the actual engineering judgment in a pipeline lives, and it is routinely skipped.
+
+**Infinite loop guards** — Covers the structural mechanisms — branch naming conventions, trigger filters, turn limits, budget caps — that prevent an automated system from re-triggering itself indefinitely. Worth deeper treatment because these are cheap to add and catastrophic to omit, and the specific patterns are not obvious until you've seen one fail.
+
+**Latency vs. thoroughness** — Covers the tradeoff between a fast loop that catches errors quickly and a thorough one that catches more errors but slows iteration, and how to tune this differently at different pipeline stages. Worth a deep dive because the right answer varies by stage (pre-commit wants fast, pre-merge wants thorough) and conflating them produces pipelines that are simultaneously too slow and too permissive.
+
+---
