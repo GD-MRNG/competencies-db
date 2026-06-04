@@ -181,14 +181,14 @@ Traditional software testing is deterministic: given input X, output is always Y
 
 #### L1-12 · Cost Optimization and Budget Management
 
-LLM APIs are pay-per-token. Your costs scale with user count and model capability. A frontier model (GPT-4o) can cost 10x a smaller model (GPT-4o-mini). Over a year, the difference is six figures. **Cost attribution** (knowing which feature costs how much) lets you make trade-offs. **Model selection** (routing easy requests to cheap models, hard ones to frontier models) reduces spend. **Context optimization** (only sending relevant context to the model) saves tokens.
+LLM APIs are pay-per-token. Your costs scale with user count and model capability. Frontier models can cost an order of magnitude more per token than smaller or open-weight alternatives. Over a year, the difference is six figures. **Cost attribution** (knowing which feature costs how much) lets you make trade-offs. **Model selection** (routing easy requests to cheap models, hard ones to frontier models) reduces spend. **Context optimization** (only sending relevant context to the model) saves tokens. Pricing changes frequently as the market evolves — always pull current numbers from provider pricing pages before capacity planning.
 
 **Level 2 candidates:**
 
 - **Token Counting and Cost Estimation** — Using Tiktoken to count tokens before sending a request; estimating daily/monthly costs.
 - **Model Selection and Routing** — Choosing the cheapest model that can solve the problem; using classifiers to route easy/hard requests to cheap/expensive models.
 - **Caching and Deduplication** — If 100 users ask the same question, only call the LLM once and cache the answer.
-- **Batch Processing** — Batch requests together (OpenAI Batch API) for lower cost; useful for non-time-critical workloads.
+- **Batch Processing** — Batch requests together (many providers offer a batch API tier) for lower cost; useful for non-time-critical workloads.
 - **Resource Right-Sizing** — Monitoring actual vs. provisioned resources; scaling down overprovisioned infrastructure; understanding the cost levers (compute, storage, API calls).
 
 ---

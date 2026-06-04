@@ -52,7 +52,7 @@ Not every task needs an agent loop. Some are predictable sequences (workflows) w
 
 #### L1-03 · Model Reasoning and the Cost-Capability Trade-off
 
-Different models have different "reasoning effort"—the ability to think through multi-step problems and select the right tools from a list. A frontier model (GPT-4o, Claude 3.5) can handle complex tool selection and self-correction; a small model (3B parameters) might hallucinate tool calls or fail to follow schemas. The cost per token scales accordingly. For agentic systems, "cheap" often means "broken"—small models frequently choose the wrong tool, misunderstand schemas, or get stuck. This is a different constraint than for single-shot generation.
+Different models have different "reasoning effort"—the ability to think through multi-step problems and select the right tools from a list. A frontier model can handle complex tool selection and self-correction; a small model (3B parameters) might hallucinate tool calls or fail to follow schemas. The cost per token scales accordingly. For agentic systems, "cheap" often means "broken"—small models frequently choose the wrong tool, misunderstand schemas, or get stuck. This is a different constraint than for single-shot generation. Which specific models qualify as "frontier" for agentic tasks shifts with every release cycle; check current benchmarks rather than treating any named model as a fixed reference point.
 
 **Level 2 candidates:**
 
@@ -82,7 +82,7 @@ Real-world agents make multiple high-latency calls (to APIs, databases, or other
 
 #### L1-05 · Multi-Agent Teams and Specialized Reasoning
 
-A single agent is limited by the model's breadth. A **team** of specialized agents is often more reliable: one agent plans (e.g., GPT-4o), another executes calculations (fine-tuned model), another verifies (different model). Each agent has a narrow job, making it more reliable than a generalist. This requires **communication patterns** (how agents pass messages, coordinate state) and **orchestration logic** (which agent runs next, when to escalate to a human).
+A single agent is limited by the model's breadth. A **team** of specialized agents is often more reliable: one agent plans using a capable frontier model, another executes calculations (possibly a cheaper or fine-tuned model), another verifies (possibly a different model entirely). Each agent has a narrow job, making it more reliable than a generalist. This requires **communication patterns** (how agents pass messages, coordinate state) and **orchestration logic** (which agent runs next, when to escalate to a human).
 
 **Level 2 candidates:**
 
@@ -118,7 +118,7 @@ Once your agents are working in raw Python, frameworks (LangChain, CrewAI, Anthr
 - **Memory and State Management in Frameworks** — How frameworks handle conversation history, intermediate results, and shared context between agents; understanding when built-in solutions are sufficient vs. when you need custom logic.
 - **Tool Registry and Schema Auto-Generation** — Frameworks often auto-convert Python functions into tool schemas; understanding what gets lost in translation (e.g., nuanced descriptions).
 - **Debugging and Tracing in Abstraction Layers** — When a framework agent goes wrong, how to instrument and trace execution; accessing logs and intermediate outputs.
-- **Migration and Lock-In Risk** — Frameworks evolve; code written against LangChain 0.1 might break in 0.2. Designing for portability: clear abstractions between your logic and the framework.
+- **Migration and Lock-In Risk** — Frameworks evolve rapidly; code written against one major version may break in the next. Designing for portability: clear abstractions between your logic and the framework.
 
 ---
 

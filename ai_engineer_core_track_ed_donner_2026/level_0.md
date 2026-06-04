@@ -32,7 +32,7 @@ The separation of the "brain" (the model) from the "body" (your application code
 - **Model as a Function** — Understanding that a model call (`client.chat.completions.create()`) is just HTTP + JSON; the architecture doesn't care if the model is on your laptop or OpenAI's servers.
 - **The Statelessness Problem** — Models have no built-in memory; every call is a fresh start. This is the single most important realization for an AI Engineer, because it means *you* are responsible for reconstructing context.
 - **The Illusion of Memory** — The pattern of re-sending the full conversation history (messages list) with every API call to simulate continuity; why this is necessary and when it breaks down.
-- **Provider Agnosticism** — How the OpenAI API standard (chat.completions) became universal, allowing you to swap Anthropic, Gemini, or Ollama without rewriting your core logic.
+- **Provider Agnosticism** — How the OpenAI API standard (chat.completions) became near-universal, allowing you to swap between providers (cloud labs, open-weight models via Ollama, etc.) without rewriting your core logic; verify which providers are currently compatible, as the ecosystem shifts.
 
 ---
 
@@ -79,7 +79,7 @@ Running a model on your own hardware (your laptop, a local GPU server) gives you
 
 #### L1-05 · API-Based Inference: Frontier Models and Vendor Ecosystems
 
-Cloud APIs (OpenAI, Anthropic, Google, Mistral) give you access to **frontier models**—the largest, most capable models available—with zero hardware setup and automatic scaling. The cost is operational: you pay per token, you depend on a third-party's uptime, and you send your data to their servers. The strategic choice (local vs. cloud) dominates your architecture.
+Cloud APIs give you access to **frontier models**—the largest, most capable models available at any given time—with zero hardware setup and automatic scaling. The cost is operational: you pay per token, you depend on a third-party's uptime, and you send your data to their servers. The strategic choice (local vs. cloud) dominates your architecture. The landscape of providers and their relative capabilities shifts quickly; treat any specific lab or model name as an illustrative example rather than a current ranking, and verify the latest state at community leaderboards or official lab sites.
 
 **Level 2 candidates:**
 
@@ -107,12 +107,12 @@ A prompt is not decoration; it is the interface between your intention and the m
 
 #### L1-07 · Model Agnosticism and Provider Switching
 
-No single provider dominates forever. The ability to swap models—Anthropic for reasoning, OpenAI for creativity, Mistral for cost, Ollama for privacy—without rewriting your application is a strategic asset. This requires **abstraction**: you write to a standardized interface (chat.completions) and route to different providers via configuration. The OpenAI API became the de facto standard, but you're not locked in if you design for it.
+No single provider dominates forever. The ability to swap models—different labs for different strengths (reasoning, speed, cost, privacy)—without rewriting your application is a strategic asset. This requires **abstraction**: you write to a standardized interface (chat.completions) and route to different providers via configuration. The OpenAI API became the de facto standard, but you're not locked in if you design for it. Which provider is best for which task changes as new models release; treat capability comparisons as a snapshot, not a constant.
 
 **Level 2 candidates:**
 
 - **API Standardization (OpenAI Compatibility)** — The chat.completions format became universal; how to write provider-agnostic client code using simple URL/API key swaps.
-- **Model Capability Matrices** — Understanding that models have different strengths (e.g., Claude 3.5 for reasoning, GPT-4o for speed, Gemini for long context); building decision trees that select the right model for the task.
+- **Model Capability Matrices** — Understanding that models have different strengths (reasoning depth, speed, context length, cost); building decision trees that select the right model for the task. Specific model rankings shift with every release cycle — check current leaderboards (e.g., LMSYS Chatbot Arena, Hugging Face Open LLM Leaderboard) rather than treating any snapshot as stable.
 - **Fallback Strategies** — What to do when a provider is down, rate-limited, or too expensive; designing graceful degradation (use local model, cache previous results, return a sensible default).
 - **Benchmarking and Vendor Lock-in Risk** — How to evaluate whether switching is worth the engineering effort; understanding the cost-accuracy-latency surface for different models.
 
