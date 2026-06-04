@@ -1,0 +1,39 @@
+## Metadata
+- **Date:** 05-06-2026
+- **Source:** 09_gender_social_reproduction_and_feminism.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-09 · Gender, Social Reproduction, and Feminism
+
+Ask any economist where workers come from and you will get a story about labour markets, education systems, and demographic trends. Ask where workers actually come from — who fed them, raised them, taught them to speak, soothed them back to sleep, made the meal that let them show up to the shift — and the official story goes quiet. This silence is not an oversight. It is the load-bearing wall of the entire economy, and noticing it changes what capitalism looks like.
+
+Social reproduction theory is the body of thought that walks through that silence and refuses to leave. Its founding question is disarmingly simple: who produces the worker? Classical economics assumes workers arrive at the factory gate already fed, clothed, rested, literate, and emotionally regulated, as if these were natural conditions of the species rather than the daily output of someone's labour. Classical Marxism does better — it sees the wage relation clearly — but it tends to treat the household as a black box on the edge of the analysis, the place workers go to recover so they can be exploited again tomorrow. Social reproduction theorists pry that black box open and show that what happens inside it is itself work, and that this work is the precondition for every other kind.
+
+The work in question is the unwaged labour that produces and maintains human beings: childbirth and childrearing, cooking, cleaning, nursing the sick, caring for the elderly, holding a marriage together, managing the emotional weather of a family. Overwhelmingly, this labour has been done by women. It does not appear in GDP. It does not generate a wage. It is not counted as part of the economy. But if it stopped tomorrow — if no one cooked, no one raised children, no one cared for anyone — the wage economy would collapse within a week. This is not a moral claim about how care should be valued. It is a structural observation about what capitalism actually rests on.
+
+Once you see this, several pieces of the wider analysis snap into place. Marx's account of alienation is incomplete if it treats the workplace as the only site of severance, because for most of history half the working class was severed not from a product they made but from any recognition that they were working at all. The critique of the nuclear family stops being a cultural complaint and becomes a structural one — the privatised household is the institutional form through which capital downloads the cost of producing its workforce onto unpaid women. The argument about atomisation gains a history: the isolated household did not always exist, and the process by which communal forms of care were broken up and replaced by the single-family unit was violent and deliberate.
+
+This is where Silvia Federici's *Caliban and the Witch* delivers its blow. The standard story of capitalism's origins is about enclosures, factories, and the dispossession of peasants from the land. Federici shows that running parallel to this — and inseparable from it — was a centuries-long assault on women's bodies, women's knowledge, and women's communal power. The witch trials of the 16th and 17th centuries were not a hangover of medieval superstition; they peaked precisely as capitalism was being born. Their function was to break women's control over reproduction, midwifery, healing, and the communal networks that sustained pre-capitalist village life, and to install in their place a new regime in which the female body became a machine for producing labour power on the cheap. Capitalism, on this account, was not just built on the backs of waged workers and colonised peoples. It was built on the suppression of half the species into unpaid reproductive labour, and that suppression had to be enforced with fire.
+
+The contemporary form of this same structure is the double shift. Women now enter wage labour in roughly equal numbers to men, but the reproductive work has not gone anywhere — it has simply been added on top, performed in the evenings and weekends, or outsourced down a chain to lower-paid women, usually migrants and women of colour. The crisis of care that wealthy societies are now experiencing — collapsing birth rates, eldercare systems buckling, a mental health epidemic, childcare costs that consume a parent's entire wage — is not a series of unrelated policy failures. It is what happens when the unpaid foundation of the economy is asked to do more while the conditions that made it possible are stripped away.
+
+The practical implication is that any politics which takes alienation, class, and the structure of capitalism seriously but ignores reproduction will reproduce the exclusions it claims to oppose. You cannot liberate the working class while leaving half of it doing a second invisible job. You cannot critique commodification while treating care as a private matter. You cannot build prefigurative institutions if the people building them are being held together by women whose labour nobody counts. The feminist intervention is not an add-on to the analysis. It is the part that finally makes the analysis describe the whole system rather than just the visible half of it.
+
+The skill this topic builds is the habit of asking, at every level of analysis, what invisible labour is making the visible labour possible — and who is doing it.
+
+## Level 2 candidates
+
+**Social reproduction theory** — The full theoretical framework for understanding unwaged domestic and care labour as constitutive of capitalism rather than separate from it, including the wages-for-housework debates of the 1970s. Worth a deep dive because the political stakes of how you answer "should reproductive labour be waged, socialised, or abolished as a separate sphere?" cut to the heart of strategic disagreements that are still live.
+
+**Federici's primitive accumulation of the body** — The historical argument that the witch trials were a coordinated assault on women's control of their own bodies and communal healing networks, undertaken as a precondition for capitalist accumulation. Worth deeper treatment because the standard origin story of capitalism is so dominant that displacing it requires more historical detail than a Level 1 post can carry.
+
+**The double shift** — The structural position of women who perform wage labour by day and unwaged reproductive labour by night, and the chain of outsourcing by which it is partially displaced onto lower-paid women. Worth depth because tracing the economic function shows it is not a cultural lag but a structural requirement, and the global care chain reveals how race, migration, and gender interlock in the contemporary economy.
+
+**Socialist feminism** — The tradition that refuses to subordinate gender liberation to class struggle or vice versa, insisting the two are inseparable and must be theorised together. Worth depth because the debates within it — between Marxist feminists, materialist feminists, and intersectional traditions — clarify what is actually at stake when people argue about "class first" versus "identity politics."
+
+**Care as political terrain** — The argument that the contemporary crisis of care is a structural consequence of commodification and the privatised household, and that reclaiming care collectively is itself a form of political struggle. Worth depth because it connects social reproduction theory directly to prefigurative practice and to concrete contemporary organising around childcare, eldercare, healthcare, and mental health.
+
+---
