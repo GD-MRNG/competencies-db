@@ -1,237 +1,286 @@
-# Cybersecurity — Integrated with AI (NUS) — Level 0: Course Map
+# Cybersecurity — Integrated with AI — Level 0: Course Map
 
-> **Intent:** To develop the mental models, technical vocabulary, and adversarial thinking required to assess and defend real systems — not as a checklist practitioner, but as someone who understands why controls exist and what breaks when they fail.
+> **Intent:** To develop a durable mental model of how digital systems are attacked and defended — and to understand how AI has changed both sides of that equation. The practitioner who studies this domain can reason about threats before they materialise, design controls proportionate to actual risk, and translate technical findings into decisions that non-technical stakeholders can act on.
 >
-> **Your angle:** You are returning to foundations with professional experience, not starting from scratch. The goal is to replace fuzzy intuitions ("we use encryption, so we're secure") with precise ones ("what exactly is this control protecting, against which adversary, at which stage of the attack chain?"). Prioritise the reasoning behind decisions over the definitions.
+> **Your angle:** You are not here to learn that firewalls exist. You are here to rebuild your mental model from first principles — to understand *why* each layer of security was invented, what problem it failed to solve on its own, and what replaced or extended it. The historical thread matters. Most of the design decisions in modern security are responses to specific failures, and knowing those failures is what makes the controls feel inevitable rather than arbitrary.
 
 ---
 
 ## How to use this map
 
-This document is a navigation tool, not a study guide. It maps the territory before you enter it.
+This map has two layers below it. **Level 1** is a substantive essay on each topic — the kind of treatment that gives you the reasoning, the historical context, and the "what breaks if you miss this" framing. It is not a textbook chapter; it is closer to a well-structured briefing designed to leave you with a working mental model rather than a definition. **Level 2** candidates are the sub-concepts worth drilling into once you have the Level 1 frame in place. Each is listed here with a directional description — not a definition, but a signal about what going deeper will unlock.
 
-**Level 1** is the topic as covered in this course — conceptual depth, historical context, the problem the mechanism solves, and its failure modes. You have already encountered Level 1 through the course materials. Return here to locate where a topic sits relative to others.
-
-**Level 2** is where you go to go narrower and deeper — specific algorithms, implementation details, edge cases, worked examples. Descend to Level 2 when a Level 1 concept is blocking you from reasoning clearly about a real system, or when you want to build genuine technical fluency rather than conceptual familiarity.
-
-The map is meant to be navigated non-linearly. Use the sequencing note at the bottom to find your highest-leverage entry points.
+Descend to Level 1 when a topic is load-bearing for something you are trying to do or understand. Descend to Level 2 when a Level 1 post has raised a question you cannot answer with the Level 1 frame alone — or when a specific mechanism is directly relevant to a project or incident you are working through.
 
 ---
 
 ## Topic Inventory
 
-### Group I — The Adversarial Foundation
+---
 
-Before any mechanism makes sense, you need the lens: what cybersecurity is actually for, what it means to have an adversary, and the three primitive ways things can go wrong.
+### Group I — The Security Mindset and Threat Reasoning
 
-#### L1-01 · The Adversarial Mindset and Security Fundamentals
+Before any technical control makes sense, you need the lens through which security professionals read systems. This group establishes that lens: the adversarial mindset, the vocabulary of assets and threats, and the frameworks for thinking about how attacks unfold.
 
-Cybersecurity begins the moment someone benefits from your system failing. This distinction from reliability engineering — intentional pressure versus random failure — changes every downstream decision. The CIA triad (confidentiality, integrity, availability) gives you a precise vocabulary for classifying failures: the Snowden disclosures are a confidentiality failure; the 2013 AP Twitter hack that wiped $136bn in market value is an integrity failure; Colonial Pipeline is an availability failure. Everything else in this field is machinery for diagnosing and preventing one of those three. The assets/vulnerabilities/threats/controls framework is the practitioner's daily tool for reasoning about cause and effect. The weakest-link principle is the single most important operational insight: your security posture is not the average of your controls, it is the minimum.
+---
+
+#### L1-01 · Introduction to Cybersecurity
+
+Cybersecurity is not reliability engineering — it is the discipline of keeping systems working *while someone is actively trying to make them fail for their own gain*. The presence of an adversary is the entire game, and every control, trade-off, and framework in the field follows from that single premise. This topic establishes the C-I-A triad (confidentiality, integrity, availability) as the three ways an adversary can hurt you; the assets-vulnerabilities-threats-controls vocabulary as the workhorse threat-modelling frame; and the weakest-link principle as the reason technical controls alone can never be enough. Getting this right is the prerequisite for everything downstream — without the adversarial mindset, you will defend the wrong layer.
 
 **Level 2 candidates:**
-- **The CIA triad as engineering requirements** — Unpacks how each property is achieved technically and where they conflict with each other in real designs, rather than treating them as slogans.
-- **Threat modelling with assets, vulnerabilities, and controls** — The formal walkthrough practitioners use daily; the Level 1 pass only sketches it.
-- **The weakest-link principle and attack surface** — Why adversaries are economically rational, how attack surface expands with digitisation, and how organisations actually fail to operationalise this insight.
-- **Security as trade-off and Security-by-Design** — The structured analysis of security against safety, usability, performance, and cost; where the strategy conversation actually happens.
-- **Threat actor profiling** — Distinguishes external attackers, insiders, nation-states, and hacktivists by motive and capability, which drives which controls matter.
-- **The Mosaic Effect and inference attacks** — How anonymised datasets combine to re-identify individuals; overturns the mental model that protecting each database in isolation is sufficient.
+- **The C-I-A triad in depth** — Drilling here reveals how confidentiality, integrity, and availability conflict in real designs, and why misclassifying which property a control actually protects is the root cause of many security failures.
+- **Assets, vulnerabilities, threats, controls** — Unpacks the threat-modelling vocabulary into an operational method you can apply to any system — not just the sketch in Level 1.
+- **The weakest-link principle and attack surface** — Explores why adversaries are economically rational, how attack surface expands with digitisation, and why the principle is easy to state but hard to operationalise.
+- **Security trade-offs and Security-by-Design** — Covers the structured analysis of security against safety, usability, and cost — the conversation where security strategy actually happens, and the one most rarely taught.
+- **The Mosaic Effect and inference attacks on privacy** — Reveals how innocuous datasets combine to re-identify individuals, overturning the intuition that protecting each database in isolation is sufficient.
+- **Threat actors and adversary profiling** — Distinguishes external attackers, insiders, contractors, and state actors by motive and method, because the profile changes which controls matter.
+
+---
+
+#### L1-11 · Attacks, Malware & Mitigation
+
+An attack is not an event; it is a chain — and defenders only need to break one link. This topic maps the attacker's playbook in sequence: passive reconnaissance, active scanning, vulnerability identification, exploitation, and persistence. It introduces the Cyber Kill Chain and MITRE ATT&CK as two complementary frameworks for reasoning about that sequence, and covers the malware taxonomy (viruses, worms, trojans, ransomware) in terms of propagation mechanics rather than labels. The WannaCry case study anchors the key lesson: most successful breaches do not use novel techniques — they exploit patch latency, the operational gap between a fix being released and a fix being applied.
+
+**Level 2 candidates:**
+- **The MITRE ATT&CK Framework** — Goes beyond the glossary to show how to map your own telemetry against specific techniques — the working language of modern detection engineering.
+- **The Cyber Kill Chain and its critiques** — The model's strengths (clarity, narrative) and weaknesses (linearity, perimeter bias) shape how organisations communicate about incidents; understanding the critique prevents you from being limited by it.
+- **Vulnerability management: CVE, CWE, CVSS, and KEV** — Turns "we found a bug" into a prioritisation system — the single highest-leverage operational practice in defence.
+- **Malware taxonomy and behaviour** — The functional differences between virus, worm, and trojan predict propagation patterns and the kind of countermeasure that will actually work.
+- **Patch management as an operational discipline** — Patch latency is empirically the largest contributor to successful breaches; going deeper reveals why the gap is almost entirely a workflow problem, not a technology one.
+- **MITRE ATLAS and AI-specific attack surfaces** — The frontier framework for adversarial threats against ML and generative AI systems — prompt injection, model poisoning, training data attacks.
 
 ---
 
 ### Group II — Cryptographic Foundations
 
-Cryptography is the mathematical layer underlying nearly every other security mechanism. This group must be understood before authentication, protocols, PKI, or secure channels make sense. The order within the group is a genuine dependency chain.
+Cryptography is the mechanism underneath almost every other security control: authentication, secure channels, data integrity, and non-repudiation all depend on it. This group builds the cryptographic stack from first principles — symmetric and asymmetric primitives, hash functions, key distribution — and then shows how those primitives are composed into the protocols and infrastructure that secure real communications.
 
-#### L1-02 · Classical and Modern Cryptography
+---
 
-The field is not a contest of cleverness — it is about economics, transparency, and key secrecy. The history is a long retreat from perfect secrecy (the one-time pad, which is mathematically unbreakable but operationally useless) toward computational security (hard enough to break that the attacker's cost exceeds the defender's stake). Kerckhoffs' Principle — the system must remain secure even if everything except the key is public — is the single idea most worth internalising from this cluster. Secret algorithms are trusted by those who haven't examined them; public algorithms are trusted by those who have. This principle predicts most of the cryptographic disasters you will read about: proprietary ciphers, security-by-obscurity, and "nobody will find this endpoint."
+#### L1-02 · Cryptography
 
-**Level 2 candidates:**
-- **Kerckhoffs' Principle and the case against obscurity** — Why open, peer-reviewed algorithms consistently outperform proprietary ones; the historical evidence and the structural reasons.
-- **Classical ciphers and frequency analysis** — The precise mechanics of how statistical attacks dismantle substitution ciphers; fastest way to internalise why "preserves structure = broken."
-- **The one-time pad and perfect secrecy** — Information-theoretic security, why OTP achieves it, and the Venona case where reuse broke Soviet communications.
-- **Computational security and key length calibration** — How hardness assumptions translate into key-length recommendations; why nominal and effective key lengths differ.
-- **Adversary models: black-box, grey-box, and side-channel** — The taxonomy from ciphertext-only through timing and power attacks; where most real-world cryptographic failures actually occur.
-
-#### L1-03 · Modern Ciphers — Stream and Block
-
-The algorithm is rarely where systems fail; the failure is almost always in how the algorithm is used. Stream ciphers (RC4, ChaCha20) generate a pseudorandom keystream and XOR against plaintext — fast, minimal latency, but catastrophically fragile to keystream reuse. Block ciphers (AES) process fixed chunks through structured rounds — strong diffusion but sensitive to mode of operation. ECB mode is the canonical lesson: identical plaintext blocks produce identical ciphertext blocks, which is why you can still see the penguin. Authenticated encryption modes (GCM) and counter-based modes (CTR) exist because confidentiality and integrity are separate problems requiring separate machinery.
+Cryptography is not the study of secret codes — it is the study of how to formalize and achieve security properties under mathematical assumptions. This topic covers the shift from classical ciphers (substitution, transposition) to Kerckhoffs' Principle — the foundational insight that security should rest on key secrecy, not algorithm secrecy — and on to the formal definitions of cryptosystem security. It explains *why* these definitions were invented: without them, it is impossible to argue rigorously that a scheme is secure rather than merely unbroken so far.
 
 **Level 2 candidates:**
-- **Stream cipher internals** — RC4, Salsa20, ChaCha20; why RC4 was deprecated while ChaCha20 thrives; what cryptographic strength means concretely.
-- **Block cipher internals and AES** — Substitution-permutation networks, S-boxes, key schedules; confusion and diffusion made concrete.
-- **Modes of operation** — ECB, CBC, CTR, GCM; where most real-world cryptographic failures live; when to use which.
-- **IV and nonce handling** — Rules around uniqueness, length, randomness versus counter-based generation; most common operational failure in deployed systems.
-- **Cryptographic agility and algorithm lifecycle** — How algorithms are standardised and deprecated (DES, RC4); designing for algorithm replacement; the post-quantum transition already underway.
+- **Kerckhoffs' Principle versus security by obscurity** — Drilling here reveals why the principle is counterintuitive to most engineers and why violating it is still a common design mistake.
+- **Shannon's information theory and perfect secrecy** — The one-time pad is provably unbreakable; understanding why illuminates both the limits of symmetric crypto and the reason all practical systems accept computational rather than information-theoretic security.
+- **Classical ciphers and their cryptanalysis** — Caesar, Vigenère, and frequency analysis are worth understanding not for historical interest but because the attacks they fell to — pattern leakage, statistical regularities — recur in modern failures.
+- **Computational vs information-theoretic security** — The distinction between "unbreakable in principle" and "unbreakable within available compute time" is the premise on which all modern cryptographic claims rest.
 
-#### L1-04 · Public Key Systems and Cryptographic Hash Functions
+---
 
-Symmetric encryption has a scaling problem: distributing shared keys requires an already-secure channel. Public key cryptography breaks the loop. Each party holds a mathematically linked pair: a public key anyone can use, a private key only you hold. Anything encrypted with the public key decrypts only with the private key (confidentiality); anything signed with the private key verifies with the public key (authenticity and non-repudiation). RSA builds this asymmetry on integer factorisation. The catch: RSA is orders of magnitude slower than AES. The solution is hybrid encryption — generate a fresh AES key, encrypt data with AES, encrypt only the AES key with RSA. This is what TLS does on every HTTPS connection. Cryptographic hash functions (SHA-256) give you integrity: the same input always produces the same fixed-length fingerprint, but a one-bit input change avalanches the output. Blockchain is hash functions plus signatures plus a tiebreaker — no magic.
+#### L1-03 · Modern Ciphers
 
-**Level 2 candidates:**
-- **RSA and trapdoor functions** — Prime generation, modular exponentiation, why integer factorisation is the hard problem, why post-quantum is a real concern.
-- **Hash functions in depth** — Preimage resistance, collision resistance, Merkle-Damgård and sponge constructions, MACs and password-hashing schemes.
-- **Hybrid encryption and the envelope pattern** — Ephemeral key generation, key wrapping, GCM; where real-world cryptographic failures happen at the seams.
-- **Digital signatures and non-repudiation** — How signing differs from encryption, hash-then-sign, DSA/ECDSA/EdDSA, legal meaning of non-repudiation.
-- **Key management and the private key problem** — Generation, HSMs, rotation, revocation, recovery; the gap between "we use RSA-2048" and "our keys are actually safe."
-- **Post-quantum cryptography** — Why Shor's algorithm threatens RSA and ECC, lattice-based alternatives, designing for crypto-agility before the transition.
-
-#### L1-05 · Data Origin Authentication and PKI
-
-The hard problem in cryptography is not the math — the math has been solved. The hard problem is trust: when a server sends you a public key claiming to be your bank, why should you believe it? MACs (Message Authentication Codes) provide symmetric authentication — fast, suited for high-volume bilateral traffic, but neither party can prove to a third party who sent the message. Digital signatures provide asymmetric authentication — slower, but binding and publicly verifiable; what holds up in court. PKI is the bureaucratic infrastructure that binds public keys to identities: Certification Authorities examine identity claims and issue signed certificates; chains of trust route up to a small set of root CAs pre-installed in your browser. The 2011 Comodo breach (fraudulent certificates issued for Google, Yahoo, and others accepted by every browser) is the canonical failure mode. Most PKI failures in practice are not cryptographic — they are operational: expired certificates, bad renewal processes, smart cards that stop working during critical trading.
+Stream ciphers and block ciphers are the two families of symmetric encryption used in practice, and the difference between them is not aesthetic — it determines latency, error behaviour, malleability, and the attack surface. This topic maps the mechanics of each family: stream ciphers as synthetic one-time pads (fast, fragile under nonce reuse), block ciphers as structured chunk-by-chunk transformers (strong diffusion, mode-dependent security). The ECB penguin example is here not as a curiosity but as the cleanest demonstration that a strong cipher does not automatically produce a secure system — mode selection is part of the design.
 
 **Level 2 candidates:**
-- **MACs vs digital signatures in depth** — HMAC mechanics, RSA-PSS/ECDSA/EdDSA; how non-repudiation is formally argued; key distribution and post-quantum concerns.
-- **X.509 certificates and chain validation** — What is inside a certificate, how chain validation walks from leaf to root, name constraints and extended key usages.
-- **Certificate revocation: CRLs, OCSP, and stapling** — Why CRLs scale badly, OCSP privacy and availability problems, stapling; where PKI consistently fails in practice.
-- **The CA trust model and Certificate Transparency** — How root CAs are admitted to browser trust stores, what CT logs added after Comodo and DigiNotar, how the ecosystem handles CA misbehaviour.
-- **PKI lifecycle management** — Tiered hierarchies, HSM-backed storage, ACME/Let's Encrypt, automated issuance; where enterprise PKI projects actually live or die.
-- **Freshness, uniqueness, and the limits of PKI** — Replay attacks, nonces, timestamps; why signatures don't prove freshness and what distributed ledgers add.
+- **Block cipher modes of operation (CBC, CTR, GCM)** — Each mode adds different properties on top of the cipher; GCM in particular is the authenticated encryption workhorse, and going deeper here reveals why "encryption" and "authentication" must be combined.
+- **Nonce management and keystream reuse** — The catastrophic failure mode of stream ciphers deserves its own treatment because the constraint "never reuse a nonce" sounds simple and is routinely violated in real systems.
+- **Confusion, diffusion, and the avalanche effect** — Shannon's design principles in practice: drilling here connects internal cipher design to observable security properties and explains why changing one bit of input should look like changing half the output.
+- **Authenticated Encryption with Associated Data (AEAD)** — ChaCha20-Poly1305 and AES-GCM are the production standards; going deeper reveals why confidentiality and integrity must be constructed together, not separately.
+- **Cryptographic agility in system design** — Algorithms age out; going deeper here covers how to design the system so a cipher swap does not require a product rewrite.
+
+---
+
+#### L1-04 · Entity Authentication
+
+Authentication is not a gate — it is a lifecycle, and attackers attack the stages you weren't watching. This topic models the credential lifecycle in three stages — bootstrapping (where trust is born), storage (where a breach can silently become a password leak), and presentation (where human use is the attack surface) — and explains why multi-factor authentication only works when the factors fail differently. The Mirai botnet logged in through factory-default credentials; the LinkedIn breach turned database theft into password theft through unsalted hashes; these cases make the lifecycle model concrete rather than abstract.
+
+**Level 2 candidates:**
+- **Password storage: salting, hashing, and modern KDFs** — The implementation details (bcrypt, scrypt, Argon2) determine whether a database breach becomes a password breach — and the difference is in deliberate computational cost.
+- **Multi-factor authentication design** — Goes beyond "use MFA" to why some combinations are illusory, why SMS has been deprecated by NIST, and how hardware tokens (FIDO2/WebAuthn) change the phishing threat model.
+- **Bootstrapping and credential provisioning** — The most overlooked stage: default passwords, factory provisioning, and credential-recovery flows are where the largest IoT compromises have started.
+- **Social engineering and the human attack surface** — Technical authentication controls can be cleanly bypassed by attacks on the person; the defences here are organisational and behavioural, not cryptographic.
+- **Biometric authentication and its limits** — Biometrics are excellent for convenience and dangerous as identity roots; the irrevocability problem is the key tension.
+
+---
+
+#### L1-05 · Public Key Systems and Cryptographic Hashes
+
+Symmetric cryptography solves confidentiality but leaves a hard problem unsolved: how do you share a key with someone you've never met? Public key cryptography, introduced independently by Diffie and Hellman (1976) and Rivest, Shamir, and Adleman (1977), dissolves that problem by separating the encryption key from the decryption key. This topic also introduces cryptographic hash functions as the mechanism for turning variable-length input into a fixed-length fingerprint that is easy to compute and practically impossible to reverse or collide — the building block for MACs, digital signatures, and data integrity checks.
+
+**Level 2 candidates:**
+- **RSA: trapdoor functions and key size selection** — Going deeper reveals why RSA security rests on the difficulty of factoring large composites, what "2048-bit key" actually means, and where quantum computing threatens this assumption.
+- **Elliptic curve cryptography** — ECC achieves comparable security to RSA at much smaller key sizes; drilling here explains why it has largely replaced RSA in modern TLS and why the curve choice matters more than most engineers realise.
+- **Hash function properties: preimage resistance, collision resistance** — The formal security properties are not just definitions — each one protects against a different class of attack, and knowing which property is missing from a given use explains the specific failure.
+- **Keyed hashes and HMACs** — The construction that turns a hash function into a message authentication code; going deeper reveals why using a plain hash for a MAC is broken and why the specific HMAC construction is not.
+- **Post-quantum cryptography** — Shor's algorithm threatens RSA and ECC; drilling here maps the NIST PQC candidate algorithms and the urgency of cryptographic migration planning.
+
+---
+
+#### L1-06 · Data Origin Authentication & Public Key Infrastructure
+
+Symmetric keys prove "someone who knows the secret sent this." Digital signatures prove "the holder of this specific private key signed this, and anyone can verify it." That asymmetry — public verifiability without shared secrets — is what makes non-repudiation and third-party trust possible. This topic covers MACs and digital signatures as the two mechanisms for proving message origin, then explains why the hardest problem in public key cryptography is not the math but the binding of a key to an identity — the problem PKI exists to solve. A CA compromise is not a local failure; it is a system-wide impersonation capability.
+
+**Level 2 candidates:**
+- **MAC vs digital signature: choosing for the use case** — The choice between symmetric and asymmetric authentication has concrete consequences for who can verify, who can dispute, and what happens when the shared secret leaks.
+- **Certificate lifecycle management** — Issuance, renewal, revocation (OCSP, CRL), and the operational reality that most PKI failures are not mathematical but procedural.
+- **Certificate Transparency and CA accountability** — A practical response to the structural weakness of hierarchical trust; drilling here explains how the public append-only log of certificates makes CA misbehaviour detectable.
+- **Hash-then-sign and signing large documents** — The engineering pattern that makes asymmetric signing practical at production scale, and why signing raw document bytes is never the right choice.
+- **Replay attacks and freshness mechanisms** — A valid signature is still a valid signature tomorrow; going deeper covers timestamps, nonces, and sequence numbers as the constructions that add temporal binding.
+
+---
+
+#### L1-07 · Protocol Security
+
+Cryptographic primitives are not protocols. TLS, SSH, and Kerberos are protocols that compose those primitives — key exchange, authentication, and authenticated encryption — into a sequence that resists not just eavesdropping but active manipulation. This topic covers strong authentication protocols, key exchange (Diffie-Hellman and its variants), and authenticated key exchange as the components that produce a secure channel. The design decisions here — why forward secrecy was added to TLS, why handshake authentication matters — reflect lessons learned from real breaks of earlier, weaker protocols.
+
+**Level 2 candidates:**
+- **TLS 1.3 and the evolution of the handshake** — Each version of TLS removed a category of known attack; tracing that evolution reveals exactly what was broken in TLS 1.0–1.2 and why the current design is structured as it is.
+- **Forward secrecy and ephemeral key exchange** — Prevents a future private key compromise from decrypting past sessions; drilling here explains why this property was retrofitted rather than designed in from the start.
+- **Kerberos and ticket-based authentication** — The dominant enterprise authentication protocol; going deeper reveals how the ticket-granting architecture works, where Kerberoasting attacks operate, and why it connects directly to Active Directory security.
+- **Common protocol attacks: downgrade, MITM, replay** — The classes of attack that protocol design specifically defends against; understanding each one explains a structural choice in every modern secure protocol.
+- **SSH and secure remote access** — Worth depth because SSH is ubiquitous and its security depends on key management practices that are poorly understood — trust-on-first-use, host key pinning, agent forwarding risks.
 
 ---
 
 ### Group III — Applied Security Domains
 
-With the cryptographic foundation in place, this group applies it to the actual systems where most security work happens: protocols, networks, the web, host operating systems, and the adversarial techniques used to attack them.
-
-#### L1-06 · Protocol Security
-
-Even when individual primitives (ciphers, hashes, signatures) are sound, their composition can fail. Protocol security asks: how do you combine the pieces into an authenticated key exchange that establishes a secure channel between parties who have never met before? The canonical failures — replay attacks, man-in-the-middle attacks, downgrade attacks — all come from incorrect assumptions about the protocol environment. TLS is the worked example that ties together everything in Group II: certificate validation for identity, key exchange for a shared session key, symmetric encryption for bulk data, and MACs for integrity.
-
-**Level 2 candidates:**
-- **TLS handshake in detail** — Certificate validation, key exchange mechanisms (ECDHE), cipher suite negotiation, session resumption.
-- **Authenticated key exchange protocols** — Diffie-Hellman, forward secrecy, and why the session key must not be derivable from the long-term private key.
-- **Protocol failure modes** — Replay, MITM, downgrade, oracle attacks; why correct primitives in incorrect composition still fail.
-- **SSH and other secure channel protocols** — How host key verification works, known-hosts files, common misconfigurations.
-
-#### L1-07 · Network Security
-
-The TCP/IP stack was designed for connectivity, not adversaries. ARP, DNS, and IP all accept claims at face value — which is why network attacks mostly look like forging labels rather than breaking encryption. The Sea Turtle campaign (2019) hijacked national-level DNS traffic across forty-plus countries without breaking any cryptography. Nmap and Wireshark are the dual-use tools that define the network security discipline: the same scan that maps an attacker's target maps the defender's perimeter. The perimeter firewall (default-deny, specific-allow, DMZ for public-facing services) is the classical control; Zero Trust Network Architecture (verify every request regardless of origin, grant least privilege, assume breach) is the contemporary response to the dissolution of "inside" as a meaningful security category.
-
-**Level 2 candidates:**
-- **The TCP/IP stack and encapsulation** — Which class of attack lives at which layer; MAC spoofing, IP spoofing, TCP hijacking, application-layer injection.
-- **DNS attacks and DNSSEC** — Cache poisoning, race-condition spoofing, hijacking campaigns; DNSSEC, DoH, DoT; why adoption has lagged.
-- **Firewalls, DMZ, and rule design** — Packet filters vs stateful inspection vs application proxies; two-firewall DMZ construction; rule ordering and stateful tracking mechanics.
-- **Zero Trust Network Architecture** — Per-request verification, microsegmentation, continuous authorisation; what it actually requires in practice.
-- **DDoS and volumetric attacks** — Volumetric vs protocol vs application-layer attacks; Mirai botnet economics; defences that actually work.
-- **Wireshark and Nmap in depth** — Capture filters, TCP stream reconstruction, scan types, OS fingerprinting; the gap between running the tool and using it well.
-
-#### L1-08 · Web Security
-
-The web is the most exposed surface your organisation has, and it is exposed for a structural reason: HTTP was designed to fetch documents. Everything else — cookies for memory, JavaScript for behaviour, databases for data — was retrofitted onto a stateless protocol that assumed a polite academic user. The dominant web attacks all share a single root cause: the receiving system cannot distinguish code from data. SQL injection sends user input to the database parser as if it were query syntax. XSS sends attacker-controlled content to the browser parser as if it were page logic. The fixes are structural — prepared statements, output encoding — not cosmetic (blacklists fail). CSRF exploits the browser's automatic credential forwarding; anti-CSRF tokens fix it by requiring proof of intentional request origin. The OWASP Top 10 is the empirical consensus on which categories are causing actual breaches; STRIDE is the structured lens for finding them before they ship.
-
-**Level 2 candidates:**
-- **SQL injection and prepared statements** — How injection works at the query-parser level; blind and time-based variants; why ORMs don't automatically protect you.
-- **XSS and output encoding** — Reflected, stored, and DOM-based variants; encoding rules that differ by context (HTML body, attribute, JavaScript, URL); Content Security Policy.
-- **Session management and cookie security** — Session lifecycle, HttpOnly/Secure/SameSite flags, token rotation, session fixation, pass-the-cookie attacks that bypass MFA.
-- **CSRF and the Same-Origin Policy** — Precise SOP rules, anti-CSRF token mechanics, SameSite cookies; the subtle cross-origin exceptions that create bypasses.
-- **Threat modelling with STRIDE and OWASP** — Structured frameworks for finding threats before code is written; STRIDE's six categories; OWASP ASVS as a standards reference.
-- **HTTPS and TLS for web security** — What TLS guarantees and what it does not; the "malicious cafe owner" threat model; where the guarantees end.
-
-#### L1-09 · System Security and Access Control
-
-Most security failures are not break-ins — they are mundane: someone had access they shouldn't have had. Colonial Pipeline began with a forgotten VPN account. Every security-relevant event reduces to a triple: subject (user, process) wants to perform an operation (read, write, execute) on an object (file, device, service). The reference monitor decides. The access control matrix is the general model; ACLs (per-object lists) and capabilities (per-subject tokens) are practical slices of it. Linux collapses this into nine permission bits per file — useful, lossy, and the system most practitioners will actually configure. Setuid is controlled invocation: a normal user temporarily borrows root's authority for a narrow task; every setuid binary is a trapdoor into root, and bugs in setuid programs are privilege escalation vulnerabilities. Least privilege is blast-radius engineering: it doesn't prevent compromise, it limits its consequences.
-
-**Level 2 candidates:**
-- **Access control representations: ACM, ACL, capabilities** — Operational tradeoffs between object-centric and subject-centric views; how OAuth, Kerberos, and Linux permissions work under the hood.
-- **Linux/Unix permissions in practice** — Owner/group/other model, octal chmod, ACL extensions, the "everything is a file" philosophy; where mistakes happen.
-- **Controlled invocation and privilege escalation** — Setuid, setgid, sudo, and the attack surface they create; the bridge from access control to exploit development.
-- **DAC vs MAC vs RBAC** — Policy model choice as an organisational decision with compliance, scalability, and error-propagation consequences.
-- **The principle of least privilege as a design discipline** — Scoping service accounts, designing permission boundaries, break-glass scenarios, reasoning about blast radius.
-
-#### L1-10 · Attacks, Malware, and Mitigation
-
-Defence is best built by understanding the attack chain, not by cataloguing assets. An attack is a sequence: reconnaissance (passive OSINT, WHOIS, Shodan), active scanning (Nmap, vulnerability scanners, CVE/CVSS databases), exploitation (Metasploit industrialises known CVE-to-payload matching), and persistence (the overlooked stage — malware planted so patching the original hole doesn't evict the attacker). WannaCry is the canonical lesson: Microsoft had patched EternalBlue two months before the attack; the vulnerability was patch latency, not the cryptography. MITRE ATT&CK is the working operational framework (real adversary TTPs, matrix-structured); the Cyber Kill Chain is the narrative framework (linear, useful for executive communication); MITRE ATLAS extends both to attacks against AI systems.
-
-**Level 2 candidates:**
-- **MITRE ATT&CK in depth** — Mapping telemetry against specific techniques rather than treating it as a glossary; how to use it for detection engineering.
-- **The Cyber Kill Chain and its critiques** — Strengths (clarity, narrative) and weaknesses (linearity, perimeter bias); why critique enables better use.
-- **Vulnerability management: CVE, CWE, CVSS, KEV** — How the ecosystem turns "we found a bug" into "we know priority and exploitation status"; what each acronym actually tells you.
-- **Malware taxonomy and behaviour** — Viruses, worms, trojans, ransomware, and wipers as distinct propagation patterns driving different defensive strategies.
-- **Patch management as an operational discipline** — Patch latency as an operational metric; organisational and technical practices that determine remediation speed.
-- **MITRE ATLAS and AI-specific attack surfaces** — Prompt injection, model evasion, training data poisoning; the framework for the next decade of incidents.
+With the cryptographic and threat-reasoning foundations in place, this group covers the concrete attack surfaces that practitioners encounter: the network stack, web applications, host systems, and the cloud. Each topic follows the same pattern — understand how the infrastructure was built to trust, then understand how attackers exploit that trust, then understand what controls exist and why they are structured as they are.
 
 ---
 
-### Group IV — Contemporary and Emerging Domains
+#### L1-08 · Network Security
 
-These topics sit at the frontier of the discipline. Cloud security is already mainstream practice; AI in cybersecurity is the fastest-moving area in both attack and defence; governance and quantum are the long-horizon topics that most practitioners underinvest in until they become urgent.
-
-#### L1-11 · Cloud Security
-
-Moving to the cloud does not move your perimeter — it dissolves it. The shared responsibility model is the first mental shift: the provider secures the infrastructure (data centres, hypervisors, physical network); you secure everything you deploy on top (data, IAM configurations, application code). Most cloud breaches are the customer's fault — a public S3 bucket, a leaked admin credential, an over-privileged service account. Multi-tenancy means your workload shares physical hardware with strangers; logical isolation via hypervisor is strong but not absolute (Meltdown, Spectre). IAM becomes the perimeter: if IAM policies are loose, there is no perimeter. DevSecOps and SIEM/SOAR are not optional hardening — they are required because cloud infrastructure changes faster than any human review cycle can track.
+Encryption is not network security. Cryptography secures the payload; it does almost nothing to secure the conversation itself — who you're talking to, whether the address you looked up is genuine, whether the message arrives at all. The TCP/IP stack was built for connectivity, not adversaries, and every protocol you rely on — ARP, DNS, IP routing — takes claims at face value. This topic maps the layers of the stack, the attack class native to each layer (MAC spoofing, IP spoofing, DNS poisoning, DDoS), and the controls (firewalls, DMZs, zero trust architecture) that emerged in response. The Sea Turtle DNS hijacking campaign of 2019 is the cleanest case study: the HTTPS was fine; the address book was poisoned before the connection started.
 
 **Level 2 candidates:**
-- **Shared responsibility across IaaS, PaaS, SaaS** — Exactly which obligations belong to provider vs customer at each tier, with worked examples.
-- **Multi-tenancy and side-channel attacks** — Hypervisor isolation mechanics; Meltdown/Spectre; hardware enclaves (Intel SGX, ARM TrustZone).
-- **IAM as the new perimeter** — Least privilege, RBAC, MFA strategies, FIDO hardware keys, failure modes of cloud identity systems.
-- **DevSecOps and shift-left security** — CI/CD pipeline integration of scanning, secret detection, infrastructure-as-code validation; the cultural shift.
-- **Telemetry, SIEM, and SOAR** — Cloud audit logging (CloudTrail), aggregation and detection, automated response playbooks; the architecture for detection at cloud scale.
-- **Data sovereignty, compliance, and systemic risk** — GDPR, HIPAA, MAS; geographic data pinning vs disaster recovery; hyperscaler concentration risk.
-
-#### L1-12 · AI in Cybersecurity
-
-AI in security is not fashionable — it is a response to a mismatch. The volume of traffic, the pace of attacker iteration, and the novelty of threats all exceed what human-authored rule sets can handle. The enabling shift was hardware: GPUs repurposed from pixel rendering turned out to map almost perfectly onto the matrix operations underlying neural networks. Traditional ML (supervised learning on labelled data) handles known categories precisely but cannot see what it has never been named. Unsupervised learning (anomaly detection on unlabelled data) is the only approach that meaningfully addresses zero-days. Deep learning adds temporal awareness: RNNs and LSTMs carry state forward, so a model can connect Monday's scan to next month's exfiltration — the attack that is invisible to any point-in-time classifier. False positives and false negatives have different price tags in security; tuning a model is a business risk decision, not a technical one.
-
-**Level 2 candidates:**
-- **Supervised vs unsupervised learning in security** — Practical tradeoffs, labelling pipeline design, how teams convert anomaly flags into training data.
-- **False positives, false negatives, and F-1 score as business strategy** — How error tradeoffs map onto business risk and customer experience; the metric becoming a board-level concern.
-- **Feature engineering from network traffic** — How raw PCAPs become numeric features; where domain expertise compounds over identical algorithms.
-- **Recurrent architectures for sequence-aware detection** — RNNs, LSTMs, context windows applied to network traffic; the shift from event classification to campaign detection.
-- **Explainable AI in SIEM (AMIDES pattern)** — How deep learning outputs are attributed back to interpretable rules; the adoption pivot in operational security.
-- **Data preprocessing for security ML** — Normalisation, class imbalance, concept drift, adversarial contamination; where most implementations fail silently.
-
-#### L1-13 · Generative AI and Cybersecurity
-
-Generative AI changes the economics of attack more than it changes the categories. A convincing phishing email, a working exploit for a known CVE, a mutating malware variant — none of these are new. What is new is that producing them no longer requires a competent attacker. The defender's response requires both the CVE/CWE/CVSS/ATT&CK/ATLAS stack (to reason from specific vulnerability to adversary behaviour to priority) and new AI-native defences (GenAI for log summarisation, rule generation, synthetic training data, autonomous red-teaming). The unresolved tension: AI can act faster than humans, but AI acting autonomously introduces unverifiable mistakes. The governance layer — EU AI Act, NIST AI RMF, explainability requirements — is where security leadership careers will be made or broken over the next decade.
-
-**Level 2 candidates:**
-- **The CVE/CWE/CVSS/ATT&CK/ATLAS stack as integrated workflow** — Traversing from specific flaw to root cause to priority to adversary behaviour; the leverage that comes from treating them as one chain.
-- **LLM jailbreaking and guardrail design** — Techniques for bypassing model safety instructions; input/output filtering; adversarial testing; system prompt hardening.
-- **Polymorphic and metamorphic malware** — How malware mutates to evade signatures; what behavioural and ML-based detection looks like in response; how GenAI changes the economics.
-- **GenAI-driven SOC operations** — Log summarisation, automated rule generation, synthetic data, copilot-assisted triage; the gap between "use AI in the SOC" and a working integration.
-- **MITRE ATLAS in depth** — Adversarial threats specific to ML systems; model evasion, data poisoning, prompt injection; the framework practitioners increasingly need.
-- **AI governance, ethics, and liability** — EU AI Act, NIST AI RMF, explainability obligations, accountability when autonomous defenders cause harm.
-
-#### L1-14 · Ethical Hacking
-
-The line between a hacker and a security professional is a piece of paper. Every technique — Nmap scanning, Metasploit payloads, password cracking — is identical on both sides of the authorisation boundary; what separates them is a signed Rules of Engagement document. Ethical hacking is paying someone to bring the attacker's methodology to bear on your systems before an attacker does. The workflow is a funnel: passive OSINT → active scanning → version detection (the hinge — VSFTPD 2.3.4, not "an FTP server") → exploitation via Metasploit → post-exploitation (privilege escalation, lateral movement) → reporting with CVSS scores. Reverse shells are preferred over bind shells because the target initiates the outbound connection, bypassing inbound firewall rules. The deliverable is not the breach; it is the prioritised list of paths to fix.
-
-**Level 2 candidates:**
-- **Nmap and active network scanning in depth** — SYN, connect, UDP, idle scans; service version detection; NSE scripting; what each scan type puts on the wire.
-- **Metasploit and exploitation workflows** — Module structure, payload selection (bind vs reverse, staged vs stageless), Meterpreter post-exploitation.
-- **Privilege escalation techniques** — Password cracking with John the Ripper/Hashcat; buffer overflow mechanics; misconfiguration-based escalation paths.
-- **Rules of Engagement and the legal framework** — Scope definition, authorisation documents, Singapore's Computer Misuse Act; the legal exposure of getting this wrong.
-- **Reporting, CVSS, and remediation translation** — Scoring, prioritisation, and communicating to non-technical stakeholders; the report as the actual product.
-- **The attack lifecycle and cyber kill chain (applied)** — Each stage's tooling, detection signatures, and where defenders can most cheaply break the chain.
-
-#### L1-15 · Ethics, Governance, and the Future of Cybersecurity
-
-Security has stopped being a function and started being a posture. A function is something a team performs; a posture is something the entire organisation maintains. Strategic alignment means security goals are written in the language of business outcomes. The CISO shapes strategy; the board holds accountability — the right design, because accountability inside the security team is accountability nobody else feels. RACI (Responsible, Accountable, Consulted, Informed) is the antidote to "I thought someone else had that." The three lines of defence keep operations, oversight, and audit independent. Ethics in the profession sits on four pillars — confidentiality, integrity, objectivity, due care — because the same skills that defend a system compromise one. Vulnerability disclosure is the canonical ethics test: Google Project Zero's 90-day window is the de facto industry clock. The two long-horizon threats worth taking seriously now: generative AI compressing attacker cycles to machine speed, and quantum computing threatening the cryptographic substrate (Shor's algorithm breaks RSA and ECC; "harvest now, decrypt later" means data intercepted today is at risk the moment a capable quantum computer exists).
-
-**Level 2 candidates:**
-- **Security governance frameworks and RACI** — NIST and COBIT as reference frameworks; the policy/standard/guideline/procedure hierarchy; how RACI assigns ownership in practice.
-- **The three lines of defence model** — Why the model is widely cited and widely misimplemented; what each line actually does.
-- **Professional code of ethics and vulnerability disclosure** — The four pillars, the legal landscape post-Morris Worm, the mechanics of responsible disclosure.
-- **Defence in depth across network, cloud, and IoT** — DMZ architectures, IDS/IPS, SIEM, hardware roots of trust (PUFs, Secure Enclave).
-- **The quantum threat and post-quantum cryptography** — Shor's and Grover's algorithms; harvest-now-decrypt-later risk; the NIST PQC migration path.
-- **Secure hardware as a root of trust** — PUFs, Apple Secure Enclave, ARM TrustZone; hardware as the last defensible boundary as software exploitation gets automated.
+- **The TCP/IP stack and encapsulation** — Placing an attack at the right layer (ARP vs DNS vs TCP vs application) is the prerequisite for every other network security topic; most learners cannot do this reliably.
+- **DNS attacks and DNSSEC** — Cache poisoning, race-condition spoofing, and why adoption of DNSSEC and DoH has lagged despite well-understood attack paths.
+- **Firewalls, DMZ, and rule design** — Packet filter vs stateful inspection vs application proxy; default-deny discipline; the two-firewall DMZ sandwich — misconfiguration here is one of the most common real-world breach causes.
+- **Zero Trust Network Architecture** — The shift from perimeter defence to per-request verification; worth depth because the term is marketing-saturated and the actual architecture requirements are poorly understood.
+- **Denial of Service and DDoS** — The one attack category that cryptography and authentication cannot touch; drilling here covers why Mirai worked and what defences actually exist.
+- **Nmap and Wireshark for network analysis** — The dual-use toolkit; skilled use produces very different intelligence from surface-level use, and the difference is worth a dedicated treatment.
 
 ---
 
-## Sequencing Note
+#### L1-09 · Web Security
 
-The curriculum is structured as a genuine dependency chain, not an arbitrary sequence, and the dependencies are real.
+Web security is not application security in general — it is the specific set of vulnerabilities that arise from browsers, HTTP, and the trust model of the web. This topic covers the four major classes: UI-based attacks (clickjacking), XSS (injecting scripts into pages trusted by users), CSRF (exploiting ambient browser credentials to forge requests), and SQL injection (breaking the structural separation between query and data). Each vulnerability exists because a parser or a browser does not care about your intentions once it starts interpreting text — which is why the defensive answer is always structural (parameterised queries, output encoding, SameSite cookies) rather than input filtering.
 
-**The hard floor:** L1-01 (adversarial mindset) → L1-02 (cryptography foundations) → L1-04 (public key and hash) → L1-05 (PKI and data origin authentication). Nothing in the Applied or Contemporary groups makes full sense without these. If you feel uncertainty in any applied topic, trace it back — it almost always resolves to a fuzzy concept in Group II.
+**Level 2 candidates:**
+- **The same-origin policy and CORS** — The foundational browser trust mechanism; going deeper reveals why misconfigurations in CORS are a consistent source of data exposure in production APIs.
+- **XSS in depth: stored, reflected, DOM-based** — Each type exploits the same root cause through a different injection path; the defensive techniques differ enough to warrant a separate treatment.
+- **SQL injection and parameterised queries** — The canonical code-versus-data confusion; drilling here reveals why ORMs do not automatically protect you and where developers still get this wrong.
+- **CSRF and SameSite cookies** — The attack exploits the fact that browsers send cookies automatically; going deeper covers the three SameSite values and what each one actually buys you.
+- **Session management and token security** — Session tokens are credentials; the security of the session depends entirely on how they are issued, stored, rotated, and invalidated.
+- **Content Security Policy and the browser as a security boundary** — CSP is a defence-in-depth mechanism against XSS; drilling here reveals what it can and cannot prevent and why misconfigured CSPs are near-universal.
 
-**For a practitioner returning to fill gaps:** The highest-leverage entry points are L1-01 (to get the adversarial lens precise), L1-09 (access control — most breaches are mundane failures here), and L1-10 (attacks and mitigation — understanding the chain is what makes defensive architecture feel like a response to something real rather than a compliance list). From those three, the rest of the map falls into place.
+---
 
-**For someone building toward AI-era security roles:** L1-12 and L1-13 are the fastest-moving areas, but they depend on L1-10 (attack chain) and L1-11 (cloud) for the operational context that gives AI techniques their meaning. Read them together.
+#### L1-10 · System Security and Access Control
 
-**The most underinvested topics for professionals with a technical background:** L1-05 (PKI — the operational failure modes are almost universally underestimated), L1-15 (governance — the skill that determines whether technical work has organisational consequence), and the quantum/PQC thread in L1-15 (decisions being made today in system design will outlive current cryptographic assumptions).
+Most security failures are not break-ins — they are mundane: someone had access they should not have had, or someone with legitimate access did something they should not have been able to do. The Colonial Pipeline attack began with a forgotten VPN account nobody had decommissioned. This topic provides the formal model for reasoning about these failures: every security-relevant event is a subject–operation–object triple, mediated by a reference monitor consulting a policy. It covers how that policy is represented (ACL vs capabilities vs RBAC), how Linux implements it (the nine permission bits, setuid, sudo), and how the principle of least privilege translates from a slogan into an engineering discipline that bounds blast radius.
 
-**The capstone's implicit claim:** You can only think at the level of a defender-who-has-done-the-attack when you can hold the adversarial mindset (L1-01), the cryptographic substrate (L1-02 through L1-05), the applied attack surfaces (L1-06 through L1-10), and the governance context (L1-15) simultaneously — and translate findings across all three into language a board can act on.
+**Level 2 candidates:**
+- **Access control representations (ACM, ACL, capabilities)** — The choice between object-centric and subject-centric representations ripples through auditing, revocation, delegation, and how OAuth scopes work.
+- **Linux/Unix permissions in practice** — Owner/group/other, octal chmod, ACL extensions, the corner cases (sticky bit, umask, directory execute semantics) — where the actual mistakes happen.
+- **Controlled invocation and privilege escalation** — Setuid, sudo, and the broader pattern of elevated-privilege execution — every setuid binary is a potential privilege escalation vector, which connects access control directly to exploit development.
+- **DAC vs MAC vs RBAC** — The three major policy models have deep consequences for compliance, scalability, and how human error propagates; the choice is an organisational decision, not just a technical one.
+- **The principle of least privilege as a design discipline** — Not a slogan but a working method: how to scope service accounts, design permission boundaries, and reason about blast radius in API design, secret management, and incident response.
+
+---
+
+#### L1-12 · Cloud Security
+
+Moving to the cloud does not relocate your perimeter — it dissolves it. The most important mental shift is the shared responsibility model: the provider secures the underlying infrastructure; you secure everything you put on top of it. Getting this boundary wrong is the single most common source of cloud incidents. Public S3 bucket, leaked admin credential, over-broad IAM role — these are not provider failures. This topic covers multi-tenancy and its limits, why identity becomes the new perimeter in cloud environments, how network controls (Security Groups, NACLs) shift from primary defence to supporting layer, and why security must move into the CI/CD pipeline when infrastructure is created from code and changes continuously.
+
+**Level 2 candidates:**
+- **Shared responsibility model across IaaS/PaaS/SaaS** — The boundary moves with the service model; going deeper makes explicit what is yours to secure in each tier and where teams most commonly misplace responsibility.
+- **Cloud IAM and least-privilege access** — In cloud environments, possession of valid credentials is often the attack path itself; drilling here covers role design, machine identities, temporary credentials, and privilege review.
+- **DevSecOps: security in the CI/CD pipeline** — Secret scanning, infrastructure policy-as-code, and dependency checking — going deeper covers the specific integrations that make security continuous rather than a post-deployment checkpoint.
+- **Multi-tenancy, side-channel attacks, and confidential computing** — Meltdown and Spectre demonstrated that CPU-level behaviour can leak across logical isolation boundaries; drilling here covers hardware enclaves (SGX, TrustZone) for workloads that require stronger guarantees.
+- **SIEM, SOAR, and detection at cloud scale** — At cloud scale, detection cannot depend on people reading logs; going deeper covers how to design telemetry, correlation, and automated response as infrastructure requirements.
+
+---
+
+### Group IV — Contemporary Threats and Professional Practice
+
+The final group covers the domains that complete the practitioner picture: AI as both attacker and defender tool, the offensive techniques a defender must understand, and the governance frameworks that translate technical security into organisational accountability. This group cannot be understood without Group II and III in place — it builds on the controls and vulnerabilities covered there.
+
+---
+
+#### L1-13 & L1-14 · AI in Cybersecurity
+
+For most of cybersecurity's history, defence was a rule-writing exercise. That model broke when attacks scaled beyond any human's ability to characterise them fast enough. This pair of topics covers why AI became unavoidable in security (the volume-and-velocity problem), how supervised and unsupervised ML are used for threat detection (known-bad classification vs anomaly detection), why deep learning specifically matters for network defence (sequence-aware detection that can see multi-stage campaigns rather than isolated events), and what the operational consequences are — the shift from analyst-as-craftsperson to analyst-as-model-overseer. The arms race is real: the same pattern-recognition tools are available to attackers.
+
+**Level 2 candidates:**
+- **Supervised vs unsupervised detection: choosing the right frame** — The data labelling question is upstream of every algorithm choice; getting it wrong produces a confidently wrong model.
+- **Feature engineering for security data** — Two teams using the same algorithm get very different outcomes depending on how they represent network behaviour numerically — this is where most implementations fail silently.
+- **Precision, recall, and the cost of each error type** — Model tuning in security is a cost dial, not a truth dial: false positives have different business owners than false negatives, and the tradeoff is ultimately a business decision.
+- **Recurrent architectures for sequence-aware detection** — LSTMs and their context windows are what let a model connect today's packet to yesterday's probe — the crux of why deep learning matters for APT detection.
+- **Explainable AI in SIEM (the AMIDES pattern)** — Explainability is the pivot point determining whether AI gets adopted in real security operations or stays in research; analysts will not trust verdicts they cannot interrogate.
+- **AI-driven penetration testing and continuous red teaming** — The shift from quarterly human red teams to 24/7 autonomous agents inverts the economics of offensive security and previews the attacker-side use of the same techniques.
+
+---
+
+#### L1-15 · Generative AI for Cybersecurity
+
+Generative AI introduces both new attack surfaces and new defensive capabilities — simultaneously. On the attack side, it enables high-volume, personalised phishing at near-zero marginal cost; synthetic media for social engineering (the 2024 Arup deepfake: $25M wired to a synthetic CFO); and accelerated vulnerability discovery. On the defensive side, it enables natural-language interfaces to SIEM systems, automated code review, and security report generation. The unstable part is that the same model capabilities that make LLMs useful for defenders make them useful for attackers, and the adversarial surface of the models themselves — prompt injection, training data poisoning — is largely uncharted.
+
+**Level 2 candidates:**
+- **Prompt injection and AI-native attack vectors** — The category of attack that has no analogue in traditional security; drilling here reveals why input-based defences against prompt injection are fundamentally weak and what structural alternatives exist.
+- **Deepfakes and synthetic media in social engineering** — The Arup case is the template; going deeper covers detection methods, organisational policies (callback verification), and the limits of technical countermeasures.
+- **LLM-assisted red teaming and vulnerability discovery** — AI can enumerate attack paths faster than humans; going deeper covers both the offensive capability and how defenders can use the same tools to find their own weaknesses first.
+- **Responsible disclosure and AI security governance** — The policy frameworks that manage vulnerability research in a world where AI accelerates both discovery and exploitation.
+
+---
+
+#### L1-16 · Ethical Hacking
+
+You cannot defend what you cannot break. Ethical hacking is the practice of simulating adversarial pressure under authorisation and scope — not to demonstrate that the tester is clever, but to produce prioritised remediation guidance. This topic covers the structured engagement funnel (reconnaissance → scanning → exploitation → post-exploitation → reporting), the legal framework that separates white from black hat (Singapore's Computer Misuse Act; the difference between a penetration test contract and a criminal offence), and the offensive toolchain (Nmap, Metasploit, privilege escalation, session hijacking). Lateral movement is the practical argument against perimeter-only security: a single compromised edge device that can reach internal resources reveals that "inside the network" has been silently equated with "trusted."
+
+**Level 2 candidates:**
+- **The attack lifecycle and cyber kill chain** — Each stage has distinct tooling, distinct detection signatures, and distinct mitigation strategies; understanding the full chain is what lets defenders break it at the cheapest point.
+- **The Metasploit framework and exploitation workflows** — How modular exploitation frameworks industrialise known attack paths; understanding the module structure teaches how vulnerability research becomes reusable tooling.
+- **Privilege escalation techniques** — Password cracking, buffer overflow mechanics, and misconfiguration-based escalation — where most real breaches actually progress, and the underlying mechanics are foundational rather than tool-specific.
+- **Rules of engagement and the legal framework** — Scope definition, authorisation documents, and the relevant legislation; the legal exposure for getting this wrong is severe and the documentation practices are non-obvious.
+- **Reporting, CVSS, and remediation translation** — The report is the actual product of an ethical hacking engagement; translating a technical exploit into a business-relevant risk statement is what separates competent testers from valuable ones.
+
+---
+
+#### L1-17 · Ethics, Governance and the Future of Cybersecurity
+
+Technical controls fail. When they do, governance frameworks, codes of conduct, and legal obligations are the remaining structure. This topic covers the security principles that predate and outlive specific controls (defence-in-depth, fail-safe defaults, separation of privilege), the governance standards that operationalise them at an organisational level (ISO 27001, NIST CSF, Singapore's Cybersecurity Act 2018, MAS TRM guidelines), and the professional ethics obligations that define what a practitioner is accountable for. It also surveys emerging threats — AI-enabled attacks, IoT proliferation, quantum computing's implications for current cryptographic infrastructure — and explains why the discipline is not converging toward a fixed endpoint.
+
+**Level 2 candidates:**
+- **Security principles as design heuristics** — Fail-safe defaults, least privilege, separation of privilege, and complete mediation are not slogans; drilling here reveals how they translate into concrete architectural decisions and where violations lead.
+- **ISO 27001 and the ISMS** — The dominant organisational security management framework; going deeper covers what certification actually requires and where it creates accountability.
+- **Singapore's Cybersecurity Act and MAS TRM** — The regulatory framework most relevant to this learner profile; going deeper covers reporting obligations, critical information infrastructure designations, and sector-specific requirements.
+- **IoT security as a systemic problem** — Billions of devices with long lifespans, no patching culture, and persistent exposure; drilling here covers the policy and technical approaches that do not rely on expecting manufacturers to act voluntarily.
+- **Post-quantum cryptography and migration planning** — The timeline and urgency for organisations to audit cryptographic dependencies and plan migration to PQC algorithms before quantum hardware matures.
+
+---
+
+#### L1-18 · Capstone: Thinking Like a Defender Who Has Done the Attack
+
+The capstone integrates the programme's threads through a controlled ethical hacking engagement against an Active Directory lab environment. Its value as a study topic is not the technical execution — it is the integration: can you attack, interpret, govern, use AI critically, and communicate professionally in one continuous process? This topic covers how to approach the capstone as a supply chain of evidence (lab setup → enumeration → analysis → mitigation → reflection), why AI use must be documentable and critiqueable rather than opaque, how to map findings across on-premises controls and their cloud equivalents, and what an executive summary actually requires in terms of register shift and information selection.
+
+**Level 2 candidates:**
+- **Active Directory enumeration as an attack surface** — What each protocol on a domain controller (SMB, LDAP, Kerberos, DNS) leaks under default and misconfigured states, and why AD is the highest-value target in most enterprise networks.
+- **Critical use of AI in security workflows** — Prompt design, validation patterns, common hallucination modes (fabricated CVEs, miscontextualised advice), and the discipline of documenting human-in-the-loop decisions.
+- **Translating on-prem controls to cloud equivalents** — The mapping between AD/GPO and Azure AD/RBAC/PIM/Conditional Access, including where the analogies break down — essential for hybrid environments.
+- **Writing security findings for mixed audiences** — The structural difference between a technical vulnerability writeup, a mitigation recommendation, and an executive summary, and how to produce all three from the same finding.
+- **The CIA triad as an analytical lens, not a definition** — How to actively use C-I-A to classify findings and prioritise mitigations, rather than treating it as a definition to recite.
+
+---
+
+## Sequencing note
+
+The domain has a genuine dependency structure, and respecting it pays off.
+
+**Cryptography (L1-02 through L1-07) must precede the network and web topics.** Network security, web security, and protocol security all reference encryption, MACs, and certificates without re-explaining them. If you skip the cryptographic stack, the controls in Group III will feel like arbitrary rules rather than solutions to specific problems.
+
+**The threat framing (L1-01, L1-11) should be visited first and revisited after Group III.** L1-01 establishes the lens; L1-11 operationalises it for the attacker's perspective. Re-reading L1-11 after you understand the network and web attack surfaces will make the kill chain and ATT&CK matrix feel concrete rather than abstract.
+
+**Access control (L1-10) is the pivot point between Group II and Group III.** It draws on cryptographic concepts (keys, tokens, hashes) and is itself the foundation for cloud security, ethical hacking, and governance. If you are going to invest in one topic from Group III before tackling Group IV, make it this one.
+
+**The AI topics (L1-13/14, L1-15) assume Group III is in place.** The value of AI-based detection only becomes clear when you understand what traditional signature-based detection does and where it breaks down. Approaching the AI topics cold produces a surface-level understanding of algorithms without an understanding of why the architectural shift matters.
+
+**The highest-leverage entry points for a practitioner returning to foundations** are L1-01 (to reset the adversarial lens), then L1-04 (authentication, because identity is now the perimeter), then L1-10 (access control, because most real failures live here), then L1-08 (network security, because the original assumptions of the TCP/IP stack are still exploited daily). If you want to add a single AI dimension quickly, L1-13/14 pairs well with L1-08 — anomaly detection and traditional network monitoring are strongest when read together.
+
+The capstone (L1-18) is best approached after L1-16 and L1-10, because it presupposes both the ethical hacking workflow and a working model of access control and Active Directory. It also rewards having done L1-13/14 first, since AI critical evaluation is a graded dimension.
 
 ## Source
 
