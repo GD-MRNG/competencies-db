@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 07-06-2026
+- **Source:** 06_levels_of_knowledge_and_the_compounding_dynamic.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-06 · Levels of Knowledge and the Compounding Dynamic — Building the Page They Didn't Give You
+
+The early cycles feel like waste. You spent years learning a stack that got deprecated, practices that only made sense at one company, vocabulary that doesn't survive a job change. The natural conclusion is that you started in the wrong place, picked the wrong tools, gave too many years to things that didn't last. That conclusion is wrong, but not in the way self-help wants it to be wrong. You weren't wasting time. You were climbing a ladder that has to be climbed from the bottom, and nobody told you the ladder existed.
+
+The ladder has three rungs, and the distinction between them is the single most useful thing this topic gives you. Tools are what institutions distribute — the specific framework, the specific platform, the specific process your role requires. Practice is what you accumulate by using those tools under real conditions — the judgment about when the documented approach is wrong, the pattern recognition for which problems are actually the problem you think they are, the feel for what breaks first. Principles are the underlying logic of the domain itself — why the tools are shaped the way they are, why certain decisions keep getting made even as the technologies change, what remains when everything on the surface has been replaced. Tools expire on a predictable schedule. Practice transfers within a domain but degrades when you leave it. Principles survive.
+
+The reason this matters — the reason it is not just a tidy hierarchy — is that principles are exactly what epistemic fragmentation withholds. The structure gives you your part. The tools to perform the role, sometimes the practice to perform it well, almost never the principles that would let you see how your fragment fits into the larger picture of value and power. This is not because the people above you are withholding deliberately. It is often because they themselves only have practice-level knowledge dressed up as principles, or because their principles were extracted from experience and cannot be transmitted in a meeting. Either way, the fragment you are handed is structurally incomplete. Principles-level knowledge has to be built. It is the direct counter-move to the form of fragmentation that put you in this position.
+
+Here is the second thing the ladder explains. You cannot enter at the top. Principles are extracted from concrete experience — from enough cycles through tools and practice that the underlying pattern becomes visible. This is why the people who have principles-level knowledge often genuinely cannot give it to you. They are not gatekeeping. They are describing the view from a place you have to walk to. Reading the principles directly, without the substrate of practice underneath them, produces a kind of false fluency — the vocabulary without the discrimination, the framework without the cases. You will recognise this in others and, if you are honest, in yourself. Most people overestimate by a large margin how much of what they know is at the principles level. Calibrating this honestly is part of the work.
+
+This is where the compounding dynamic becomes the centre of the topic. The early cycles look wasteful because you are mostly accumulating tools, with practice barely beginning to form. The middle cycles look productive but uneven, because practice is consolidating but principles are still episodic. What you cannot see from inside the early cycles is that each one is building the capacity to extract more from the next. The same year of work produces vastly more usable knowledge in cycle five than in cycle one, not because cycle five is more intense, but because earlier cycles built the perception that lets you see what was always there. The losses were not sunk cost. They were infrastructure. The disproportion between input and output in late cycles is the entire reason the method works.
+
+The transfer property is what makes this matter beyond any single domain. Tools do not transfer; when your stack dies, your tools die with it. Practice transfers narrowly — across employers in the same domain, sometimes across adjacent domains, rarely beyond. Principles transfer freely, because they describe structural logic rather than surface implementation. This is why building principles-level knowledge inside a domain that becomes obsolete is still productive. The domain expired; the structural understanding you extracted from it did not. People who have been through several full domain shifts and remained competent are almost always operating from principles. People who have been through several shifts and are repeatedly starting over are almost always operating from tools, mistaking accumulated tool fluency for depth.
+
+The practical implication is straightforward and easy to get wrong. The work of each cycle is not just doing the role. It is using the cycle to extract principles from the practice the role generates — deliberately, with the reflection period structured around that extraction. The page they didn't give you is the principles page. Nobody is going to give it to you on the next cycle either. You build it yourself, from the inside, one cycle at a time, and the compounding does the rest.
+
+## Level 2 candidates
+
+**The tools-practice-principles ladder** — The full anatomy of the three levels, their dependencies, and the specific failure modes at each rung. Worth a deep dive because the surface description in the Level 1 post is enough to orient but not enough to use as a diagnostic — distinguishing practice-dressed-as-principles from actual principles requires more granular criteria than the parent topic can carry.
+
+**Why principles are discovered, not taught** — The mechanism by which principles-level knowledge gets extracted from concrete experience rather than transmitted, and why the people who have it often cannot give it. This deserves its own treatment because it changes how you relate to mentors, to documentation, and to your own expectations of what reading can do for you.
+
+**Transfer across domains** — How principles move between fields in ways tools and practice cannot, and what this implies for choosing which domains to enter and exit. Worth depth because the transfer property is the strongest argument for the method's compounding claim, and the most counterintuitive against the assumption that domain-switching is starting over.
+
+**The compounding dynamic** — The specific mechanics of why each cycle extracts more than the last, and what conditions break the compounding (rushed re-entry, shallow reflection, repeated cycles at the same level). Worth its own treatment because the compounding is the load-bearing claim of the topic, and the conditions that make it real or illusory deserve precise specification.
+
+**Accurate self-assessment** — Practical methods for calibrating which of your knowledge is actually at the principles level versus practice-dressed-as-principles, and why most people overestimate by a large margin. Worth deep treatment because the failure mode here is invisible from the inside — you cannot detect that your principles are actually borrowed vocabulary without specific tests, and those tests are what a Level 2 post would build.
+
+---
