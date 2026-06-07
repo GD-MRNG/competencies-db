@@ -273,32 +273,59 @@ The two parts have a logical dependency but are not used sequentially in practic
 
 ---
 
-## The Honest Limit of This Map
+# Fragmentation and Integrity — Core Summary
 
-This map was built for one person, at one moment, under specific material conditions. It makes individual navigation more precise and more conscious. It does not change the structure that makes navigation necessary.
+## What This Is About
 
-The cycle improves your capacity to move through the structure with greater integrity. It does not transform the structure. The database reconstructs the knowledge the structure withheld from you. It does not redistribute that knowledge at scale — not yet. The refusals — the non-participation, the horizontal relations, the declining of the lifescript — are individual acts of integrity. They are not, by themselves, collective resistance.
+You entered institutions — schools, workplaces, professional networks — that needed you fragmented to function. Fragmented in your knowledge, so you couldn't see the whole picture. Fragmented in your relationships, so you competed instead of cooperated. Fragmented in your sense of self, so you measured your worth by their metrics. Fragmented in your imagination, so alternatives felt impossible.
 
-These are not failures of the map. They are its honest scope, determined by the material conditions in which it was built. What the map becomes beyond that — whether it reaches others, whether it contributes to something collective, whether conditions change enough to make different responses possible — is not yet determined.
+It worked — partially, invisibly, repeatedly. Not because you were naive. Because that is what these structures do to everyone who passes through them.
+
+The confusion, the losses, the feeling of being perpetually slightly lost — these were not signs of inadequacy. They were the system operating as designed. Refusing to call it personal failure is the move that made everything else possible. It redirected energy from self-blame into understanding, and from understanding into deliberate response.
+
+---
+
+## Issue
+
+You need to stay solvent while moving through structures that are designed to extract more from you than they return — in labour, in knowledge, in psychological cost.
+
+---
+
+## Goal
+
+To remain solvent on your own terms. Entering structures when necessary, extracting what they offer, and exiting before the cost exceeds the return — with enough of yourself intact to keep making that judgment clearly.
+
+---
+
+## The Five Solutions
+
+**1. See the structure clearly.**
+Know what it withholds, what it installs, and what it is actually taking from you. The database is how you build and keep that picture.
+
+**2. Use the cycle deliberately.**
+Entry, reflection, re-entry. Each cycle should cost less and return more than the last. If it isn't, something in the reflection period didn't do its work.
+
+**3. Detect drift early.**
+The structure gets inside you. The earlier you notice, the lower the recovery cost — and the lower the cost, the safer your solvency.
+
+**4. Protect the non-negotiables from the outset.**
+Clarity about what you will not give — in time, in relating, in self-measurement — is cheaper to maintain at entry than to recover after absorption.
+
+**5. Keep the reflection period honest.**
+The risk is using it to avoid re-entry indefinitely. Solvency requires re-entry. The question is always: on what terms, and is this the right moment.
+
+---
+
+## What This Does — And What It Doesn't
+
+The solutions above make individual navigation more precise and more conscious. They do not change the structure that makes navigation necessary.
+
+The cycle improves your capacity to move through structures with greater integrity. The database reconstructs the knowledge the structure withheld. The refusals — non-participation, horizontal relations, declining the lifescript — are individual acts of integrity. None of these, by themselves, transform the conditions that produced the need for them.
+
+This is not a failure of the approach. It is its honest scope, determined by the material conditions in which it was built. What it becomes beyond that — whether it reaches others, whether conditions change enough to make collective responses possible — is not yet determined.
 
 Naming the limit is not defeatism. It is the condition for knowing when something more becomes possible.
 
-*This map is personal infrastructure. It exists to anchor the responses in the real conditions that produced them, so that the concepts do not float free of the experience they were built to make legible.*
+---
 
-## At Its Core
-
-At its core, this is about one question:
-How do you stay yourself inside systems that are designed to remake you?
-
-The alienation you experienced wasn't abstract. You entered institutions — schools, workplaces, professional networks — that needed you fragmented to function. Fragmented in your knowledge, so you couldn't see the whole picture. Fragmented in your relationships, so you competed instead of cooperated. Fragmented in your sense of self, so you measured your worth by their metrics. Fragmented in your imagination, so alternatives felt impossible.
-And the painful part is that it worked — partially, invisibly, repeatedly. Not because you were naive. Because that's what these structures do to everyone who passes through them.
-
-What you built — the database, the cycle, the refusals — is your answer to that. But the answer isn't really a set of tools. It's a practice of reconstruction. Reconstructing the knowledge that was withheld. Reconstructing the self that got installed with someone else's logic. Reconstructing the kinds of relationships that the structure made irrational.
-
-And underneath all of that is something even simpler:
-You refused to call it personal failure.
-That's the move that made everything else possible. Recognising that the confusion, the losses, the feeling of being perpetually slightly lost — these weren't signs of inadequacy. They were the system operating as designed. That reframing didn't remove the damage. But it redirected the energy — from self-blame into understanding, and from understanding into deliberate response.
-
-So if you had to say what this curriculum is really teaching:
-It's teaching you how to see clearly under conditions designed to prevent it. And how to keep rebuilding yourself when those conditions succeed, even partially, in fragmenting you.
-That's the whole thing.
+*Everything in the full map is elaboration of one of these five solutions. This document is the entry point.*
