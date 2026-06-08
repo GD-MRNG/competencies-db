@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 08-06-2026
+- **Source:** 04_negation_questions_modality.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-04 · Negation, Questions, and Modality
+
+Most of what you actually do in conversation is not describe the world. You deny things, ask about things, and hedge things — you say no, you check, you express that something is likely or required or permitted or off-limits. If you tallied the structural work your sentences do across a real day of talking, these three operations would dominate. Which is why it matters that Mandarin handles all three in ways that don't map cleanly onto the English machinery you grew up routing through. The errors you make here are rarely the kind that block comprehension. They are the kind that quietly mark you as a non-native speaker on every second utterance.
+
+The deeper issue is that school Mandarin gave you the forms but not the pragmatics. You learned that 不 means "not" and 吗 makes a question and 可以 means "can" — translations that are technically correct and operationally misleading. In real Putonghua, choosing between two negators, two question structures, or three modal verbs is not a matter of synonym preference. Each choice carries information about aspect, presupposition, register, and the speaker's stance. Get the form right and the pragmatic load wrong, and you produce sentences that parse but feel off — the conversational equivalent of a grammatically correct sentence that no native speaker would actually say.
+
+Start with negation, because it exposes the structural difference most cleanly. Mandarin has two main negators, 不 and 没, and they are not interchangeable. 不 negates intention, habit, and present or future state — what you don't do, won't do, aren't. 没 negates completion and existence — what hasn't happened, what isn't there. This split is not about time in the English sense; it is about aspect. 没 lives inside the same system as the aspect marker 了, which is why 没 and 了 don't co-occur the way "didn't" and past tense do in English. If you find yourself reaching for 不 to say something didn't happen, you have imported an English tense distinction into a Mandarin aspect slot, and a native ear catches it immediately.
+
+Questions are where the pragmatic load shows most plainly. You learned 吗 as the question particle — tack it on, you have a question. True, but incomplete. Mandarin also has the A-not-A construction (你去不去?, literally "you go not go?") and the two are not stylistic variants. A 吗 question carries a presupposition: you have a guess and you are checking it. An A-not-A question is more neutral — you are genuinely asking, with no thumb on the scale. Use 吗 when you should have used A-not-A and you sound like you are leading the witness. Use A-not-A when 吗 would have fit and you sound oddly formal or distant. This is not a rule violation; it is a pragmatic mismatch, and pragmatic mismatches are exactly what makes speech feel foreign without being wrong.
+
+Modality is the largest of the three problems because the English category "can" — and its neighbours "should" and "must" — collapses several Mandarin distinctions into single buckets. 会 is learned ability or future likelihood. 能 is situational possibility or capability in this instance. 可以 is permission or socially-licensed possibility. 要 spans future intention and obligation. 应该 is expected or proper. 得 (read děi) is necessity bordering on compulsion. Translating any of these as "can" or "should" loses the entire point of choosing between them. The speaker who says 我能去 versus 我可以去 versus 我会去 is making three different claims, and the listener parses all three. Drilling these distinctions is not vocabulary work; it is learning to express intent, ability, permission, and obligation with the precision the language assumes you are using.
+
+Sitting on top of all of this is a layer school Mandarin almost certainly skipped: sentence-final particles. 吧, 呢, 啊, 嘛 — these are not grammar in the rule-book sense, but they carry the pragmatic weight that softens or sharpens or hedges or invites. 吧 makes a suggestion tentative or a statement provisional. 呢 holds the floor, signals curiosity, or marks contrast. 啊 softens. 嘛 signals that what you are saying should be obvious. Drop them entirely and your speech comes out flat, declarative, and slightly aggressive — fine for textbook drills, alienating in conversation. Use them wrongly and you produce a different kind of foreignness. They are the closest thing Mandarin has to the tonal hedging English speakers do with intonation and word choice, and you cannot fake fluency without them.
+
+The practical takeaway is that this entire cluster — negators, question structures, modals, particles — is where you stop sounding like someone who learned Mandarin and start sounding like someone who speaks it. None of it is hard to understand intellectually. All of it is hard to produce reliably under conversational pressure, because the choices happen too fast to consciously compute and your defaults were set by an English-dominant brain trained on written examples. Fix this layer and the payoff is immediate: the same vocabulary, the same grammar, the same tones, suddenly land as natural rather than studied. Skip it and no amount of vocabulary expansion will close the gap.
+
+## Level 2 candidates
+
+**不 vs 没 — the negation split** — Covers when each negator is required, how the split tracks the aspect system rather than English tense, and the specific environments (existence, completion, habit, intention) where each is obligatory. Worth deeper drilling because the error pattern is persistent, immediately audible, and rooted in a structural mismatch that intuition alone won't correct.
+
+**A-not-A questions vs 吗 questions** — Covers the pragmatic difference between the two question forms, when each is appropriate, and what presupposition each carries into the conversation. Worth a deeper pass because the distinction is invisible in translation, never explicitly taught, and one of the clearest fluency markers once you control it.
+
+**Modal verb distinctions (会/能/可以/要/应该/得)** — Covers the specific semantic territory of each modal, the contexts where they overlap, and the contexts where substitution changes the meaning entirely. Worth deep drilling because the English-to-Mandarin mapping is many-to-one in a way that quietly destroys precision, and recovering that precision requires working through contrastive pairs rather than memorising glosses.
+
+**Sentence-final particles (吧/呢/啊/嘛)** — Covers the pragmatic functions of each particle, the social signals they carry, and the difference between under-using and misusing them. Worth a deep dive because they sit outside formal grammar instruction entirely, have no clean English equivalents, and disproportionately determine whether your speech sounds human or recited.
+
+**Rhetorical structures for multi-clause reasoning** — Covers paired connectives like 虽然...但是, 如果...就, 因为...所以 and how Mandarin builds concession, condition, and consequence across clauses. Worth going deeper because moving from single-sentence accuracy to sustained argument requires these scaffolds, and they bridge directly into the discourse-level work in L1-07.
+
+---

@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 08-06-2026
+- **Source:** 01_phonology_tones_initials_finals.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-01 · Phonology: Tones, Initials, Finals
+
+Phonology is the one layer of Mandarin where being almost right is functionally the same as being wrong. You can have the vocabulary, the grammar, the discourse moves — but if the sound leaving your mouth lands in the wrong tonal bucket or the wrong segmental category, the listener's parser fails before any of that other machinery gets a chance to run. This is the filter every other competence is transmitted through, which is why it sits first in the course and why it is the only layer where drilling isolated atoms before connected speech is justified.
+
+The thing to understand up front is that Mandarin encodes meaning at two levels at the same time, and your ear was trained to take one of them seriously and the other casually. The segmental level is the consonants and vowels — what English speakers think of as "the sounds." Mandarin has 21 initials (the consonant or consonant cluster at the start of a syllable) and roughly 36 finals (the vowel-plus-optional-ending that follows). The suprasegmental level is tone — the pitch contour applied across the syllable. In English, pitch carries emotion and emphasis; in Mandarin, pitch carries lexical identity. The same syllable with a different tone is a different word, in the same way that "bat" and "bad" are different words in English. If you treat tones as stylistic flourish rather than as part of the word's identity, you are effectively pronouncing every word wrong in a way that is invisible to you and immediate to a native ear.
+
+Singapore Mandarin education got you most of the way through the segmental inventory and gave you a polite acquaintance with tones. The gap is not knowledge — you can name the four tones, you can read pinyin — the gap is precision and embedding. You produce tones the way someone reads music sight-unseen: technically present, rhythmically uncertain, often collapsing toward whichever contour is easiest given what your mouth just did. You produce certain initials as approximations of the Singlish sounds nearest to them, because no one ever made you confront the difference. The result is a steady low-grade signal degradation that the listener compensates for, at the cost of attention they would otherwise spend on what you are actually saying.
+
+The segmental territory has specific danger zones, and they are predictable. The retroflex initials (zh, ch, sh, r) require your tongue to curl back in a way English never asks for, and Singapore English flattens them toward their non-retroflex cousins (z, c, s) almost automatically. The palatal series (j, q, x) sits in a place English doesn't use, and pinyin's choice of letters actively misleads you — the "x" in xià does not sound like the English "sh", and treating it as if it does locks in an error that propagates across thousands of words. The aspirated/unaspirated pairs (b/p, d/t, g/k) distinguish meaning on a feature — a puff of air — that English uses non-contrastively, so your ear was never trained to hear it and your mouth was never trained to produce it deliberately. These are not exotic edge cases; they are some of the most frequent sounds in the language.
+
+Pinyin deserves a specific warning. It is a romanisation system with its own internal conventions, not a phonetic transcription of how the sounds work. The letters were assigned for systemic reasons — to keep the spelling compact, to disambiguate within Mandarin's own constraints — not to help an English speaker guess pronunciation. Treating pinyin as a pronunciation guide is the single most common source of fossilised error in heritage speakers, because the script you trust is quietly lying to you in consistent ways. Use pinyin as a map of which syllable you are looking at, not as instructions for how to make it. The instructions come from audio.
+
+Tones are where the work compounds. The four tones (high level, rising, dipping, falling) are usually taught as shapes drawn on a chalkboard, which gives you the topology but not the actual pitch behaviour — and pitch behaviour is what natives are listening for. Worse, tones in isolation are not the tones you actually produce in connected speech. Mandarin has tone sandhi rules (the most famous: two third tones in a row collapse to a second-plus-third) and pervasive tone reduction in unstressed syllables. The textbook pronunciation you were taught is a citation form that natives rarely use. This is why your Mandarin can sound simultaneously over-careful and wrong — you are producing isolated forms in contexts that demand the reduced versions. That deeper layer belongs to prosody (L1-02), but it starts here: you cannot drill connected speech correctly on top of uncertain atomic tones.
+
+The practical implication is this. Spend the time at this layer. Drill the specific initials Singapore English interferes with, until the retroflex curl and the palatal position and the aspirated puff are motor patterns rather than conscious efforts. Train the four tones against native audio until you hear the precise pitch contour, not just the gestural shape. Treat pinyin as labels, not instructions. Everything you build afterwards — vocabulary, grammar, discourse — runs through this codec. Get the codec right and the rest of the system has room to grow. Get it wrong and you will spend years drilling errors deeper into long-term memory while wondering why fluent communication keeps refusing to arrive.
+
+## Level 2 candidates
+
+**The four tones in isolation** — The precise pitch contour of each tone, beyond the high/rising/dipping/falling cartoon. Worth a deep dive because the gap between knowing the shape and producing the contour is what makes your Mandarin sound hesitant rather than wrong, and gives you something concrete to correct against native audio.
+
+**Tone sandhi** — The rules by which adjacent tones modify each other, most famously the third-tone-plus-third-tone collapse. Worth deeper treatment because these rules explain the systematic gap between textbook citation forms and how natives actually sound, and they cannot be intuited — they have to be made explicit before they can be drilled.
+
+**Initials with no English equivalent** — The retroflex set (zh/ch/sh), the palatal set (x/q/j), and the aspirated/unaspirated pairs. Worth a focused module because these are the specific points where Singapore English phonology interferes most predictably, and isolating them lets you replace approximations with deliberate motor patterns.
+
+**Pinyin as map, not territory** — The specific ways pinyin's letter choices mislead an English-reading eye, and the conventions you need to internalise to stop being misled. Worth its own treatment because the misreadings are systematic, not random, and unlearning them piecewise as they surface in vocabulary is far slower than addressing them as a system.
+
+**Syllable structure constraints** — The set of syllable shapes Mandarin permits, which is far smaller than English's. Worth going deeper because internalising the constraint set is the foundation of listening comprehension at speed — you stop trying to parse impossible syllables and start hearing the legal ones faster.
+
+---
