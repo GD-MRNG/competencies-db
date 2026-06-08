@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 08-06-2026
+- **Source:** 06_register_vocabulary_stratification.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-06 · Register, Vocabulary Stratification, and the Anglo-Saxon/Latinate Split
+
+English is two languages wearing one coat. There is the language you use to tell someone you're hungry, tired, or angry — short words, hard consonants, ancient roots. And there is the language you use to write a report, draft a policy, or sound like you belong in a room with senior people — longer words, softer edges, Latin and French ancestry. Most fluent speakers operate both layers without ever noticing the seam between them. The cost of not noticing is that you cannot control which one you are reaching for, which means you cannot control how you sound.
+
+The split is historical, and the history matters because it explains why the patterns are so consistent. Old English was a Germanic language — the language of farms, kinship, weather, work, and the body. After 1066, the Norman conquest installed French as the language of court, law, and administration for several centuries; Latin remained the language of the Church and scholarship throughout. When the layers eventually fused into what we now call English, they did not blend evenly. The Anglo-Saxon words stayed where life was lived close to the ground — eat, drink, sleep, child, house, run, hit, love, hate. The French and Latin words occupied the institutional registers above — consume, beverage, repose, infant, residence, proceed, strike, affection, animosity. The two layers still mean roughly the same things. They do not feel the same.
+
+This is what register is, in its most concrete form. Register is not formality in the abstract; it is the social weight of the specific words you choose. When you say "I want to ask you something," you are speaking from the Anglo-Saxon layer — direct, personal, low-distance. When you say "I would like to inquire about something," you have moved into the Latinate layer — distanced, formal, institutional. Both are grammatically perfect. Both communicate the same propositional content. They place you in completely different social positions relative to the person you're addressing.
+
+The pairs are everywhere once you start seeing them. Ask and inquire. Begin and commence. End and conclude. Help and assist. Use and utilise. Buy and purchase. Show and demonstrate. Need and require. Get and obtain. Tell and inform. Build and construct. In every pair, the Anglo-Saxon word is shorter, older, and more direct; the Latinate word is longer, newer to the language, and carries the residue of the institutions it came through. Neither is better in the abstract. Each is better in its place.
+
+The trap, particularly for anyone who has been taught that good writing means impressive writing, is to default upward — to reach for the Latinate word because it sounds more serious, more educated, more professional. This is the engine of bureaucratic prose, of corporate filler, of the kind of email where nothing actually happens but everything is "facilitated," "leveraged," "operationalised," and "aligned." The Latinate layer, used reflexively, hollows meaning out. It distances you from what you're saying. It signals that you are performing competence rather than doing the work of being understood. Strong writing in English, almost without exception, leans on the Anglo-Saxon core for the load-bearing verbs and nouns and uses the Latinate layer only when the situation genuinely calls for institutional distance — legal documents, formal proposals, academic prose, diplomatic exchanges.
+
+For a Singapore English speaker, the specific friction here is that Singlish lives almost entirely in the Anglo-Saxon register and treats the Latinate layer as a separate code you switch into for formal contexts. This is not wrong — it actually mirrors how the layers function — but it tends to produce a binary toggle rather than a gradient. The skill worth developing is not "use more Latinate words" or "use simpler words." It is the ability to feel where on the spectrum a given situation sits and choose your vocabulary accordingly, sentence by sentence, sometimes word by word. A well-written professional email is not uniformly formal; it uses Latinate words for the institutional moves (regarding, propose, confirm) and Anglo-Saxon words for the human moves (want, need, ask, send, get back to). That texture is what makes it sound competent rather than stiff.
+
+The practical takeaway is that vocabulary choice is not decoration. It is positioning. Every Latinate word you use places more distance between you and your reader; every Anglo-Saxon word closes that distance. Distance is sometimes what you want — when you are writing to someone you don't know, in a context that demands formality, about a topic that requires precision without warmth. Closeness is usually what you want — when you are trying to be understood, to persuade, to connect, to land. The single most useful habit you can build is to read your own writing and ask, of each significant word: am I reaching for this because it's the right word, or because it sounds more impressive than the right word? The right word is almost always shorter than you think.
+
+## Level 2 candidates
+
+**Anglo-Saxon core vocabulary** — The base layer of English: short, concrete, body- and action-centred words that carry the weight of most natural speech and strong writing. Worth a deep dive because identifying which words live in this layer, and why they feel different from their Latinate synonyms, is the foundation for prose and speech that lands rather than floats.
+
+**Latinate vocabulary and register signalling** — The formal and institutional layer, where word choice signals distance, authority, and category membership. Worth deeper treatment because the line between Latinate vocabulary that elevates and Latinate vocabulary that inflates is subtle, register-specific, and the difference between sounding authoritative and sounding evasive.
+
+**Collocations and fixed expressions** — The fact that English words strongly prefer specific partners (make a decision, raise a question, take a chance) rather than being freely combinable. Worth its own treatment because fluent speakers produce in chunks rather than word by word, and collocational accuracy is one of the highest-leverage upgrades for sounding natural rather than translated.
+
+**False precision and weasel words** — Vocabulary that sounds specific but obscures meaning: utilise, leverage, synergise, operationalise, impactful. Worth deeper exploration because understanding why these words are weak rather than strong — and what they are doing socially when they appear — is a permanent upgrade to both writing and reading.
+
+**Vocabulary gaps specific to Singapore English** — Distinctions that standard English makes but Singlish has merged, dropped, or replaced with general-purpose words. Worth a targeted deep dive because identifying your specific gaps is far more efficient than working through a general vocabulary programme, and the gaps tend to cluster in predictable areas.
+
+---
