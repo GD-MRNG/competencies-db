@@ -103,7 +103,8 @@ If you carry one idea from this post, it should be this: the discount percentage
 - Layering specific commitments for stable workloads with flexible Savings Plans as a backstop and on-demand for variable peaks is how mature organizations construct their commitment portfolio.
 - The primary risk of commitment-based pricing is not the commitment itself but the organizational gap between who purchases the commitment and who controls the workload it covers — architectural changes that orphan active commitments are the most common and most expensive failure mode.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -209,3 +210,5 @@ If coverage is low but utilization is high, that usually means there is still sa
 
 ### An engineer who understands this will build process around ownership boundaries because commitments can outlive the team decisions that invalidate them.
 In practice that means adding commitment-awareness to major architecture reviews, decommission workflows, and rightsizing projects. It may also mean alerting when commitment utilization drops sharply after a deployment or migration. The unaware engineer assumes cloud discounts are purely a finance concern, and by the time finance notices unused commitments, months of waste have already accumulated.
+
+</details>

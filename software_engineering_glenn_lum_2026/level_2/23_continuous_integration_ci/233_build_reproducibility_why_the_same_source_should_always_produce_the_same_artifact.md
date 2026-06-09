@@ -104,7 +104,8 @@ The decision of *how hermetic* to make your builds is a cost-benefit question, n
 
 - **The cost of hermeticity is real and ongoing**: verbose build declarations, dependency vendoring, developer friction, and tooling to manage pre-fetched resources — but this cost is the mechanism, not a side effect.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -219,3 +220,5 @@ They will explicitly set locale, timezone, PATH, and relevant environment variab
 
 ### 5. An engineer who understands this will see network access during builds as a design choice, not a convenience.
 They will prefetch dependencies into controlled caches or artifact stores and make build steps consume those declared resources, because they know every live fetch trades reproducibility for convenience. The unaware engineer writes build steps that download data at execution time, then discovers later that rebuilds depend on third-party uptime and mutable remote content.
+
+</details>

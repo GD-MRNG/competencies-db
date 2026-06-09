@@ -52,7 +52,8 @@ How software bill-of-materials documents enumerate all components in an artifact
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -133,3 +134,5 @@ This is the tension that ties the whole topic together. Shift-left practices try
 - An engineer who understands this will design applications so secrets are injected at runtime from a secret manager rather than stored in config files or repositories, because once credentials enter source control the exposure is durable and cleanup becomes much harder than replacement.
 - An engineer who understands this will scope service accounts, IAM roles, and database permissions narrowly from the start, because permission design is really incident containment design: the rights you grant during calm conditions define the attacker’s reach during a breach.
 - An engineer who understands this will add runtime controls such as service-to-service network restrictions and anomaly detection, because pre-deployment scanning cannot prove that a live system will only behave in expected ways once it is under real traffic and real operational conditions.
+
+</details>

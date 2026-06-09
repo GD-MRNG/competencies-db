@@ -131,7 +131,8 @@ The Level 1 post noted that microservices introduce distributed systems problems
 - The outbox pattern ensures atomic local writes and event publication by writing both in the same database transaction, then relaying events to the broker separately — and this only works because downstream consumers are idempotent.
 - Saga compensating transactions can themselves fail, which means they must be idempotent, retryable, and monitored — there is no framework that eliminates the need for human intervention at the edges of distributed state recovery.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -266,3 +267,5 @@ They know that if the DB commit succeeds and the publish fails, the system has s
 They will make compensations idempotent, retryable, observable, and recoverable by humans. The unaware engineer often assumes “we have a rollback step” means the problem is solved, then has no answer when the refund timeout leaves the system in a half-recovered state.
 
 ---
+
+</details>

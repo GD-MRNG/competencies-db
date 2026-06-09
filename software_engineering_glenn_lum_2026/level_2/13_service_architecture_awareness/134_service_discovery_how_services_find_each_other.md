@@ -100,7 +100,8 @@ The capability you should have after reading this post is the ability to look at
 
 - Your health check defines what "discoverable" means — if the check only verifies liveness (process is running) rather than readiness (process can serve correctly), discovery will route traffic to instances that accept connections but cannot handle requests.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -196,3 +197,5 @@ The unaware engineer exposes a simple liveness endpoint or TCP port check and as
 The unaware engineer often inherits whichever mechanism the platform makes easiest and treats it as neutral. The aware engineer recognizes the trade: client libraries give control but require per-language correctness; proxies simplify clients but add infrastructure and hops; meshes standardize behavior but add latency, resource overhead, and control-plane dependency. That leads to deliberate architecture instead of accidental complexity placement.
 
 ---
+
+</details>

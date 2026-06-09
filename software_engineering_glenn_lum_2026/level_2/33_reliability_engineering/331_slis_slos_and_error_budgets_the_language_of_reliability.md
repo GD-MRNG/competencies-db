@@ -110,7 +110,8 @@ What makes this framework powerful is not its precision — the specific numbers
 
 - SLO-based alerting has a coverage gap for failures that prevent requests from reaching your instrumentation; synthetic monitoring from external vantage points is the necessary complement.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -204,3 +205,5 @@ The unaware default is to publish SLOs without enforcement. The consequence is o
 The unaware default is a single easy metric, usually availability. The consequence is metric gaming by accident or necessity: fast but empty responses, successful retries that are painfully slow, or technically served but stale data.
 
 ---
+
+</details>

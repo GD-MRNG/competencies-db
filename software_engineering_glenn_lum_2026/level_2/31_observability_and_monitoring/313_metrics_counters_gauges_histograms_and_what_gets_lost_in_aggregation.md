@@ -108,7 +108,8 @@ This is why the choice of metric type is not a cosmetic or stylistic decision. I
 
 - **Cardinality is the primary cost of histograms.** Every label you add to a histogram multiplies its storage and query cost by the number of distinct values that label takes. High-cardinality labels on histograms are the most common way engineers accidentally destabilize their monitoring infrastructure.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -226,3 +227,5 @@ The unaware engineer accepts library defaults everywhere. That can make sub-mill
 The unaware engineer may add `endpoint`, `tenant_id`, or worse `user_id` to a latency histogram to make dashboards “more detailed,” and then discover memory blowups, slow queries, and an overloaded Prometheus. The informed engineer keeps high-cardinality dimensions out of histograms, or moves that analysis to logs/traces where per-entity detail is a better fit.
 
 ---
+
+</details>

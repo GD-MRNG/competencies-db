@@ -96,7 +96,8 @@ Neither model is universally correct. The right choice depends on your deploymen
 
 - **Your branching strategy is a policy for when you pay integration costs.** Trunk-based development pays continuously in small increments. GitFlow pays in deferred batches with compound interest. Choosing between them is choosing a payment schedule, and that choice should be driven by your deployment model, team size, and tooling maturity.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -235,3 +236,5 @@ They will ask what concrete problem `develop`, release branches, and hotfix bran
 They will know that multiple green PRs can still break trunk if they were not tested in the combined order they will land. So they will approach scaling CI as a coordination problem, not only a testing problem. The unaware engineer sees occasional post-merge breakage as random bad luck instead of a predictable freshness gap.
 
 ---
+
+</details>

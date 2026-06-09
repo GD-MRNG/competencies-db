@@ -50,7 +50,8 @@ How keeping all services in a single repository versus separate repositories aff
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -167,3 +168,5 @@ Do not think of review only as inspection. Think of it as the mechanism by which
 - **An engineer who understands this will put infrastructure, pipeline config, migrations, and security-relevant settings under version control, because unmanaged operational state creates invisible system behavior.**
     
     They will treat “how the system runs” as part of the system itself, which changes how deployments are reviewed, how incidents are investigated, and how environments are reproduced.
+
+</details>

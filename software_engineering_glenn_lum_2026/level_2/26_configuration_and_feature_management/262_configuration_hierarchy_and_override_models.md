@@ -135,7 +135,8 @@ The key conceptual shift is that most configuration bugs are not about wrong val
 - **Every additional layer in the hierarchy multiplies the space of possible resolved configurations**, reducing the confidence that any single test environment provides about the behavior of other environments. Add layers only when they represent a genuinely distinct axis of variation.
 
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -241,3 +242,5 @@ The unaware engineer assumes technical layering is neutral. The consequence is t
 
 **An engineer who understands this will be more skeptical of test confidence from a single environment, because each layer adds another way production can differ from staging.**  
 The unaware engineer assumes one integration environment is enough if the app code is the same. The consequence is surprises caused by different resolved configs, not different binaries. The aware engineer compares resolved configurations across environments, tests representative combinations, and reduces unnecessary layers that create variation without adding real value.
+
+</details>

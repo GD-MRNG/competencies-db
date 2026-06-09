@@ -104,7 +104,8 @@ The choice between them is not "reliable vs. fast." It is: do the kernel's built
 
 - The TCP vs. UDP decision is not "reliable vs. fast" but "are the kernel's reliability semantics the right ones for this application, or do I need different tradeoffs that I can only get by handling reliability myself?"
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -213,3 +214,5 @@ That matters in RPC systems, database drivers, and command-response protocols wh
 **An engineer who understands this will choose UDP only when they can state what guarantees they do and do not need, because using UDP means taking ownership of recovery, ordering, and rate control decisions.**
 
 That changes the bar for adopting it. You do not pick UDP because it sounds fast; you pick it because stale data can be dropped, because custom retransmission is superior to TCP’s, or because stream independence is worth implementing yourself.
+
+</details>

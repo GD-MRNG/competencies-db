@@ -119,7 +119,8 @@ The teams that succeed with IaC long-term are not the ones that never experience
 - **Your IaC codebase is authoritative only to the extent that you enforce the discipline to keep it so.** The tool provides detection. The authority comes from organizational practice.
 
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -265,3 +266,5 @@ The unaware engineer treats a non-empty plan as a straightforward to-do list. Th
 
 **An engineer who understands this will design incident processes that include post-incident codification, because emergency fixes made outside IaC are not complete until the code reflects them.**  
 The unaware engineer considers the incident over once production is stable. The consequence is that the next apply may undo the fix, or the drift may sit around and contribute to a larger future reconciliation mess.
+
+</details>

@@ -164,7 +164,8 @@ When you look at a coverage report, the useful information is in the red, not th
 - **Equivalent mutants are an unsolved problem** in mutation testing — mutations that don't change observable behavior cannot be killed and will deflate your mutation score. Current tools handle this with heuristics, not guarantees.
 
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -270,3 +271,5 @@ The default mistake is either “we should run mutation testing on every commit�
 
 **An engineer who understands this will be suspicious of broad incidental coverage from integration tests, because touched internals are not necessarily verified internals.**  
 The unaware engineer sees a happy-path integration test light up many files and assumes lots of logic is now tested. The informed engineer asks which behaviors are actually asserted at the boundary and which internal branches could still be wrong without affecting that one high-level outcome. That often leads to adding focused tests for edge cases rather than relying on one end-to-end path to stand in for many behaviors.
+
+</details>

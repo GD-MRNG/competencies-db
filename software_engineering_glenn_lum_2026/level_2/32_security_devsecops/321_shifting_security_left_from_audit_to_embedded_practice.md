@@ -95,7 +95,8 @@ The tools are the implementation. The feedback loop is the architecture. The sig
 - A passing security scan means "no known patterns detected by these tools" — it does not mean the system is secure, and teams that treat it as proof of security stop doing the manual analysis that catches what tools cannot.
 - Shifting left without giving developers input into tool selection, rule configuration, and blocking thresholds reproduces the old adversarial dynamic with faster feedback — it does not resolve it.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -173,3 +174,5 @@ The unaware default is to route all findings through one policy. The consequence
 
 **An engineer who understands this will actively manage scan performance, because security checks compete with the same fast feedback loops that make CI effective.**  
 The unaware default is to keep adding scans until the pipeline gets noticeably slower. The consequence is that developers batch work, delay pushes, and make larger changes per merge. An informed engineer invests in caching, parallel execution, and incremental analysis because scan latency is not an implementation detail; it changes developer behavior.
+
+</details>

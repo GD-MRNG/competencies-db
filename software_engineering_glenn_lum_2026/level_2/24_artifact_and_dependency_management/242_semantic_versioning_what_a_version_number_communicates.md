@@ -103,7 +103,8 @@ The system works not because it is enforceable, but because package managers tre
 - **A major version bump is semantically correct for breaking changes but creates real ecosystem cost.** It forces a cascade of updates through every consumer in the dependency graph, which is why authors defer it and why some ecosystems treat new major versions as separate packages entirely.
 
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -224,3 +225,5 @@ This is a useful test for any dependency. If the relied-on behavior is undocumen
 - An engineer who understands this will distinguish application dependency management from library dependency management because lock files help them differently. For an application, committing and controlling the lock file can make builds reproducible. For a library, consumers re-resolve transitive dependencies in their own environment, so compatibility has to survive fresh resolution. The unaware engineer assumes “it works in my repo with my lock file” proves the library is broadly safe to publish.
 
 - An engineer who understands this will see major version bumps as ecosystem events, not just local housekeeping, because a major bump can create widespread diamond conflicts and delayed adoption across downstream users. They will plan migrations, compatibility windows, and deprecation paths accordingly. The unaware engineer ships a clean semver-major release and is confused when the ecosystem fragments around old and new majors for months or years.
+
+</details>

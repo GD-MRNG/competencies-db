@@ -91,7 +91,8 @@ The compounding skill is not just performing this diagnostic once but maintainin
 - Correctly identifying an architectural shift does not guarantee a good adoption bet — timing, ecosystem maturity, and operational readiness remain independent risk factors.
 - The highest-leverage version of this skill is not evaluating technologies one at a time but tracking where multiple constraint relocations are converging, which is often where the next compound shift is forming.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -222,3 +223,5 @@ If the constraint stays in the same layer, they can make a bounded decision: com
 ### 5. An engineer who understands this will look for second-order effects and adjacent tooling early.
 
 When a constraint moves, new tool categories usually follow. If compute becomes a runtime API, expect cost governance and policy automation. If deployment artifacts carry environment consistency, expect orchestration, registry, and supply-chain tooling. The unaware engineer sees those tools as accidental ecosystem noise; the aware engineer sees them as evidence of what the new layer now has to manage. That helps them predict where investment and risk will accumulate.
+
+</details>

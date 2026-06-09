@@ -113,7 +113,8 @@ The core conceptual shift is this: utilization is not a single number, and alloc
 - **The bottleneck for right-sizing is usually organizational, not technical.** Generating recommendations is easy; getting teams to prioritize, execute, and monitor the changes is where most right-sizing programs stall.
 
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -216,3 +217,5 @@ The unaware engineer assumes the only relevant dimensions are CPU and memory. Th
 The unaware engineer treats resizing as cleanup work: make the change and move on. The informed engineer stages it, compares before/after latency percentiles, holds the change for a full workload cycle, and ensures rollback is easy. They assume their model may be incomplete and design the operation accordingly.
 
 ---
+
+</details>

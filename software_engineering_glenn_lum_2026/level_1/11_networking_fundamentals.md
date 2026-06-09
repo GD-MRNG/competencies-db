@@ -54,7 +54,8 @@ How private RFC-1918 address space is translated to a public routable address fo
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -141,3 +142,5 @@ That is the operational tension underneath the whole topic. Configuration says o
 - An engineer who understands this will choose load-balancing behavior more deliberately because routing at layer 7 enables path- or header-based decisions, while layer 4 keeps the system simpler when application-aware routing is unnecessary.
 - An engineer who understands this will treat certificate renewal and expiry monitoring as core availability work because an expired TLS certificate can create a total outage even when every service process is healthy.
 - An engineer who understands this will debug service-to-database failures by checking network policy and segmentation early because “connection refused” or “timeout” often comes from firewall or security-group rules, not from a broken database engine.
+
+</details>

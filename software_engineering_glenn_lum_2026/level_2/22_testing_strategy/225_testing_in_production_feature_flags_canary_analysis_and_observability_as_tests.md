@@ -99,7 +99,8 @@ The mechanism that connects them is **graduated exposure**. Code moves from pass
 - Feature flag debt — flags left in code long after full rollout — creates a combinatorial explosion of untested execution paths and is the most common operational failure mode of flag-based production testing.
 - Production testing requires metric dimensionality (version tags, flag variants, deployment IDs) that directly increases monitoring infrastructure cost and query complexity — budget for this before adopting the practice.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -199,3 +200,5 @@ The unaware engineer chooses 1% for 10 minutes because it “sounds safe,” the
 
 **An engineer who understands this will treat flag cleanup and telemetry cost as part of the rollout system, not as housekeeping.**  
 The unaware engineer leaves flags around indefinitely and tags everything freely until monitoring costs spike and behavior becomes hard to reason about. The aware engineer puts owners and expiry dates on flags, removes fully rolled-out branches quickly, and is selective about metric dimensions. That keeps production testing sustainable instead of letting the safety mechanism become a source of complexity and failure itself.
+
+</details>

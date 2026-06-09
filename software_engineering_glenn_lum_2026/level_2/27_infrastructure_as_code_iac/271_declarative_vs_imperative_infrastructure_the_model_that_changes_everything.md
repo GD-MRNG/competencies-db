@@ -110,7 +110,8 @@ The question to ask of any infrastructure operation is: *does this preserve the 
 - State file loss on a large infrastructure is a multi-day recovery event; treating the state file with anything less than the same durability guarantees as a production database is an operational risk.
 - The declarative model has an expressiveness ceiling — complex conditional logic, fallback strategies, and multi-phase orchestration typically require imperative orchestration layered on top, and recognizing where that boundary is prevents misuse of the declarative layer.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -220,3 +221,5 @@ The unaware engineer uses `local-exec`, `remote-exec`, or similar hooks as an ea
 The unaware engineer tries to force complex runtime decision-making into Terraform itself. The consequence is awkward, fragile configs that fight the tool’s model. The better approach is often: let Terraform reconcile resource graphs, and let CI/CD or another orchestrator handle conditional control flow around it.
 
 ---
+
+</details>

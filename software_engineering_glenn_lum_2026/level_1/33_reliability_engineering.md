@@ -50,7 +50,8 @@ What a runbook captures, how it differs from generic documentation, why incident
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -130,3 +131,5 @@ A good handle for post-mortems is: “Do not stop at the human who touched the s
 - An engineer who understands chaos engineering will approach **resilience validation** differently because they will want evidence from controlled fault injection, not reassurance from architecture diagrams or code review alone.
 - An engineer who understands RTO and RPO will approach **backup and replication design** differently because they will start from explicit recovery-time and data-loss targets, then choose technical mechanisms that can actually meet those targets under test.
 - An engineer who understands capacity planning will approach **scaling strategy** differently because they will distinguish between steady growth, sudden spikes, and overload conditions, and will combine scaling, pre-warming, and load shedding instead of assuming auto-scaling alone is enough.
+
+</details>

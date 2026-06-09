@@ -98,7 +98,8 @@ The second shift is recognizing that identification is the easy half. The hard h
 
 - **Safe cleanup requires bidirectional reference checking** — not just "is this resource attached to something?" but "does any automation, template, or policy reference this resource?"
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -197,3 +198,5 @@ The unaware engineer terminates an RI-covered instance and reports the full on-d
 The default inherited choice is the quarterly cleanup sprint. The consequence is recurring backlog and stale findings. The better approach is lightweight continuous checks tied to deploys, teardowns, account hygiene jobs, and regular right-sizing reviews. That reduces accumulation rate instead of merely trimming it after it has already grown.
 
 ---
+
+</details>

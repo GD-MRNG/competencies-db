@@ -105,7 +105,8 @@ Everything before that decision point should be identical. The artifact pipeline
 - If switching your pipeline from delivery to deployment would require significant rearchitecture, you likely do not have continuous delivery — you have CI with a manual deployment process attached.
 
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -206,3 +207,5 @@ The unaware engineer often leaves manual runbooks, shell access, or one-off conf
 
 **An engineer who understands this will examine compliance requirements for where approval must occur, because deploy-time approval may be an inherited assumption rather than a real regulatory need.**  
 The unaware engineer defaults to a permanent manual gate "for compliance," even when earlier review plus artifact provenance could satisfy auditors. The consequence is a slower feedback loop and more batching than the organization may actually need to tolerate.
+
+</details>

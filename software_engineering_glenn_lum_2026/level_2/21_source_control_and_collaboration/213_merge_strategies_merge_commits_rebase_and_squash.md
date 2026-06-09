@@ -126,7 +126,8 @@ The right choice depends on what you are integrating. It depends on how your tea
 
 - History is not a log to be kept tidy; it is a diagnostic instrument whose resolution is determined by the merge strategy you choose at integration time.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -234,3 +235,5 @@ When reverting a merge commit, they know Git will continue to remember the origi
 They will use tools like `git log --first-parent` to get a clean integration view while still keeping full topology in the repository. The unaware engineer often chooses squash or forced-linear history mainly to make default log output look cleaner, sacrificing future diagnostic capability to solve what was really a tooling/view problem.
 
 ---
+
+</details>

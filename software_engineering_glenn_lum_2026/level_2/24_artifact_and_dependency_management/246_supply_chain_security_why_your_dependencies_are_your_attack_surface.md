@@ -102,7 +102,8 @@ None of them answer the question "Is this code safe?" That question has no singl
 
 - SCA, SBOMs, and signing each close a different category of supply chain risk — no single tool covers the full attack surface, and mature supply chain security requires all three working together with operational processes behind them.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -206,3 +207,5 @@ The unaware default is to produce SBOMs for compliance and store them as artifac
 
 **5. An engineer who understands this will enforce signature and provenance verification in artifact intake paths, because unsigned-or-unverified artifacts erase the value of producers doing the right thing upstream.**  
 The unaware default is to say "the ecosystem supports signing now, so we are covered." The consequence is security theater: protections exist in theory, but no policy actually blocks an untrusted or unverifiable artifact from entering the build or runtime path.
+
+</details>

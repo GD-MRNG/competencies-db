@@ -111,7 +111,8 @@ This is what makes building with confidence possible. When you sit down to imple
 
 - STRIDE provides structure but not adversarial insight — involving someone with security expertise significantly improves the quality of identified threats beyond what application engineers will find on their own.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -225,3 +226,5 @@ The unaware engineer sees a payment provider, analytics SDK, or webhook consumer
 
 **An engineer who understands this will treat threat model outputs as implementation constraints because otherwise the exercise has no effect on the built system.**  
 The unaware engineer leaves the threat model in a document repository and assumes “security was considered.” The aware engineer turns findings into requirements that appear in tickets, acceptance criteria, test plans, and config review: exact auth mechanisms, exact logging expectations, exact error-handling rules, exact rate limits, exact permission scopes. That is the difference between analysis that influences code and analysis that becomes compliance evidence.
+
+</details>

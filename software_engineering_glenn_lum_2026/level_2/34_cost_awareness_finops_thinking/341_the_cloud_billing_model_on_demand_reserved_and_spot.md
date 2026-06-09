@@ -109,7 +109,8 @@ The mistake is treating pricing model selection as a finance exercise. It is an 
 - The most expensive failure mode at scale is not choosing the wrong pricing model — it is choosing none, defaulting to on-demand, and never revisiting the decision as usage patterns become clear.
 - Pricing model selection is an architectural decision that should be made alongside decisions about fault tolerance, statefulness, and scaling strategy — not after the system is already in production.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -206,3 +207,5 @@ Instead of demanding one exact shape, they define a set of equivalent capacities
 Someone must review utilization, watch for orphaned reservations, and compare actual usage against committed spend. Otherwise the organization drifts: old commitments continue billing while workloads evolve. The unaware engineer assumes reservations are a one-time optimization, but reserved pricing is only efficient when continuously matched to live usage.
 
 ---
+
+</details>

@@ -96,7 +96,8 @@ Carrying this model forward, you can now reason about container performance diff
 - When evaluating whether virtualization overhead matters for a specific workload, measure exit frequency and TLB miss rates — not generic benchmarks — because the overhead model is workload-shaped, not uniform.
 
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -222,3 +223,5 @@ The unaware engineer compares instance types only by vCPU and memory. The inform
 The unaware engineer treats timekeeping as a solved OS detail. Then they get intermittent election churn, odd retransmission behavior, or timer storms that only happen under host contention. Understanding virtualization turns clock configuration from trivia into a correctness concern.
 
 ---
+
+</details>

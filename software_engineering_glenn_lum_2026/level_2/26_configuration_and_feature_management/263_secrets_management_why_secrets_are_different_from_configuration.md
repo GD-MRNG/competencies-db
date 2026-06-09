@@ -130,7 +130,8 @@ The hardest part of secrets management is not encryption or storage. It's the bo
 
 - The correct mental model for a secret is not "a sensitive config value" but "a scoped, time-bounded lease on access" — and every architectural decision follows from that reframing.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -237,3 +238,5 @@ The default assumption is that a secret store is just another helper service. Th
 
 **An engineer who understands this will review secret access policies as blast-radius controls, not administrative bookkeeping.**  
 The unaware engineer grants broad namespace or application-group access because it is easier. The aware engineer sees every overly broad policy as a future lateral-movement path. They prune unused access, scope secrets to workloads, and periodically ask whether a compromised service account could reach credentials unrelated to its job.
+
+</details>

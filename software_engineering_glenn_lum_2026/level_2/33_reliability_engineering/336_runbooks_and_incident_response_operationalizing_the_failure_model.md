@@ -98,7 +98,8 @@ Systems will fail. The operational question is not whether your team can fix the
 
 - The incident-to-improvement feedback loop only works if action items are completed and tracked; if the same contributing factors appear in successive post-incident reviews, the process is theater regardless of how thorough the reviews themselves are.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -211,3 +212,5 @@ The unaware engineer updates deployment tooling, monitoring, service names, or e
 The default is to hold a thoughtful review, identify lessons, and leave them in the review document. The consequence is recurrence: the same alert gap, stale process, or deployment weakness returns in the next incident. The aware engineer insists that each contributing factor produce specific owned work in the normal planning system, because improvement only happens when the review changes future engineering choices.
 
 ---
+
+</details>

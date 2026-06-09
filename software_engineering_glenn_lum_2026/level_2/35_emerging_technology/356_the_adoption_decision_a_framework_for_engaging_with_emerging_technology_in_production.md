@@ -107,7 +107,8 @@ The default at every gate is to stop. Advancing requires specific justification 
 - The cost of being early to adopt is visible and immediate; the cost of being late is diffuse and easy to rationalize. Most organizations have a systematic bias toward one failure mode and undercount the other.
 - When foundational reasoning produces answers that don't fit existing categories, that is a signal you are encountering a genuine shift in the constraint landscape — one that requires updating your model before evaluation can be accurate.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -219,3 +220,5 @@ They will ask how incidents are debugged, who can operate it, how onboarding wor
 
 ### 5. An engineer who understands this will treat commitment as adopting a future, not just a present-day tool.
 They will examine upgrade burden, ecosystem maturity, hiring implications, documentation needs, and how many future systems are likely to depend on the choice. The unaware engineer treats commitment as the moment the prototype worked in production, then gets surprised later when reversal requires a multi-team migration and the “small choice” has become part of the organization’s shape.
+
+</details>

@@ -124,7 +124,8 @@ The most durable thing to internalize is that TLS is not just encryption — it 
 - SNI sends the requested domain name in plaintext during the handshake, meaning network observers can see which domain you are connecting to even on an HTTPS connection.
 - Certificate expiry is an availability problem, not a security problem — automated renewal with independent expiry monitoring is the only reliable mitigation.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -253,3 +254,5 @@ They will not rely on human memory or dashboard observation. They will automate 
 **An engineer who understands this will be careful with 0-RTT and retry behavior because transport-level replay risk intersects directly with application semantics.**
 
 They will permit early data only for safe/idempotent requests, and they will design write paths with duplicate protection where needed. They will see that a network optimization can become a business-logic bug if the application is not built with replay in mind.
+
+</details>

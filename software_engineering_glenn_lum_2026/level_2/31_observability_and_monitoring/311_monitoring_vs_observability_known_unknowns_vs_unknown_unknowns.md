@@ -111,7 +111,8 @@ This is not a binary. Every production system needs both. You need monitoring fo
 
 - Every production system needs both monitoring (for known failure modes and real-time alerting) and observability (for novel failures and interactive investigation). Treating them as competing approaches rather than complementary layers is a common and costly mistake.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -198,3 +199,5 @@ That means asking at implementation time: what dimensions would separate healthy
 
 **An engineer who understands this will think carefully about sampling strategy, because naive random sampling disproportionately loses the rare slices that explain novel failures.**  
 The default unaware behavior is to sample uniformly to cut cost. The consequence is that common healthy traffic is retained while rare failing combinations disappear. A more aware engineer will bias retention toward errors, unusual combinations, or sparse cohorts because those are the events with the highest debugging value.
+
+</details>

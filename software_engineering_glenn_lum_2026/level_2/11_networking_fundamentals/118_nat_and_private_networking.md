@@ -127,7 +127,8 @@ Every surprising NAT behavior follows from these two constraints. Port exhaustio
 
 - **Instances behind NAT never see their own public IP on a local interface.** Applications that need their public address must query the cloud metadata service or an external endpoint — binding to or advertising the public IP directly will fail.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -238,3 +239,5 @@ An engineer who understands this will choose connection reuse mechanisms like HT
 An engineer who understands this will design one NAT gateway per availability zone because they know NAT is both a fault domain and a capacity pool. They route each AZ’s private subnets to its local NAT so that one gateway failure or saturation event does not cut off the whole VPC. The unaware engineer centralizes outbound traffic through one gateway, creating a larger blast radius and cross-AZ dependence.
 
 An engineer who understands this will actively remove traffic from NAT where possible because NAT charges and limits apply to every byte and every connection crossing it. They will use VPC endpoints for AWS services, PrivateLink where available, or public placement for specifically internet-heavy workloads with tighter host-level controls. The unaware engineer lets S3, ECR, logs, and other high-volume service traffic flow through NAT by default and later treats the resulting bill as a surprise rather than as a design consequence.
+
+</details>

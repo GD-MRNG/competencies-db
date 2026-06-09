@@ -108,7 +108,8 @@ Reasoning about dependencies means reasoning about graphs, not lists. It means u
 
 - Delaying dependency updates to avoid resolution complexity creates a stable equilibrium of outdated packages that maximizes exposure to known vulnerabilities — the cost of not updating compounds over time.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -211,3 +212,5 @@ The default unaware behavior is to declare permissive ranges to reduce maintenan
 
 **An engineer who understands this will update dependencies continuously in smaller steps, because graph drift compounds and makes future resolution harder.**  
 The unaware engineer postpones updates until there is an urgent security or platform reason. Then one required bump forces many more, the resolver surfaces conflicts accumulated over months, and the team faces a high-risk migration instead of routine maintenance.
+
+</details>

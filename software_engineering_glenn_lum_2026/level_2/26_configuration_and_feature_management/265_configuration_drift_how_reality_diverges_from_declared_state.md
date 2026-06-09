@@ -88,7 +88,8 @@ The engineering response to drift is not to eliminate the possibility of diverge
 
 - Treating your configuration repository as ground truth requires a verification mechanism that continuously confirms the assertion; without that mechanism, the repository is a description of intent, not a description of reality.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -189,3 +190,5 @@ The default is to run plan/diff only during deploys, which means drift appears a
 
 ### 5. An engineer who understands this will treat reproducibility as a test of whether configuration management is real.
 The unaware engineer assumes disaster recovery is covered because the repo exists. The aware engineer periodically asks: “Can we rebuild this environment from code and get equivalent behavior?” If the answer is uncertain, they know they do not have a config management success story yet; they have a documentation artifact with unknown fidelity.
+
+</details>

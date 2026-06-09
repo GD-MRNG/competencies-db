@@ -89,7 +89,8 @@ The artifact is the constant. The environment is the variable. Your pipeline's e
 - Post-deployment gates in production (canary metric comparison, automated rollback triggers, progressive traffic shifting) are the most valuable gates in the pipeline because they operate against conditions no prior stage can fully replicate.
 - Environment drift between staging and production should be detected through automated infrastructure comparison and treated with the same urgency as code defects.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -174,3 +175,5 @@ The unaware engineer treats staging setup as a one-time project. Over time, data
 
 **An engineer who understands this will include post-deployment verification like canaries, progressive rollout, and automatic rollback, because production is the only environment with real traffic and real constraints.**  
 The unaware engineer treats deployment to production as the end of validation. The consequence is full-blast-radius failures when a bug appears only under actual user behavior, real rate limits, or true concurrency patterns. Controlled production exposure turns those unknowns into bounded-risk checks instead of incidents.
+
+</details>

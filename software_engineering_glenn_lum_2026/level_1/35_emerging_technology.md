@@ -70,7 +70,8 @@ The conceptual model for deciding when and how deeply to engage with something n
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -158,3 +159,4 @@ If you try to remember each tool as a separate island, your learning stays fragm
 - An engineer who understands this will approach **learning new technology** differently because they will organize notes and understanding around stable concepts like storage, networking, concurrency, and failure modes, which makes the knowledge easier to retain after the tool itself changes.
 - An engineer who understands this will approach **architecture discussions** differently because they will be able to say, in plain terms, “this tool is buying simplicity here by giving up control there” or “this service reduces operational burden but adds latency and cost,” which makes design conversations clearer and less dependent on vendor language.
 
+</details>

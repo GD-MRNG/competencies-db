@@ -95,7 +95,8 @@ No single projection can reconstruct the full picture. A metric tells you someth
 - **If you're aggregating logs to produce a number, you need a metric. If you're joining logs across services to reconstruct a call path, you need a trace.** Misusing one pillar as a substitute for another produces worse results at higher cost.
 
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -192,3 +193,5 @@ The unaware engineer leaves logs, metrics, and traces as separate tools and reli
 
 **An engineer who understands this will stop using logs as the default sink for every observability need because logs are the most expensive place to do metric or trace work badly.**  
 The unaware engineer logs durations, aggregates them later, and stitches request IDs together to infer system paths. The consequence is huge log bills and slow queries for routine operational questions. The informed engineer keeps logs for event context, emits metrics for summaries, and uses traces for cross-service structure, reducing both cost and cognitive friction during debugging.
+
+</details>

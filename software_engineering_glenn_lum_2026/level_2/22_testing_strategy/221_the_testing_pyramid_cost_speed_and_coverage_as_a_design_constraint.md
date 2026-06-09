@@ -98,7 +98,8 @@ The pyramid shape is the allocation that maximizes confidence-per-dollar for the
 - Slow test suites change developer behavior before they change code quality: developers stop running tests locally, stop treating failures as signals, and the suite degrades from a confidence mechanism into a bureaucratic gate.
 
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -175,3 +176,5 @@ The unaware engineer celebrates high line coverage as proof of safety. The infor
 
 **An engineer who understands this will shape the suite around system architecture instead of forcing every codebase into the same pyramid, because the test distribution should follow where risk actually lives.**  
 The default move is to inherit a generic testing template. The consequence is under-testing the risky parts of unusual systems and over-testing the safe parts. The informed engineer expects a thin gateway, a browser-heavy frontend, and a data pipeline to need different allocations. They do not ask, “Are we following the pyramid?” They ask, “Does our suite put expensive confidence where our expensive failures come from?”
+
+</details>

@@ -102,7 +102,8 @@ No strategy eliminates risk. Each one moves risk to a different place. Your job 
 
 - The safety ceiling of any deployment strategy is set by your observability, not by the strategy itself — a health check that returns 200 while the application serves incorrect results will not prevent a bad rollout from completing.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -194,3 +195,5 @@ They add canary analysis on error rates, latency distributions, and business met
 
 **An engineer who understands this will choose canary only when they can support meaningful observation, because partial traffic without signal is theater.**  
 They check whether the service has enough traffic volume, whether weighted routing exists, and whether they can compare stable versus canary behavior over a valid bake time. The unaware engineer copies canary from a high-traffic service to a low-traffic internal API and gains false confidence from meaningless sample sizes.
+
+</details>

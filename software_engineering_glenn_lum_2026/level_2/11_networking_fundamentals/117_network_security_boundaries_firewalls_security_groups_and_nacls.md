@@ -124,7 +124,8 @@ When traffic fails, your first question should be: which layer is rejecting it, 
 
 - When debugging connectivity failures across both layers, **VPC Flow Logs** report the **aggregate verdict** but not which layer caused the rejection — **isolating the responsible layer** requires methodical per-layer verification.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -215,3 +216,5 @@ The unaware engineer checks one layer, sees an allow rule, and then jumps into a
 
 **An engineer who understands this will pay deliberate attention to egress controls because outbound traffic is both a security boundary and a common operational dependency.**  
 The unaware engineer inherits permissive outbound rules and only thinks about ingress. The aware engineer asks which destinations a workload really needs — DNS, package repos, external APIs, control planes — and constrains or documents those paths intentionally. That improves both security posture against exfiltration and reliability when diagnosing “service cannot reach X” failures.
+
+</details>

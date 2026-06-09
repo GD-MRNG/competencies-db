@@ -106,7 +106,8 @@ When you evaluate an architecture for data transfer cost, you are drawing the ma
 
 - **The total egress cost of an architecture is the product of call frequency, payload size, and boundary cost across every communication path**: small, reasonable decisions at each service compound into large aggregate transfer bills because the costs multiply, they do not merely add.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -232,3 +233,5 @@ The unaware engineer sees log shipping or analytics export as operational plumbi
 The unaware engineer chooses multi-region for resilience or multi-cloud for strategy and assumes transfer is a secondary detail. The aware engineer calculates sustained replication paths, fan-out to each target region/cloud, and whether the business requirement justifies the ongoing spend. That often changes whether replication is synchronous or asynchronous, full or partial, global or selective.
 
 ---
+
+</details>

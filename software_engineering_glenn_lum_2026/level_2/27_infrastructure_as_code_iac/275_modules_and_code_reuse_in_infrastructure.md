@@ -172,7 +172,8 @@ The decision of what to put in a module is not "what code is repeated?" It is "w
 
 - The right question for module boundaries is not "what code is duplicated?" but "what infrastructure should change together, be versioned together, and be constrained together?"
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -273,3 +274,5 @@ The default move is to keep decomposing for elegance until plan output becomes u
 
 ### An engineer who understands this will treat module refactors as infrastructure migrations, because changing structure can change state addresses and trigger destructive plans.
 The unaware engineer sees “split this big module into two” as a code cleanup task. The aware engineer immediately asks: what resource addresses will change, how will state be migrated, what happens if a pipeline runs mid-migration, and which resources are too dangerous to move casually? That shift in mindset prevents outages caused by innocent-looking reorganizations.
+
+</details>

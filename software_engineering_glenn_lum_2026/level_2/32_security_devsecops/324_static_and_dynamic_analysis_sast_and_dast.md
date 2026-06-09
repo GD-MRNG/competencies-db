@@ -112,7 +112,8 @@ Neither tool is a superset of the other. They are not redundant, and they are no
 - The two tools cover fundamentally different attack surfaces — running both without tuning either produces compliance artifacts, not security; running one well-tuned tool produces more security value than running both poorly.
 - The real cost of these tools is not licensing — it is the engineering time required to tune rules, triage findings, integrate results into developer workflows, and maintain coverage as the application evolves.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -203,3 +204,5 @@ A SAST finding often points closer to code ownership and can usually be assigned
 
 **An engineer who understands this will choose tools based on current blind spots in the system, because the right investment depends on what kind of unknowns are most dangerous.**  
 If the main risk is unsafe code patterns across a large internal codebase, stronger SAST may pay off first. If the main risk is deployment misconfiguration, exposed headers, auth issues, or complex runtime behavior across integrated services, DAST or IAST may produce more immediate value. The unaware engineer buys according to checkbox requirements; the aware engineer buys to reduce a specific kind of blindness.
+
+</details>

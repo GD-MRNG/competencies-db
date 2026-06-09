@@ -151,7 +151,8 @@ This creates real costs — you lose cross-service joins, you lose distributed A
 
 - Data ownership boundaries erode through incremental shortcuts; maintaining them is a governance discipline, not a one-time architectural decision.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -264,3 +265,5 @@ If they need fresh authoritative data at request time, they may choose an API an
 They will keep data together when it is validated together, changed together, and queried together. The unaware engineer may split too early or along the wrong line, forcing distributed joins, awkward sagas, and consistency bugs where a local transaction would have been enough.
 
 ---
+
+</details>

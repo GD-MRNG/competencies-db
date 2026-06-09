@@ -99,7 +99,8 @@ The fragility of this system lives in one place: context propagation. Every serv
 
 - High-cardinality span attributes (user IDs, request IDs, session tokens) are valuable for debugging but create real storage and indexing costs — add them deliberately, not by default.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -186,3 +187,5 @@ The unaware engineer accepts a low head-sampling rate and assumes tracing covera
 
 **An engineer who understands this will be selective about span attributes because useful debugging detail and backend cost are tightly coupled.**  
 The unaware engineer dumps user IDs, session tokens, and other high-cardinality fields everywhere, then gets expensive storage and slow queries. The aware engineer chooses attributes that support actual debugging and query patterns, and avoids making every span an indexing bomb.
+
+</details>

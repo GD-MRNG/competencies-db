@@ -101,7 +101,8 @@ The discipline this requires is holding your mapping as a hypothesis, not a conc
 - The full mechanic is a loop: map the technology to known constraints, generate predictions from that mapping, verify against actual behavior, and update when predictions fail. This loop is what makes foundational knowledge compound rather than stagnate.
 - An interface can disguise what layer a technology operates on. The first question is never "what does this look like?" — it's "what is this doing at runtime?"
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -204,3 +205,5 @@ With Kafka, they will not assume queue semantics for retries, consumption, reten
 In practice this means they enter adoption with explicit hypotheses: “I expect cold starts to dominate p99,” “I expect recall to fall as the vector index grows,” “I expect coordination cost to rise sharply under cross-region writes.” They then verify. The unaware engineer often has opinions but not testable predictions, so when the system behaves unexpectedly, they have no disciplined way to revise the model.
 
 ---
+
+</details>

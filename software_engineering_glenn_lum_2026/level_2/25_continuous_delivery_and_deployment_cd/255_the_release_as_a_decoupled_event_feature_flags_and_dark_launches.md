@@ -96,7 +96,8 @@ This means it carries the responsibilities of infrastructure: it needs availabil
 
 - Flag removal must be enforced mechanically (expiration dates, CI checks, automated warnings), not culturally; no team sustains manual cleanup discipline across hundreds of flags over time.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -208,3 +209,5 @@ The unaware engineer may run both old and new paths and accidentally double-writ
 
 **An engineer who understands this will design flags to be isolated and make dependencies explicit because they know the real scaling problem is the state space created by interacting flags.**  
 The unaware engineer adds flags independently until odd combinations start failing in production. The informed engineer asks up front whether a new flag depends on another, whether the dependency belongs in targeting rules, and whether a different design would reduce combinatorial complexity.
+
+</details>

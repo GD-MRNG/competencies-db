@@ -151,7 +151,8 @@ The skill this builds is not arithmetic. It is the ability to look at a network 
 
 - Plan your address space allocation across all environments, regions, and accounts before creating your first VPC. Treating CIDR allocation as a global constraint rather than a per-VPC decision avoids the overlapping-range problem that becomes exponentially harder to fix over time.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -256,3 +257,5 @@ That changes how they debug traffic flow. Instead of asking “why did traffic i
 **An engineer who understands this will treat prefix length as a hard tradeoff between segmentation and capacity, because every extra network bit spent on more subnets is one less host bit available inside each subnet.**
 
 That changes network design conversations. Choosing `/24` versus `/20` stops being a stylistic preference and becomes an explicit decision about isolation, growth headroom, and operational flexibility.
+
+</details>

@@ -44,7 +44,8 @@ How a compromised or malicious package in the dependency graph becomes an attack
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -141,3 +142,5 @@ Allowing version ranges makes it easier to pick up improvements automatically. P
 - An engineer who understands this will design CI to fail builds on security policy violations because vulnerability scanning, integrity checks, and provenance are only reliable controls when they are automatic gates rather than best-effort manual checks.
 - An engineer who understands this will use registry tags and promotion markers carefully because labeling an artifact as staging-approved or production-approved creates an auditable release path and reduces the risk of deploying an unverified build.
 - An engineer who understands this will respond to security advisories differently because they can ask precise questions such as “Which deployed artifacts include the affected dependency version?” instead of starting from a vague search through repositories and build logs.
+
+</details>

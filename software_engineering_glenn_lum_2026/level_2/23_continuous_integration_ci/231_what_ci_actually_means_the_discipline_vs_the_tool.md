@@ -96,7 +96,8 @@ If you take one thing from this post, take this: the next time you evaluate whet
 
 - **To evaluate whether a team practices CI, ask how long branches live before merging, what happens when mainline breaks, and how incomplete features are handled.** These questions reveal the discipline. The tool choice is irrelevant.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -199,3 +200,5 @@ The default reaction is to avoid merging until a feature is fully finished, whic
 
 **An engineer who understands this will respond to a broken `main` build as an urgent system failure, because trust in mainline is the foundation that makes frequent integration viable.**  
 The unaware engineer lets red builds accumulate and treats CI failures as background noise. The consequence is predictable: people stop trusting the signal, delay merges, and the workflow collapses back into isolation. The informed engineer knows that if `main` is not reliably usable, then integrating frequently becomes dangerous, and the team will naturally retreat to longer-lived branches.
+
+</details>

@@ -118,7 +118,8 @@ The shift from cause-based to symptom-based alerting is not a tuning change. It 
 
 - **Alert fatigue propagates culturally and is harder to reverse than to prevent.** Once an on-call rotation develops the institutional habit of ignoring pages, restoring trust requires changing both the alerts and the organizational muscle memory built around dismissing them.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -211,3 +212,5 @@ The unaware engineer often routes everything important to the pager. The consequ
 The unaware engineer feels the loss of cause-based pages as loss of information and adds more alert rules to compensate. That makes the pager narrate internals instead of preserving it as a high-trust trigger.
 
 ---
+
+</details>

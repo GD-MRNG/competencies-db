@@ -108,7 +108,8 @@ When you look at a cluster and see pods in unexpected states — Pending, OOMKil
 
 - **Overcommitment is a deliberate tradeoff, not a default you can ignore.** The gap between requests and limits determines how much risk you're carrying. Clusters that look efficient on paper can be fragile under load if overcommitment isn't managed intentionally.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -229,3 +230,5 @@ The unaware engineer starts at the application logs and treats the orchestrator 
 The unaware engineer inherits whatever ratio emerges from ad hoc requests and limits. The consequence is either expensive underutilization or clusters that fail under burst load. The informed engineer decides where bursting is acceptable, where requests should match limits, and which workloads are allowed to compete for spare capacity.
 
 ---
+
+</details>

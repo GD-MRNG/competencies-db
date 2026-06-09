@@ -46,7 +46,8 @@ The common categories of cloud waste — instances running with near-zero utiliz
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -126,3 +127,5 @@ You may know the warehouse is full, but you cannot tell what belongs to whom, wh
 - An engineer who understands this will approach **data storage decisions** differently because they will ask whether the access pattern really justifies expensive storage layers, instead of placing all data in the most operationally familiar system.
 - An engineer who understands this will approach **architecture reviews** differently because they will treat projected cost behavior as part of design fitness: not just “will this work?” but “how will this cost profile behave as traffic, data volume, or invocation frequency grows?”
 - An engineer who understands this will approach **observability and deployment pipelines** differently because they will want infrastructure changes to surface expected spend impact early, and they will monitor cost signals in production the same way they monitor performance and reliability signals.
+
+</details>

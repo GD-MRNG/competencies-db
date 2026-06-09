@@ -96,7 +96,8 @@ The tradeoff is not pinning vs. ranges. It is **resolution frequency vs. update 
 - The most common reproducibility failure is not choosing the wrong policy but applying the right policy inconsistently — mixing `install` and `ci` commands, regenerating lock files in some pipelines, or gitignoring lock files in applications.
 - The real tradeoff is resolution frequency vs. update cost per resolution: resolve often and each change is small, resolve rarely and each change is a project.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -205,3 +206,5 @@ They are more likely to enable Renovate or Dependabot, review small dependency P
 
 **An engineer who understands this will adapt policy to the ecosystem’s resolver behavior because conflict handling differs across package managers.**  
 In npm they may accept some duplicate transitive versions as normal; in pip they will be more cautious because a single-version environment means conflicts fail hard. The unaware engineer ports a dependency strategy from one ecosystem to another and gets surprising failures because the underlying resolution mechanics are different, even if the vocabulary sounds the same.
+
+</details>

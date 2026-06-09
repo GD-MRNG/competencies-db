@@ -91,7 +91,8 @@ An engineer who can answer those two questions about any technology — even one
 - The two most diagnostic questions for any technology are: what did it pay and where did that cost land, and is that landing zone somewhere your system and team can absorb it?
 - Most technologies marketed as paradigm shifts are repositionings within a known solution space, not expansions of it — and the distinction determines whether you can evaluate them with your existing map or need to update it.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -181,3 +182,5 @@ The unaware engineer can make three sensible local choices that together produce
 The unaware engineer either judges too quickly from defaults or overestimates flexibility from theoretical tuning options. The aware engineer asks: what does the system do out of the box, what can it do if tuned, and do we realistically have the time and expertise to tune it well? That changes whether a tool is considered genuinely suitable versus merely technically possible.
 
 ---
+
+</details>

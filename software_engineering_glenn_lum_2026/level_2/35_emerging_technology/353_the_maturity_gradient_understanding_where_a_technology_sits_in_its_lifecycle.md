@@ -85,7 +85,8 @@ The question to carry forward is not "is this technology mature?" It is: "is thi
 - Maturity is not quality. A technically elegant system can be operationally immature; a mediocre system with a decade of production use can be deeply mature in ways that have concrete operational value.
 - The right evaluation question is not "is this technology mature?" but "is it mature in the dimensions that matter for the role I am placing it in, and am I prepared to cover the gaps where it is not?"
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -206,3 +207,5 @@ Instead of leaning on stars, talks, or social proof, they inspect changelogs for
 
 **5. An engineer who understands this will stage adoption more carefully, because uneven maturity is survivable when the blast radius is small and dangerous when it is not.**  
 The default move is to put the new technology directly into an important system because the demo worked. The more mature move is to start with internal or non-critical workloads, limit dependency depth, validate operations under load, and only expand its role after the team has converted unknowns into knowns. This is how you buy maturity locally instead of gambling on it globally.
+
+</details>

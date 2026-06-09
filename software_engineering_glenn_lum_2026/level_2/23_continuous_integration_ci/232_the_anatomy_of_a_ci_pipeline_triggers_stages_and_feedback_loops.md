@@ -115,7 +115,8 @@ If you can reason about your pipeline as a DAG with economic weights on each nod
 - The append-only pipeline — stages accumulate, none are removed — is the most common degradation pattern, and it is driven by the fact that no single team owns total pipeline time as a system-level metric.
 - A healthy pipeline is not one that runs more checks; it is one where every failure is investigated, the mainline is consistently green, and developers trust the signal enough to act on it immediately.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -237,3 +238,5 @@ They will quarantine flaky tests, measure flake rates, and resist masking the is
 They will ask what check can be removed, moved later, made non-blocking, or run on a schedule when proposing a new one. The unaware engineer adds stages append-only after every incident or initiative. The consequence is stage sprawl: longer runtimes, more cost, and a pipeline that slowly teaches developers to bypass or ignore it.
 
 ---
+
+</details>

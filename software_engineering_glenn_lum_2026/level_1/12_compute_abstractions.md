@@ -50,7 +50,8 @@ How different compute workloads are bounded by different resource types, what it
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -135,3 +136,5 @@ That is the tension to remember. There is no “no-ops” option — only differ
 - An engineer who understands this will approach debugging differently because failures on VMs often involve machine state, failures in container platforms often involve scheduling, networking, or health checks, and failures in serverless systems often involve event wiring, platform limits, and hard-to-reproduce runtime behavior.
 - An engineer who understands this will make more deliberate cost decisions because reserved machines charge you for capacity whether used or not, while serverless can be efficient for bursty workloads but may become expensive or operationally awkward for steady high-volume traffic.
 - An engineer who understands this will treat orchestration as a control-system choice, not just a deployment tool, because once you rely on desired state, replica management, and automated reconciliation, your application must be built to tolerate restarts, rescheduling, and more dynamic infrastructure behavior.
+
+</details>

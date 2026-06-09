@@ -106,7 +106,8 @@ Teams that handle bad releases well don't commit to one philosophy. They maintai
 
 - **The decision between rollback and roll forward should be pre-decided based on system properties, not made under pressure during an incident.** Document which paths are rollback-safe, which require roll forward, and what the criteria are for choosing — before you need to choose.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -187,3 +188,5 @@ The unaware engineer says “we’re a roll-forward team” while living with lo
 
 **An engineer who understands this will plan remediation for critical state transitions, because code recovery and state recovery are separate jobs.**  
 The unaware engineer thinks only in terms of “revert” or “fix.” When bad code has already sent emails, charged cards, or advanced workflows, they must invent cleanup scripts and operational procedures in the middle of the incident, when time and confidence are lowest.
+
+</details>

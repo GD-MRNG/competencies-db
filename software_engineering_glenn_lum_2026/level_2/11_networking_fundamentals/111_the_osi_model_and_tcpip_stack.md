@@ -98,7 +98,8 @@ When something breaks, the symptoms tell you which envelope failed. A connection
 
 - **NAT introduces hidden statefulness.** Connection-tracking tables can overflow, idle timeouts can silently kill connections, and port exhaustion can prevent new outbound connections — all without application-visible errors until the failure is already happening.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -223,3 +224,5 @@ If they only need connection forwarding, they may prefer Layer 4 for simplicity 
 **An engineer who understands this will treat middleboxes as stateful failure points because TCP’s “end-to-end connection” is often interrupted by NAT, firewall, and load balancer state.**
 
 That changes operational choices: they add idle keepalives, watch connection-tracking limits, think about port exhaustion, and stop assuming that silence means the connection is still healthy just because neither application has closed it.
+
+</details>

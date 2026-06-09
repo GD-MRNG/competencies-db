@@ -50,7 +50,8 @@ How distributed systems fail differently from single-process systems because com
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -137,3 +138,5 @@ A synchronous service call is like calling someone and waiting on the line until
 - An engineer who understands this will approach **debugging** differently because they know where evidence lives. In a monolith, they will expect a debugger, local logs, and a single execution path to get them far. In microservices or event-driven systems, they will rely much more on correlation IDs, traces, request lineage, and event history, because no single service has the whole story.
 - An engineer who understands this will approach **data updates and workflow design** differently because they know consistency gets harder once ownership is split. If multiple services participate in one business action, they will avoid assuming "all-or-nothing" behavior unless there is an explicit mechanism for it. They will design for partial completion, retries, reconciliation, and idempotency.
 - An engineer who understands this will approach **testing strategy** differently because architecture changes what must be simulated. In a monolith, they can get strong confidence from integration tests inside one process boundary. In microservices, they will add contract tests, failure-mode tests, and timeout/retry scenarios, because correctness now depends not just on logic but on interactions across unreliable boundaries.
+
+</details>

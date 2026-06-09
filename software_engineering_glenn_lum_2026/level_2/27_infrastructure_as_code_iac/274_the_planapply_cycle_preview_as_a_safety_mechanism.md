@@ -112,7 +112,8 @@ The critical conceptual shift is understanding that the plan is not asking you "
 
 - The most common plan-related incident is not a tool failure — it is an engineer approving a plan they did not read carefully enough, particularly one containing unexpected replacements of stateful resources.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -198,3 +199,5 @@ The unaware engineer assumes plan success means apply should be routine. The awa
 
 **An engineer who understands this will design state boundaries and review processes differently because plan visibility ends at the state file boundary.**  
 The unaware engineer assumes the plan reveals all downstream impact. The aware engineer knows shared infrastructure, cross-team dependencies, and out-of-state consumers are invisible to the plan, so they add extra review, documentation, or architectural boundaries around shared resources rather than trusting plan output alone.
+
+</details>

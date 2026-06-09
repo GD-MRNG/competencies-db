@@ -101,7 +101,8 @@ A review process is working when it produces shared understanding with minimal l
 - Review latency beyond a few hours erodes value on both sides: authors lose context and resist substantive changes, reviewers give less attention to PRs perceived as stale.
 - A review process is healthy when approval means "I understand this change well enough to own it" — not "I looked at the diff and nothing jumped out."
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -193,3 +194,5 @@ The unaware engineer sees review delay as an unfortunate but harmless queue. The
 
 **An engineer who understands this will label comments by severity and intent because ambiguity in feedback creates churn, resentment, and wasted cycles.**  
 Without explicit labels, authors guess whether a comment is mandatory, optional, or just a request for explanation. They often guess wrong. The engineer with a working model of review knows that unclear comment semantics weaken trust in the process, so they make review language explicit: blocking, suggestion, question.
+
+</details>

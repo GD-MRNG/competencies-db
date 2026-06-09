@@ -111,7 +111,8 @@ The practical question to carry into every IaC design decision is not "is this t
 
 - The right question is never "is this tool idempotent?" but "does every operation in this pipeline preserve the integrity of the read-diff-apply loop?"
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -223,3 +224,5 @@ For things like security rules, tags, policy statements, and memberships, they w
 
 ### 5. An engineer who understands this will treat manual fixes and pipeline stage side effects as design inputs, not exceptions.
 They will ask how emergency changes are folded back into config, and whether rerunning an earlier stage invalidates outputs used later. The unaware engineer often assumes stage-level idempotency is enough, then finds that retries rotate keys, replace credentials, or revert hotfixes in ways that make the overall pipeline non-idempotent even though each step looked fine in isolation.
+
+</details>

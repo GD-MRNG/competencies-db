@@ -98,7 +98,8 @@ The conceptual shift is this: a secret is not a value you configure once and for
 
 - **A secrets manager you do not operate with discipline — rotation enforcement, least-privilege policies, access reviews — is security theater with better branding.**
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -212,3 +213,5 @@ The unaware default is to turn on vault auditing and assume incident response is
 The unaware default is to treat it like any other internal service. The consequence is cascading failures when applications cannot retrieve or renew credentials. An engineer who understands this will approach HA, backup, recovery, dependency mapping, and failure drills differently because the secrets manager sits on the authentication path for many other systems. If it fails, the blast radius is often larger than the blast radius of any one application service.
 
 ---
+
+</details>

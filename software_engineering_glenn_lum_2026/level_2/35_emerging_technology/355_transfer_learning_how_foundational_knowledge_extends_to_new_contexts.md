@@ -110,7 +110,8 @@ The compounding works because each new technology you decompose this way refines
 
 - The highest-leverage learning is not learning more tools. It is building deeper resolution within the constraint spaces those tools inhabit, because that resolution compounds across every future technology in that space.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -206,3 +207,5 @@ The unaware engineer accumulates product-specific knowledge and keeps restarting
 
 **An engineer who understands this will be less dismissive and less gullible at the same time because they can separate novelty in interface from novelty in mechanics.**  
 The unaware engineer swings between hype and cynicism: either “this changes everything” or “this is just the old thing renamed.” The aware engineer can say, “The storage and coordination constraints are familiar, but the programming model or accessibility shift may still matter.” That produces better adoption decisions and fewer missed opportunities.
+
+</details>

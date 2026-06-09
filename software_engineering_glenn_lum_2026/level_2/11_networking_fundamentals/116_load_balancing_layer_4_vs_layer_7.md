@@ -104,7 +104,8 @@ This means the decision is not really "L4 or L7." It is: does your architecture 
 
 - The load balancing layer decision is not a preference — it is determined by whether your architecture requires the load balancer to understand the application protocol, and getting this wrong produces failures that are obvious in retrospect but difficult to diagnose in the moment.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -195,3 +196,4 @@ The unaware engineer copies a health-check config from another service and calls
 **An engineer who understands this will separate readiness from liveness and keep ongoing liveness checks shallow, because deep checks against shared dependencies can remove the whole fleet during partial degradation.**  
 The unaware engineer makes `/healthz` verify database, cache, downstream APIs, and anything else "important," then wonders why a dependency slowdown caused every backend to disappear from rotation at once. The aware engineer uses readiness to block traffic until a node is truly able to start serving, but uses shallow ongoing checks so the load balancer does not turn dependency turbulence into a self-inflicted full outage.
 
+</details>

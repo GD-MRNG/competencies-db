@@ -90,7 +90,8 @@ If you walk away with one mental shift, let it be this: cost attribution is not 
 - **The purpose of cost attribution is not accurate reporting — it is behavioral change** — if the data does not reach someone who can act on it, the entire pipeline is waste.
 
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -199,3 +200,5 @@ The default is to accept whatever a vendor tool does out of the box or to dump u
 The unaware engineer may try to build complete precision everywhere before anyone sees data, or worse, push unreliable numbers directly into budgets. The informed engineer knows that early value comes from making the biggest costs visible and actionable, then strengthening the loop only after the organization trusts the model enough to argue over real money.
 
 ---
+
+</details>

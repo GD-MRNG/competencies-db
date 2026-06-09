@@ -158,7 +158,8 @@ The consequence for CI/CD is this: **the image digest is the unit of trust.** It
 - `FROM <image>:<tag>` introduces silent base image drift between builds; pinning by digest guarantees reproducibility but requires manual updates for security patches.
 - The image digest is the only reliable unit of trust across a CI/CD pipeline — every system that references a tag instead of a digest introduces a point where the deployed artifact can silently diverge from what was tested.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -264,3 +265,5 @@ The unaware engineer inherits silent base updates and only notices when a rebuil
 The unaware engineer installs build tooling, compiles, then removes the tooling in a later step and expects a slim image. The result is an image that looks clean when inspected from inside the container but still transfers hundreds of unnecessary megabytes. The aware engineer combines related work into one layer or uses multi-stage builds so the final manifest references only the minimal runtime content.
 
 ---
+
+</details>

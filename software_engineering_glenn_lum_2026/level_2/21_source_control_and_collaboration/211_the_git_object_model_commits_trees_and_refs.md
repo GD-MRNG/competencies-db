@@ -171,7 +171,8 @@ This two-layer model is the conceptual foundation for everything that follows: i
 - Every Git operation reduces to creating immutable objects, moving mutable pointers, or both — if you can identify which, the operation's behavior becomes fully predictable.
 
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -278,3 +279,5 @@ The unaware engineer thinks deleting a large file in the next commit removes the
 ### An engineer who understands this will reason about detached HEAD correctly because the risk is not invalid commits but unnamed commits.
 
 The default misunderstanding is "detached HEAD means commits won't work" or "Git is in a broken state." The aware engineer knows commits made there are real commit objects; the issue is only that no branch ref advances with them. So if the work matters, they create a branch or tag before moving away. That small action turns potentially unreachable work into named, durable history.
+
+</details>

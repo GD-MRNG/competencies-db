@@ -108,7 +108,8 @@ The question is never "should we use microservices?" The question is: "Where do 
 
 - **The right question is not "monolith or microservices" but "where are the real boundaries, and what is the cheapest mechanism that provides the independence we need?"**
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -222,3 +223,5 @@ The default move is to add tracing and correlation later, after “the migration
 The default decomposition is often by layer or utility: auth service, database service, reporting service. These look tidy on diagrams but create broad dependencies and synchronized changes. The informed engineer asks which parts of the business actually evolve, scale, and deploy independently. That leads to boundaries around domains, not around technical categories.
 
 ---
+
+</details>

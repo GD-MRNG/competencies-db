@@ -98,7 +98,8 @@ Once you internalize this model, the architectural decisions become tractable. Y
 
 - **Vendor lock-in in serverless is primarily in the event topology**, not the function code — the platform-specific wiring between event sources, functions, and downstream services is the expensive thing to migrate.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -197,3 +198,5 @@ They will break large jobs into stages, use workflow orchestration, fan-out/fan-
 They will benchmark multiple memory settings instead of picking the smallest RAM number that avoids out-of-memory errors. For CPU-bound work, they may deliberately allocate more memory to reduce runtime enough that total cost falls. The unaware engineer minimizes memory by default, accidentally underprovisions CPU, and pays more through slower execution and higher latency.
 
 ---
+
+</details>

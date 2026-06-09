@@ -40,7 +40,8 @@ How production configuration accumulates undocumented changes through manual edi
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -131,3 +132,5 @@ A feature flag means your system now has at least two valid behaviors. That is u
 - An engineer who understands this will use feature flags instead of long-lived feature branches for incomplete work, because frequent integration is cheaper and safer than merging weeks of divergent code later.
 - An engineer who understands this will design risky launches as gradual rollouts with targeting and observability, because the goal is not merely to deploy the code but to control who experiences it and to stop quickly if metrics degrade.
 - An engineer who understands this will add ownership and expiry expectations when creating a flag, because a flag without a removal plan is not just a release tool; it is future branching complexity being added to the codebase.
+
+</details>

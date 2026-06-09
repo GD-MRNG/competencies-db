@@ -165,7 +165,8 @@ The question to ask before reaching for any test double is: "Am I testing what m
 - **Before choosing a test double, ask whether you are testing what your code does or how your code talks** — that question determines whether you need state verification (stubs/fakes) or behavior verification (mocks/spies).
 
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -290,3 +291,5 @@ They will add contract tests, integration tests, or periodic runs against real d
 They may keep internal helpers real and substitute only true external systems like databases, queues, gateways, or clocks. The unaware engineer often mocks every constructor parameter by habit, producing tiny tests that only verify object wiring and never exercise the meaningful collaboration inside the module.
 
 ---
+
+</details>

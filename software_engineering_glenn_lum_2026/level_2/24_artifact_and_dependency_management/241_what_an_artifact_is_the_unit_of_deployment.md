@@ -93,7 +93,8 @@ If you carry one thing forward from this post, it should be the habit of thinkin
 - Enable tag immutability in your artifact registry. Without it, the same tag can reference different artifacts over time, making it impossible to know what's actually running.
 - When redeploying during an incident, pull the existing artifact from the registry — do not rebuild from source. Rebuilding introduces variables you cannot control during an outage.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -191,3 +192,5 @@ The unaware default is compiling endpoints, flags, or credentials directly into 
 The unaware default is writing a Dockerfile that copies everything early and rebuilds large layers constantly. The consequence is larger pushes and pulls, worse cache reuse, slower deploys, and higher registry/network costs.
 
 ---
+
+</details>

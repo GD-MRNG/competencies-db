@@ -79,7 +79,8 @@ The mental model is this: before you can right-size a workload, you must first i
 - **The GC death spiral is a cross-resource failure mode.** Memory pressure increases garbage collection, which consumes CPU; CPU throttling slows garbage collection, which increases memory pressure. Diagnosing this requires looking at CPU and memory together.
 - **Resource configuration is not a one-time decision.** Traffic patterns change, code changes, and dependency performance changes. Resource profiles must be observed continuously, not set at deploy time and forgotten.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -186,3 +187,5 @@ The unaware engineer runs one load test at a moderate rate, declares the service
 The unaware engineer inherits old requests and limits forever, paying for idle reservation or suffering intermittent failures during peaks. The aware engineer revisits resource settings with real production telemetry, separates scheduling needs from enforcement needs, and recognizes that shared-node I/O contention may require architectural or placement changes, not just new CPU and memory numbers.
 
 ---
+
+</details>

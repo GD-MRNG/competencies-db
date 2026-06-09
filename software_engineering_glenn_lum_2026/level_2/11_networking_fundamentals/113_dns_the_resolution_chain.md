@@ -102,7 +102,8 @@ The practical consequence is that DNS changes are not atomic and not instant. Th
 
 - Not all resolvers honor your TTL. ISP resolvers may impose floors or caps, and some will serve stale records beyond TTL expiry. Your TTL is a request, not a guarantee.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -195,3 +196,5 @@ Low TTL means you can change direction quickly, but you are also forcing the wor
 - An engineer who understands this will choose TTLs based on failure posture, not habit: low TTL for records that may need rapid failover, higher TTL for stable records where insulating users from authoritative outages matters more than fast change.
 - An engineer who understands this will separate authoritative and recursive DNS roles in infrastructure design, because mixing them blurs trust boundaries, creates confusing behavior, and increases the blast radius of misconfiguration.
 - An engineer who understands this will verify glue and delegation any time nameserver records change, because some of the nastiest DNS failures are not bad endpoint records but broken reachability to the servers that are supposed to answer authoritatively.
+
+</details>

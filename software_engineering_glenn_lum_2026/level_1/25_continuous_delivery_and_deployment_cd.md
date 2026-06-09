@@ -40,7 +40,8 @@ How decoupling the deployment of code from the activation of features gives team
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -139,3 +140,5 @@ That reality includes the database schema, traffic routing, and any shared state
 - An engineer who understands this will choose rollout strategy based on system compatibility constraints because mixed-version operation in a rolling update is acceptable only when old and new versions can safely coexist.
 - An engineer who understands this will invest in canary metrics and traffic controls for high-risk services because a small slice of real production traffic reveals failure modes that staging and synthetic tests often miss.
 - An engineer who understands this will design database migrations in expand-and-contract phases because rollback safety depends on keeping old and new application versions compatible with the schema throughout the transition.
+
+</details>

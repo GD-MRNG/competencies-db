@@ -121,7 +121,8 @@ If you can draw a clean line in your system at the registry — CI writes to it,
 
 - **If you cannot answer "what exact artifact is running in production right now?" from the registry alone, your CI/CD boundary is missing or broken.**
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -227,3 +228,5 @@ The default mistake is to inject env-specific files or variables during image bu
 
 ### 5. An engineer who understands this will create a distinct promotion step between “passed CI” and “goes to production,” because those are different assertions backed by different evidence.
 The unaware engineer often lets a green build auto-deploy everywhere by default, inheriting the assumption that integration checks equal production readiness. The aware engineer decides explicitly whether that tradeoff is acceptable for this system’s blast radius, test confidence, and operational constraints, and introduces staging checks, approvals, or canary gates when it is not.
+
+</details>

@@ -143,7 +143,8 @@ The single most important conceptual shift: **a non-breaking change is defined b
 
 - Versioning is a tool for managing contract evolution, not a substitute for understanding wire compatibility. Every active version is a contract you're maintaining whether you acknowledge it or not.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -271,3 +272,5 @@ If there are two teams with tight communication, REST plus disciplined conventio
 The unaware engineer creates `/v2` whenever compatibility gets confusing. The consequence is permanent multi-version support, duplicated tests, consumer fragmentation, and a growing reluctance to clean anything up.
 
 ---
+
+</details>

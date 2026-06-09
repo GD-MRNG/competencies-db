@@ -92,7 +92,8 @@ The registry sits at the boundary between build and deploy. Everything before it
 
 - **The digest is the single most reliable identifier in the entire pipeline.** It is the only mechanism that guarantees the bytes you deploy are the bytes you tested. Treat it as the source of truth.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -199,3 +200,5 @@ The unaware default is to notice the registry only when CI pushes images. The co
 The unaware default is to think old tags can be deleted and storage will naturally shrink. The consequence is either unbounded storage growth or accidental corruption if cleanup is too aggressive. The aware engineer plans retention and garbage collection around manifest-to-blob references, knowing shared layers make deletion non-local.
 
 ---
+
+</details>

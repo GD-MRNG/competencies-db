@@ -87,7 +87,8 @@ The core insight is this: the value of a chaos experiment is proportional to the
 - The organizational and political prerequisites for chaos engineering — leadership buy-in, blameless culture, tolerance for controlled risk — are harder to establish than the technical prerequisites and more likely to be the bottleneck.
 - Chaos experiments are not write-once artifacts; they must evolve with the system architecture or they produce stale confidence that is worse than no confidence at all.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -210,3 +211,5 @@ The unaware engineer assumes "we can always turn it off" without measuring how l
 
 ### 5. An engineer who understands this will maintain experiments as the architecture changes, because a hypothesis tied to old system behavior becomes misleading once dependencies, caches, pools, or traffic patterns change.
 The unaware engineer treats the experiment suite as a static asset and keeps passing old tests that no longer represent current risk. The consequence is stale confidence. The aware engineer updates hypotheses when resilience mechanisms change, just as they would update functional tests when behavior changes.
+
+</details>

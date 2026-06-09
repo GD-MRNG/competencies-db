@@ -42,7 +42,8 @@ The distinction between CI (integration verification and artifact production) an
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -122,3 +123,5 @@ A fast pipeline does not merely save compute time; it shapes human habits. Short
 - An engineer who understands this will invest in caching and parallel test execution because CI duration changes commit behavior; when pipelines are slow, developers naturally batch risky changes and integration quality drops.
 - An engineer who understands this will treat branch protection as part of system design, not team bureaucracy, because keeping main always mergeable and deployable requires enforcement, not just good intentions.
 - An engineer who understands this will respond differently to a failing pipeline on main: not as a minor inconvenience, but as a break in the team’s core delivery path, because the value of CI depends on the shared branch remaining trustworthy.
+
+</details>

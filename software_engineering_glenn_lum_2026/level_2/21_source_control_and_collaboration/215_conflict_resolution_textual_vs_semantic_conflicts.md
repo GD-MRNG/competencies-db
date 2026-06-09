@@ -118,7 +118,8 @@ This means there are two entirely separate categories of merge risk, and they re
 - Large refactors that change widely-used contracts are disproportionate sources of semantic conflicts and should land on the trunk as quickly as possible to minimize the window of divergence.
 - A merge that completes without conflict markers provides no information about semantic correctness — post-merge CI, not merge cleanliness, is your actual safety signal.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -199,3 +200,5 @@ The unaware engineer writes tests that prove “my branch works against the worl
 
 **An engineer who understands this will read “no conflict” as absence of one class of problem, not as evidence that no problem exists.**  
 The default interpretation of a smooth merge is confidence. The better interpretation is narrower: Git found no overlapping line edits requiring human arbitration. That mental shift changes review behavior, release confidence, and how teams talk about merge risk.
+
+</details>

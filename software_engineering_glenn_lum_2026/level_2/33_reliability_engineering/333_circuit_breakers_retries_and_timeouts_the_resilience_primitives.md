@@ -115,7 +115,8 @@ The key conceptual shift is this: retries are a positive feedback mechanism (fai
 - **Timeouts across a service call chain must be coordinated**: each layer's timeout must be shorter than the layer above it, or retries at intermediate layers will be silently killed by upstream timeouts before they complete.
 - **These three patterns form a control system, not a feature checklist.** Retries without a circuit breaker are actively dangerous, timeouts without retries are unnecessarily brittle, and circuit breakers without sensible timeouts have nothing meaningful to measure.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -211,3 +212,5 @@ The unaware engineer applies the same retry middleware to GETs and order-creatio
 
 **An engineer who understands this will tune circuit breakers to latency degradation as well as error rate, because many real outages show up first as slowness, not explicit failures.**  
 The unaware engineer enables a breaker with a textbook failure-rate threshold and assumes they are protected. The consequence is a breaker that never opens while 25-second “successful” responses are exhausting every caller upstream.
+
+</details>

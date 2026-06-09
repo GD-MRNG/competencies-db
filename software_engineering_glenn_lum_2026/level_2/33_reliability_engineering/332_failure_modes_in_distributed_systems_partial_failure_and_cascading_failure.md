@@ -104,7 +104,8 @@ Designing for partial failure means designing every inter-service interaction wi
 
 - Designing for partial failure requires an explicit answer, for every synchronous inter-service call, to the question: what happens to every resource I hold open if this call takes 1,000 times longer than expected?
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -202,3 +203,5 @@ The unaware engineer watches CPU, process health, average latency, and error rat
 The unaware engineer runs chaos tests that kill pods and feels confident when failover works. That validates a simpler failure mode than the one most likely to cause systemic pain. The aware engineer injects latency into a fraction of downstream responses and watches how queues, pools, and upstream deadlines behave, because that reveals whether the system can survive partial failure rather than only total failure.
 
 ---
+
+</details>

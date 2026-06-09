@@ -103,7 +103,8 @@ The deeper shift is recognizing that **pipeline speed is not an engineering conv
 - Flaky tests degrade feedback loops non-linearly: even a 0.1% per-test flake rate across a large suite means most pipeline runs contain a spurious failure, training developers to ignore real ones.
 - The economic argument for faster pipelines is almost always favorable — developer time lost to slow feedback typically exceeds additional infrastructure cost by an order of magnitude — but it must be made with your organization's specific numbers.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -231,3 +232,5 @@ The unaware default is to tolerate occasional flakes and rely on reruns. The con
 
 ### 6. An engineer who understands this will split pre-merge and post-merge validation deliberately, because not all useful checks belong in the same feedback loop.
 The unaware default is binary thinking: either every check must run before merge, or slow checks get deleted. The aware engineer sees a third option: a fast, trusted pre-merge gate for high-probability and high-actionability failures, plus slower post-merge checks with rollback or deployment protection. That preserves flow without pretending deep validation is unnecessary.
+
+</details>

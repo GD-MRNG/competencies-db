@@ -122,7 +122,8 @@ The operational question is never "does this test sometimes catch real bugs?" It
 
 - The value of an individual test is not whether it can catch a bug in isolation, but whether it improves the composite signal quality of the suite as a whole — flaky tests fail this criterion by definition.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -224,3 +225,5 @@ That is a practical diagnostic question. It forces you to look for the mechanism
 
 - **An engineer who understands this will sometimes delete or aggressively time-box quarantined tests because an honest coverage gap is safer than an untrusted check in a critical gate.**  
   The unaware engineer keeps every flaky test around in some form because deleting tests feels wrong. The result is a growing graveyard of tests that consume attention or silently stop protecting anything important.
+
+</details>

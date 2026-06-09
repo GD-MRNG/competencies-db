@@ -106,7 +106,8 @@ Every link in that chain must be present. An SLI without an SLO is a metric with
 
 - The complete framework is a closed loop — SLI to SLO to error budget to burn-rate alert to error budget policy to team action — and removing any link breaks the loop.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -235,3 +236,5 @@ The unaware engineer ships an SLO dashboard and assumes the organization is now 
 The unaware engineer sets an availability target for the service in isolation and only later discovers that auth, storage, or payments make the target unattainable. The aware engineer asks early: which dependencies are on the critical path, what reliability do they provide, and what fallback mechanisms would let our service keep meeting its own objective when they degrade.
 
 ---
+
+</details>

@@ -126,7 +126,8 @@ The payoff isn't elegance. It's operational leverage. When the artifact is truly
 - Logging the fully resolved configuration (secrets redacted) at process startup is essential for incident response and should be treated as a non-negotiable production practice.
 
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -225,3 +226,5 @@ They will use deploy-time env vars or files for stable startup config, and reser
 
 **An engineer who understands this will treat secrets as config plus security lifecycle requirements.**  
 They will ask not just “how does the app read this?” but also “where is it stored, who can access it, how is it rotated, and what gets logged?” The unaware engineer often uses the same storage and workflows for secrets as for harmless config, and the consequence is credential exposure through logs, state files, repositories, or overly broad access.
+
+</details>

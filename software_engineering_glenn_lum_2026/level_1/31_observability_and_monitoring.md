@@ -54,7 +54,8 @@ Why alerting on user-visible symptoms (high error rate, high latency) is more re
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -157,3 +158,5 @@ The core tension is not “reliability or speed.” It is “how much unreliabil
 - **An engineer who understands this will design alerts around user-impacting symptoms and actionability because paging on raw infrastructure thresholds creates noise faster than it creates response value.** They will prefer alerts like sustained error-budget burn or degraded request success over “CPU exceeded 80% for two minutes” unless there is a clear action attached.
 - **An engineer who understands this will define SLIs from the user journey because internal health metrics often fail to represent what customers actually experience.** For example, they will measure checkout success and time-to-complete rather than assuming host-level metrics are enough to represent service quality.
 - **An engineer who understands this will make release decisions differently because the error budget gives a concrete rule for when to push forward and when to stabilize.** Instead of arguing abstractly about whether reliability work is slowing delivery, they can use budget consumption to decide when feature work is safe and when it is irresponsible.
+
+</details>

@@ -46,7 +46,8 @@ How infrastructure drifts when changes are made outside the IaC tool — through
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -125,3 +126,5 @@ A long-lived server accumulates history. A replacement server starts from a know
 - An engineer who understands this will approach **server updates and deployments** differently because they will favor replacement-based rollouts over patching machines in place when consistency matters, especially for environments that must behave predictably across staging and production.
 - An engineer who understands this will approach **team collaboration** differently because they will treat remote state storage, locking, and access control as part of the system design, not as setup trivia. They know the state backend is what makes shared infrastructure management safe.
 - An engineer who understands this will approach **infrastructure design at scale** differently because they will extract repeated patterns into modules instead of copying resource definitions between services or environments. They know that consistency is not produced by discipline alone; it is produced by reuse with controlled variation.
+
+</details>

@@ -101,7 +101,8 @@ This reachability framing is what makes least privilege operational rather than 
 - The durable question to ask about any permission is not "is this policy minimal?" in isolation, but "if this identity is compromised, what is the full set of resources and actions an attacker can reach?"
 
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -214,3 +215,5 @@ That sentence captures the tradeoff. If access is too broad, compromise spreads.
 - An engineer who understands this will invest in making **correct access easy to obtain** because friction is what drives people to `*`. The unaware engineer treats overpermissioning as a discipline problem, while the actual cause is that the system makes broad access the fastest way to unblock work.
 
 - An engineer who understands this will explicitly design **incident-response access paths** because steady-state least privilege can otherwise block emergency operations. The unaware engineer removes broad access everywhere, then discovers during an outage that no one can inspect, modify, or contain the failing system without resorting to ad hoc admin credentials.
+
+</details>

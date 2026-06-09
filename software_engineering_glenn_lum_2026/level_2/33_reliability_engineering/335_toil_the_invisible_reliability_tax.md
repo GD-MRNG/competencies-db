@@ -98,7 +98,8 @@ The critical insight is that toil is not a backlog to be worked through — it i
 
 - Teams deep in the toil trap cannot escape through effort alone — they need external intervention in the form of additional capacity or a deliberate decision to let some toil-driven tasks fail while engineering capacity is rebuilt.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -197,3 +198,5 @@ The default organizational behavior is to count tickets and project milestones w
 The unaware response to a drowning team is "improve prioritization" or "be more efficient." The aware response is to free protected engineering time, reduce service obligations, add capacity, or explicitly let lower-priority toil-driven work wait. Without that intervention, the team stays trapped in reactive mode and reliability usually worsens.
 
 ---
+
+</details>

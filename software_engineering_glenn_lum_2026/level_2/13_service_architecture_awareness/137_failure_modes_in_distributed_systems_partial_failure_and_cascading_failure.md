@@ -101,7 +101,8 @@ This means designing for resilience is not about catching errors. It is about bo
 - Fallback paths only provide real resilience when they have genuinely independent failure domains; a fallback that shares infrastructure with the primary path will fail at the same time.
 - Resilience in distributed systems is not about catching errors — it is about bounding the resource cost of every network call so that uncertainty in one dependency cannot consume the capacity needed to serve everything else.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -227,3 +228,5 @@ The default engineer watches 5xx rates and health checks and sees green until th
 The default engineer feels safer after wiring a cache or alternate path without checking what infrastructure it shares. In an incident, both primary and fallback fail together. The informed engineer asks whether the fallback uses separate compute, separate pools, separate network paths, or separate backing stores. If not, it is more accurately a second code path through the same failure domain.
 
 ---
+
+</details>

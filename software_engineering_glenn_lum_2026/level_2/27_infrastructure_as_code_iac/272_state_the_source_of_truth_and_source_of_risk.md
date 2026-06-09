@@ -111,7 +111,8 @@ The question you should always be able to answer is: for any given resource in m
 
 - **Drift detection only works on resources the state file knows about.** Manually created resources that duplicate the function of a managed resource are invisible to the tool and will not trigger a diff.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -204,3 +205,5 @@ The unaware engineer force-unlocks as soon as Terraform complains, because the l
 
 **An engineer who understands this will secure state like a production secret store because it contains operationally complete knowledge of managed resources.**  
 The unaware engineer focuses on protecting `.tf` files and forgets that the backend may contain passwords, private keys, and internal IDs. The aware engineer encrypts the backend, narrows IAM access, avoids local copies where possible, and treats state exposure as a real security incident, not a paperwork issue.
+
+</details>

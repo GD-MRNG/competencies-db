@@ -104,7 +104,8 @@ The durable insight is this: synchronous coupling is **shared fate**. Asynchrono
 
 - Most real systems require both models: synchronous for interactions that need immediate confirmation and strong consistency, asynchronous for interactions that benefit from decoupled availability and can tolerate eventual consistency.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -223,3 +224,5 @@ They will approach queues differently because queue depth, message age, consumer
 
 ### 6. An engineer who understands temporal decoupling will invest in observability at message boundaries.
 They will propagate correlation IDs in headers, record publish and consume events, and make traces stitch across broker hops because debugging otherwise becomes fragmented. The unaware engineer keeps tracing only HTTP calls and then cannot explain where a business workflow disappeared between producer and consumer.
+
+</details>

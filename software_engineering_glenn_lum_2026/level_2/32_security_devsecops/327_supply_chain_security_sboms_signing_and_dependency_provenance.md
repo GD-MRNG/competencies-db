@@ -107,7 +107,8 @@ The underlying principle is that trust must be *verifiable and automated*. A hum
 - Transitive dependency chains are the weakest link: your supply chain visibility extends only as far as your dependencies themselves publish SBOMs and provenance, which today is rarely more than one level deep.
 - Package URL (purl) identifiers are what make SBOMs queryable against vulnerability databases — without stable, cross-ecosystem identifiers, correlation degrades to unreliable string matching.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -234,3 +235,5 @@ The unaware engineer sees “SLSA L3 provenance generated” and treats the labe
 The default assumption is “we have supply-chain visibility now.” In practice, you usually have strong visibility into your artifact and weak visibility into your dependencies’ dependencies. The aware engineer treats recursive trust as partial, prioritizes critical dependencies, and does not overstate the assurance level to the rest of the organization.
 
 ---
+
+</details>

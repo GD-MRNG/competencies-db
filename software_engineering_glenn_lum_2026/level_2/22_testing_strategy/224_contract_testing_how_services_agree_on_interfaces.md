@@ -149,7 +149,8 @@ If you remember one thing: a contract test does not prove the provider works cor
 
 - **The most common failure mode is thin contracts that test almost nothing.** A contract is only as useful as the assumptions it encodes. Incomplete contracts create false confidence that the integration is safe.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -257,3 +258,5 @@ The unaware engineer may run contract tests occasionally or treat them as inform
 The unaware engineer often replaces one with the other: “We have OpenAPI, so we don’t need contract tests,” or “We have contract tests, so integration tests are unnecessary.” That leaves blind spots. A working engineer uses schema validation for provider-wide structure, contract testing for consumer-specific boundary compatibility, and other tests for semantics and end-to-end behavior.
 
 ---
+
+</details>

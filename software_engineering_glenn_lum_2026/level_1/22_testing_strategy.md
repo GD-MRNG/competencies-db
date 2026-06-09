@@ -50,7 +50,8 @@ What makes a test flaky, the organizational cost of a test suite with a non-zero
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -146,3 +147,5 @@ A useful one-line summary is: **a test suite that proves everything too late is 
 - **An engineer who understands this will introduce contract tests when services evolve independently, because the main risk is often API drift rather than broken internal code.** When changing a service response shape, they will think not only “do my tests pass?” but also “have I preserved what consumers rely on?”
 - **An engineer who understands this will design the CI pipeline in layers, because test order affects team behavior.** They will want fast unit tests to fail in minutes, targeted integration tests to run where they add signal, and slower E2E or performance gates to sit later in the path. The reason is practical: when feedback arrives quickly, developers commit smaller changes and debug with much less guesswork.
 - **An engineer who understands this will treat performance as a release criterion, not an after-the-fact investigation, because some failures only exist under concurrency.** That changes decisions like adding latency budgets, tracking p95 or p99 regressions in CI, and testing resource-sensitive code paths before traffic reveals the weakness in production.
+
+</details>

@@ -109,7 +109,8 @@ The critical conceptual shift is this: every active flag is a branch in your cod
 
 - Debugging user-reported issues requires knowing the flag state evaluated for that user at request time — if you aren't logging flag evaluations per-request, you are missing a dimension of observability that you will eventually need.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -206,3 +207,5 @@ They will add owners, expiration dates, and removal work to normal delivery prac
 They will log evaluated flag values or make them reconstructable per request, especially for high-risk flows. The unaware engineer debugs only from version numbers and request traces, then cannot explain why a user hit a code path no one can reproduce locally.
 
 ---
+
+</details>

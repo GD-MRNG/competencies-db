@@ -103,7 +103,8 @@ This is the reasoning framework you need before building anything on containers:
 - Running containers as root inside the container typically means root on the host unless user namespaces are explicitly configured; most production defaults still map container root to host root.
 - For workloads running untrusted code, namespace isolation alone is insufficient â€” VM-level isolation (Firecracker, gVisor) or aggressive seccomp and capability restriction is necessary to compensate for the shared-kernel attack surface.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -242,3 +243,5 @@ The unaware default is to accept root inside the container as harmless because â
 The unaware default is to standardize on plain containers for everything. The consequence is inheriting shared-kernel risk in places where the workload should never have had that much proximity to the host. The informed engineer asks whether the code is trusted; if not, they consider microVMs, gVisor-like sandboxes, or more aggressive syscall and capability restrictions.
 
 ---
+
+</details>

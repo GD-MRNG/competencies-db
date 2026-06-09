@@ -104,7 +104,8 @@ Do not choose based on what Google or Facebook does. Choose based on where your 
 
 - The correct choice depends on the ratio of cross-cutting work to independent work in your system and on whether your organization has the platform engineering capacity to support the tooling that each model demands.
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -213,3 +214,5 @@ If the environment requires hard boundaries around who can modify billing or hea
 
 **An engineer who understands this will choose hybrids cautiously because hybrids inherit both classes of coordination cost unless there is a very specific reason for the split.**  
 The default mistake is drifting into “some shared stuff together, services apart” without naming which coordination problem each boundary is meant to solve. The consequence is duplicated tooling burden: graph-aware builds in one place, artifact/version migrations in another, and no clean simplification anywhere.
+
+</details>
