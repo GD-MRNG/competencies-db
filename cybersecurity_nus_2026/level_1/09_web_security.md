@@ -38,7 +38,8 @@ The breaches that make the news — TalkTalk losing 150,000 customer records to 
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -121,3 +122,5 @@ That changes how they implement forms, API mutations, and sensitive account acti
 
 **An engineer who understands this will review the full path of a request across layers, because compromise usually follows the weakest layer, not the one they personally own.**  
 That changes deployment and architecture decisions: patch cadence, reverse-proxy configuration, TLS termination, database permissions, third-party script inclusion, CSP policy, and logging. They stop saying “the app is secure” as if the runtime, web server, browser context, and dependencies are outside the problem.
+
+</details>

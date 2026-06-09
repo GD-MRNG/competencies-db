@@ -38,7 +38,8 @@ The practical skill this builds is a way of looking at any system that handles s
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -115,3 +116,5 @@ They will care about timing behavior, hardware exposure, debug interfaces, share
 
 **An engineer who understands this will approach system trust differently because they know secrecy of design is not a durable control.**  
 If a teammate says "it is safe because nobody knows how we encoded it," they will treat that as a warning sign. They will design as though attackers can inspect binaries, reverse engineer clients, read documentation, and observe traffic. That mindset usually leads to more robust systems long before any attack occurs.
+
+</details>

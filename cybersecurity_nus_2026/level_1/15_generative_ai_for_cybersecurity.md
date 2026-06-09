@@ -42,7 +42,8 @@ The skill this topic builds, then, is not a tool or a technique. It is a stance.
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -128,3 +129,5 @@ That means approval gates for sensitive actions, audit trails for model outputs,
 
 **An engineer who understands this will treat security leadership as a governance problem as much as a technical one because somebody must define the operating boundary for AI systems.**  
 That changes day-to-day work around policy, access control, model permissions, documentation, accountability, and regulatory readiness. The engineer is no longer just choosing tools; they are deciding which decisions may be delegated, under what evidence standard, with what human override, and with whose responsibility attached.
+
+</details>

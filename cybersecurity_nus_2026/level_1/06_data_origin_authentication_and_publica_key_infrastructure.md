@@ -42,7 +42,8 @@ The final lesson is one most textbooks underplay. The reason PKI deployments fai
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -117,3 +118,5 @@ That one sentence captures a lot. Freshness, authorisation, uniqueness, and poli
 **An engineer who understands this will add nonces, timestamps, sequence numbers, or expiry windows to signed protocols when replay matters, because a valid old signature is still a valid signature.**
 
 **An engineer who understands this will plan certificate issuance, renewal, revocation, key storage, and failure response as part of system design, because the most likely way the trust system breaks in production is through lifecycle and operations rather than broken cryptographic primitives.**
+
+</details>

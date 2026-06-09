@@ -40,7 +40,8 @@ What this all adds up to is a different posture. Conventional security was about
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -117,3 +118,5 @@ That changes how pull requests are validated, how secrets are prevented from ent
 
 **An engineer who understands this will invest in logs and detection as part of the product environment, because prevention failures are inevitable and response speed depends on visibility.**  
 That changes whether audit logging is enabled by default, whether logs are centralized and retained correctly, whether detection rules exist for dangerous API actions, and whether common incidents have automated containment playbooks ready to run.
+
+</details>

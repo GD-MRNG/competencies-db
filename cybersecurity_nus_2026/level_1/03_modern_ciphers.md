@@ -40,7 +40,8 @@ The takeaway is the shape of the skill you are building. Choosing a cipher is no
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -129,3 +130,5 @@ That affects protocol design, storage formats, and API boundaries. They will ask
 
 **An engineer who understands this will build cryptographic agility into interfaces and configuration, because the useful lifetime of a system often exceeds the comfortable lifetime of an algorithm choice.**  
 That means versioned envelopes, negotiable or replaceable algorithms, migration paths for stored ciphertext, and avoiding designs where key sizes, modes, or message formats are frozen into every caller. The point is not abstract future-proofing; it is making sure a cipher deprecation does not become a product rewrite.
+
+</details>

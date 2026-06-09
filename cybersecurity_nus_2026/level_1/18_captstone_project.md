@@ -38,7 +38,8 @@ The capstone, in the end, is asking a single question across nine rubric criteri
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -110,3 +111,5 @@ They will describe the technical observation, explain the security impact, and a
 
 **An engineer who understands this will draft the executive summary as a translation exercise, not a shortened technical section, because decision-makers do not act on protocol names; they act on business risk and remediation cost.**  
 So they will remove tool names, expand acronyms, focus on consequences, and state what should be fixed first. That produces a report that could plausibly be read by both a technical reviewer and a manager, which is exactly the professional posture the capstone is trying to develop.
+
+</details>

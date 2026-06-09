@@ -40,7 +40,8 @@ What you should walk away with is not a list of commands but a way of looking at
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -129,3 +130,5 @@ They will prefer short-lived credentials, scoped tokens, and revalidation for se
 
 **An engineer who understands this will structure systems to fail smaller because they will assume compromise and design around containment.**  
 That affects container users, filesystem mounts, network segmentation, secret distribution, and writable paths. If a web process only needs read access to configuration and write access to one upload directory, then giving it broader filesystem rights is no longer a harmless default — it is an unnecessary expansion of blast radius.
+
+</details>

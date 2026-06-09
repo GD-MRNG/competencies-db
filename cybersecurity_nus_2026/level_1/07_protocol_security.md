@@ -42,7 +42,8 @@ The practical skill this topic builds is the ability to read a protocol adversar
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -125,3 +126,5 @@ The default is often to authenticate "the important side" and leave the rest imp
 
 **An engineer who understands this will be suspicious of "lightweight" or "custom" protocol simplifications, because reduced cost often comes directly from removing security margin.**  
 The unaware engineer inherits short challenges, ad hoc XOR combinations, or token shortcuts because they are easy to implement or fit device limits. The informed engineer recognises these as places where attackers gain leverage and will push either for standard constructions, for formal review, or for explicit acceptance of the resulting risk.
+
+</details>

@@ -40,7 +40,8 @@ The practical implication is that the security of every system built on these pr
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -120,3 +121,5 @@ In practice, that means they can spot designs that encrypt data but do not authe
 
 **An engineer who understands this will approach system claims more skeptically because they can decompose “secure” into concrete primitives and responsibilities.**  
 When reviewing a design, they will ask: what detects tampering, what proves who authorised the action, what protects the session or content key, and where can the private key leak? That line of questioning catches real failures much earlier than algorithm-name checking.
+
+</details>

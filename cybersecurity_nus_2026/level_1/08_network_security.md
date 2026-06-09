@@ -42,7 +42,8 @@ The boundary itself, though, is dissolving. Remote work, BYOD, cloud services, a
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -155,3 +156,5 @@ The unaware engineer often starts from permissive connectivity and adds exceptio
 ### An engineer who understands this will stop using network location as a shortcut for trust, because modern environments make “inside” too weak a security boundary to carry much meaning.
 
 The default inherited assumption is that internal traffic is lower risk and deserves broader access. In practice, that assumption breaks under remote work, cloud systems, contractor devices, and post-compromise lateral movement. An engineer who understands this designs access around identity, context, and narrowly scoped policy checks rather than subnet membership alone.
+
+</details>

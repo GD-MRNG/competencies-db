@@ -38,7 +38,8 @@ What you should walk away with is not a checklist but a lens. When you encounter
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -109,3 +110,5 @@ In practice, this changes how they review systems: they look for stale service a
 
 **An engineer who understands this will evaluate security controls as trade-offs inside a working system, not as abstract virtues.**  
 They will ask whether a stronger policy will actually be followed, whether a control slows emergency response, whether it creates unsafe workarounds, and whether the cost of the control is justified by the asset and threat model. In other words, they design for security that people can sustain, not security that only looks strict in documentation.
+
+</details>

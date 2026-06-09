@@ -40,7 +40,8 @@ What this topic builds, then, is not the ability to implement any particular alg
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -129,3 +130,5 @@ In a banking or fraud setting, they may tolerate more customer friction to reduc
 
 **An engineer who understands this will spend more effort on feature design and evaluation discipline because deployment failure usually comes from representation or generalization, not from picking the “wrong” famous algorithm.**  
 They will think carefully about what aspects of traffic behavior are being quantified, how train/test splits are created, whether drift is being monitored, and whether the model is learning portable patterns rather than artifacts of one dataset. In practice, that is often what separates a system that demos well from one that survives production.
+
+</details>

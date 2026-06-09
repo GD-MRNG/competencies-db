@@ -42,7 +42,8 @@ What you should walk away with is a habit of looking at any authentication syste
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -120,3 +121,5 @@ They will ask whether the second factor is truly a different category of evidenc
 
 **An engineer who understands this will evaluate biometrics differently because convenience and revocability trade against each other.**  
 That changes where biometric templates are stored, whether biometrics are used as a local unlock versus a remote identity root, and how the system recovers when a biometric signal is spoofed or exposed.
+
+</details>

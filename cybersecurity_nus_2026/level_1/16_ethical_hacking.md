@@ -40,7 +40,8 @@ The skill ethical hacking builds in you, even if you never run an exploit yourse
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -120,3 +121,5 @@ They will want findings written as causal paths: entry point, preconditions, imp
 
 **An engineer who understands this will approach defensive architecture differently because perimeter controls are only one layer in a system where attackers increasingly automate reconnaissance and exploit selection.**  
 So they will invest not just in blocking entry, but in detection, containment, credential hygiene, and rapid response after initial access — the places where real breaches are either amplified or stopped.
+
+</details>

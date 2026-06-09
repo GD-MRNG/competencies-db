@@ -38,7 +38,8 @@ The takeaway is not that deep learning is better than traditional ML. It is that
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -121,3 +122,5 @@ They will use regularization, holdout discipline, and evaluation setups that tes
 
 **An engineer who understands this will design human workflow around model output because detection speed only helps if explanation and response can keep pace.**  
 They will ask how alerts are surfaced, how analysts inspect the reasoning behind them, and which responses can be automated safely. In practice, that means building for SIEM integration, explainability, and SOAR handoff from the start rather than bolting them on after the model works in a notebook.
+
+</details>

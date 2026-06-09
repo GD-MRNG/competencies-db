@@ -40,7 +40,8 @@ The skill this topic builds is the one most technical people never quite develop
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -126,3 +127,5 @@ That changes behavior around vulnerability research, red-team activity, use of p
 
 **An engineer who understands this will choose architectures and cryptography with failure horizons in mind, because some security decisions outlive the current threat model.**  
 That affects key management, algorithm selection, data retention, and automation strategy. You are more likely to favor hardware-backed key protection, stronger symmetric margins, migration planning for post-quantum cryptography, and AI-assisted detection and response where human latency is no longer acceptable.
+
+</details>
