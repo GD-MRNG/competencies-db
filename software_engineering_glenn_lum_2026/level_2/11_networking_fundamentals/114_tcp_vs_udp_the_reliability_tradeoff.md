@@ -216,3 +216,253 @@ That matters in RPC systems, database drivers, and command-response protocols wh
 That changes the bar for adopting it. You do not pick UDP because it sounds fast; you pick it because stale data can be dropped, because custom retransmission is superior to TCP’s, or because stream independence is worth implementing yourself.
 
 </details>
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) TCP pays an RTT before useful work on a fresh connection
+
+```text
+# Assume RTT = 50ms
+
+TCP, new connection:
+t=0    client -> SYN ------------------------------> server
+t=25   client <- SYN-ACK -------------------------- server
+t=50   client -> ACK + first request bytes -------> server
+# first payload can only start after 1 RTT
+
+UDP:
+t=0    client -> request datagram -----------------> server
+# no transport handshake
+```
+
+```python
+# Consequence for app design:
+# 10 short requests over new TCP connections:
+latency = 10 * (50)   # 500ms handshake overhead alone
+
+# 10 short requests over 1 reused TCP connection:
+latency = 1 * (50)    # one handshake, then reuse
+```
+
+The point is not “TCP is slow.” The point is: **fresh TCP connections have a fixed setup cost**, so pooling/keep-alive is often mandatory.
+
+---
+
+### 2) TCP reliability is implemented as ordered delivery, which creates head-of-line blocking
+
+```python
+# Receiver-side logic, simplified.
+expected = 1
+buffer = set()
+
+def on_segment(seq):
+    global expected
+    buffer.add(seq)
+
+    while expected in buffer:
+        deliver_to_app(expected)
+        buffer.remove(expected)
+        expected += 1
+```
+
+```text
+Sender sends:   [1] [2] [3]
+Network does:   [1] lost [3]
+
+Receiver gets 1 -> delivers 1
+Receiver gets 3 -> buffers 3, cannot deliver it yet
+Receiver waits for retransmitted 2
+Only then can app see 3
+```
+
+A single missing segment stalls everything behind it on that connection.  
+That is fine for “one ordered byte stream,” but expensive for multiplexed protocols sharing one TCP connection.
+
+---
+
+### 3) TCP flow control turns a slow reader into transport backpressure
+
+```python
+# Receiver has a fixed-size socket buffer.
+recv_buffer_capacity = 8
+recv_buffer_used = 0
+
+def app_reads(n):
+    global recv_buffer_used
+    recv_buffer_used = max(0, recv_buffer_used - n)
+
+def advertised_window():
+    return recv_buffer_capacity - recv_buffer_used
+```
+
+```text
+Step 1: app is healthy
+recv_buffer_used = 2
+advertised_window = 6
+sender may continue
+
+Step 2: app stops reading (GC pause, disk wait, blocked downstream)
+incoming data fills buffer
+recv_buffer_used = 8
+advertised_window = 0
+
+Step 3: sender must stop
+# network is not necessarily slow
+# receiver process is the bottleneck
+```
+
+TCP does not just reflect network conditions. It also reflects **application consumption speed**.
+
+---
+
+### 4) TCP congestion control makes short-lived connections bad at ramping up
+
+```python
+# Very simplified slow start.
+cwnd = 10      # segments
+rtt_ms = 100
+
+for round_trip in range(1, 5):
+    print(f"RTT {round_trip}: can send {cwnd} segments")
+    cwnd *= 2
+```
+
+```text
+RTT 1: 10 segments
+RTT 2: 20 segments
+RTT 3: 40 segments
+RTT 4: 80 segments
+```
+
+```text
+If the response finishes in 2 RTTs, the connection never gets large.
+If packet loss happens, classic TCP cuts the window and ramps again.
+```
+
+Tradeoff shown directly: TCP protects the network, but **throughput is not instantly available**. Reused long-lived connections avoid paying this ramp-up repeatedly.
+
+---
+
+### 5) “TCP is reliable” does not mean “TCP finishes quickly”
+
+```python
+# Simplified retransmission timeout behavior.
+rto_ms = 200
+
+for attempt in range(5):
+    print(f"attempt {attempt+1}: send packet, wait {rto_ms}ms")
+    # no ACK arrives
+    rto_ms *= 2
+```
+
+```text
+attempt 1: wait 200ms
+attempt 2: wait 400ms
+attempt 3: wait 800ms
+attempt 4: wait 1600ms
+attempt 5: wait 3200ms
+```
+
+```python
+# Application view:
+data = sock.read()   # may block through all of that unless YOU set a timeout
+```
+
+TCP’s promise is closer to: **“I will keep trying to deliver in order”** than **“I will fail or succeed within your latency budget.”**
+
+---
+
+### 6) UDP is not “fast TCP”; it is “you own the policy”
+
+```python
+# Sender
+send_udp(seq=1, payload="position@t1")
+send_udp(seq=2, payload="position@t2")
+send_udp(seq=3, payload="position@t3")
+```
+
+```python
+# Receiver: freshness over completeness
+latest_seq = 0
+
+def on_datagram(seq, payload):
+    global latest_seq
+    if seq <= latest_seq:
+        return              # old or reordered update: drop it
+    latest_seq = seq
+    apply(payload)
+```
+
+```text
+Network may deliver: 1, 3          # 2 lost
+Receiver applies:     t1, then t3
+No retransmission. No waiting for 2.
+```
+
+This is exactly wrong for a database protocol, and exactly right for some real-time state updates.  
+UDP’s benefit is not just lower overhead; it is **freedom to choose different correctness rules**.
+
+---
+
+### 7) Short-lived TCP connections can fail from port exhaustion, not backend failure
+
+```shell
+# Conceptual numbers, not exact OS output
+ephemeral_port_range = 28000 ports
+TIME_WAIT = 60 seconds
+
+# If your client opens/closes 1000 connections/sec to the same destination:
+ports_held = 1000 * 60 = 60000
+
+# 60000 > 28000  => new connect() can fail with EADDRNOTAVAIL
+```
+
+```text
+bad:
+for each request:
+    open TCP connection
+    send request
+    close connection
+
+better:
+open small pool of persistent connections
+reuse them for many requests
+```
+
+The failure is surprising because the service can be healthy and the network fine. The bottleneck is **kernel socket lifecycle state**.
+
+---
+
+### 8) Small-message TCP can gain mysterious latency from Nagle + delayed ACK
+
+```text
+Sender with Nagle:
+- sends tiny message M1
+- waits for ACK before sending tiny M2
+
+Receiver with delayed ACK:
+- waits ~40ms before sending ACK
+- hoping to piggyback it on response data
+
+Result:
+sender waits for ACK
+receiver waits before ACK
+tiny exchange pays ~40ms
+```
+
+```python
+# Typical fix for request/response protocols with small writes:
+sock.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
+```
+
+This trades bandwidth efficiency for latency. For RPCs and DB protocols, that is usually the right trade.
+
+## Key Ideas
+
+The sketches show that TCP is not a vague “reliable transport” but a bundle of concrete mechanisms: handshake, ordered retransmission, flow control, congestion control, and connection lifecycle state. Each mechanism solves a real problem, and each creates visible costs in latency, throughput, memory, or failure modes. UDP is not merely the “fast” option; it is the option where those policies are absent unless the application rebuilds them. So the real design question is not TCP versus UDP in the abstract, but whether TCP’s built-in semantics—global ordering, backpressure, congestion response, long-lived state—match the behavior your application actually wants.
+
+</details>

@@ -232,3 +232,233 @@ The unaware engineer inherits whatever ratio emerges from ad hoc requests and li
 ---
 
 </details>
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) Reconciliation is many small loops, not one “deploy” action
+
+```text
+# desired state in the API store
+Deployment(name="api", replicas=3)
+
+# controller A: ensures Pod objects exist
+ReplicaSetController:
+  sees desired=3, actual=0
+  creates Pod(api-1), Pod(api-2), Pod(api-3)
+
+# controller B: assigns nodes
+Scheduler:
+  sees Pod(api-1) has no node -> bind to node-7
+  sees Pod(api-2) has no node -> bind to node-9
+  sees Pod(api-3) has no node -> bind to node-7
+
+# controller C: starts containers
+Kubelet(node-7):
+  sees assigned Pod(api-1) not running -> pull image, start container
+  sees assigned Pod(api-3) not running -> pull image, start container
+
+Kubelet(node-9):
+  sees assigned Pod(api-2) not running -> pull image, start container
+
+# controller D: traffic routing
+ServiceController:
+  adds a Pod to endpoints only after readiness passes
+```
+
+The important part is the gaps. If deployment feels “slow,” the latency is often between loops, not inside a single command.
+
+---
+
+### 2) Scheduling is filter first, score second
+
+```python
+nodes = [
+    {"name": "node-a", "free_mem": 1024, "labels": {"zone": "a"}, "taints": []},
+    {"name": "node-b", "free_mem": 256,  "labels": {"zone": "b"}, "taints": []},
+    {"name": "node-c", "free_mem": 2048, "labels": {"zone": "a"}, "taints": ["gpu"]},
+]
+
+pod = {
+    "mem_request": 512,
+    "required_zone": "a",
+    "tolerates": [],
+}
+
+def feasible(node, pod):
+    if node["free_mem"] < pod["mem_request"]:
+        return False
+    if node["labels"]["zone"] != pod["required_zone"]:
+        return False
+    if any(t not in pod["tolerates"] for t in node["taints"]):
+        return False
+    return True
+
+candidates = [n for n in nodes if feasible(n, pod)]
+# node-b filtered: not enough memory, wrong zone
+# node-c filtered: taint not tolerated
+# only node-a remains
+
+winner = max(candidates, key=lambda n: n["free_mem"]) if candidates else None
+print(winner["name"] if winner else "Pending")
+```
+
+If `candidates` is empty, the pod stays `Pending`. That means “no valid placement exists under current rules,” not “the scheduler is busy.”
+
+---
+
+### 3) The scheduler uses requests, not actual usage
+
+```python
+node_allocatable = 4096  # Mi
+
+already_scheduled = [
+    {"pod": "web-1", "request": 1024, "actual": 150},
+    {"pod": "web-2", "request": 1024, "actual": 180},
+    {"pod": "worker", "request": 1536, "actual": 220},
+]
+
+requested_total = sum(p["request"] for p in already_scheduled)  # 3584
+actual_total = sum(p["actual"] for p in already_scheduled)      # 550
+
+new_pod_request = 768
+
+scheduler_sees_free = node_allocatable - requested_total   # 512
+human_sees_free = node_allocatable - actual_total          # 3546
+
+print("scheduler:", "fits" if scheduler_sees_free >= new_pod_request else "Pending")
+print("dashboard:", "looks empty")
+```
+
+Output idea:
+
+```text
+scheduler: Pending
+dashboard: looks empty
+```
+
+This is the root of many “why is this pod pending on an idle cluster?” incidents.
+
+---
+
+### 4) Requests and limits create overcommitment risk
+
+```python
+node_physical_mem = 4096  # Mi
+
+pods = [
+    {"name": "a", "request": 512, "limit": 2048, "runtime_use": 1700},
+    {"name": "b", "request": 512, "limit": 2048, "runtime_use": 1600},
+    {"name": "c", "request": 512, "limit": 2048, "runtime_use": 1200},
+]
+
+scheduled_ok = sum(p["request"] for p in pods) <= node_physical_mem
+runtime_ok   = sum(p["runtime_use"] for p in pods) <= node_physical_mem
+
+print("scheduler says placement valid:", scheduled_ok)   # True: requests total 1536
+print("kernel says memory fits now:", runtime_ok)        # False: actual total 4500
+print("result:", "OOMKilled likely" if not runtime_ok else "stable")
+```
+
+Same node, two truths:
+
+- scheduler truth: requests fit
+- runtime truth: memory does not fit
+
+Low requests + high limits improve packing, but they move risk to runtime under burst.
+
+---
+
+### 5) Service discovery only works if readiness is honest
+
+```yaml
+# service selects all pods with app=api
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+spec:
+  selector:
+    app: api
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: api-pod
+  labels:
+    app: api
+spec:
+  containers:
+    - name: api
+      image: my-api
+      readinessProbe:
+        httpGet:
+          path: /ready
+          port: 8080
+```
+
+```text
+Case A: /ready returns 200 as soon as process starts
+=> pod enters Service endpoints early
+=> traffic arrives during warmup
+=> intermittent 5xx
+
+Case B: /ready returns 200 only after DB connection + cache warmup
+=> pod enters endpoints later
+=> slower rollout, but traffic goes only to usable pods
+```
+
+A Service gives a stable address, but the endpoint list is only as good as the readiness signal.
+
+---
+
+### 6) Self-healing after node failure is delayed, and placement rules matter
+
+```text
+t=00s  node-3 dies
+t=40s  control plane marks node-3 unhealthy
+t=5m40s pods on node-3 are evicted
+t=5m41s ReplicaSet notices missing replicas, creates replacements
+t=5m42s Scheduler assigns replacements to healthy nodes
+t=5m50s Kubelet starts containers
+t=6m10s Readiness passes, pods receive traffic
+```
+
+Now compare placement:
+
+```yaml
+# no spread rule: all replicas may land on one node
+spec:
+  replicas: 3
+```
+
+```yaml
+# explicit fault isolation
+spec:
+  replicas: 3
+  template:
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: api
+              topologyKey: kubernetes.io/hostname
+```
+
+Without anti-affinity, “3 replicas” can still mean “1 node failure = 0 capacity.”
+
+---
+
+## Key Ideas
+
+Kubernetes scheduling is easier to reason about if you treat it as a chain of independent control loops: one loop creates pods, another places them, another starts them, another decides whether they receive traffic. The scheduler itself is narrow and literal: it filters out impossible nodes, scores the rest, and makes that decision from declared requests and constraints, not from live utilization or application intent. That is why `Pending`, `OOMKilled`, and post-failure outages often come from configuration that was technically valid but operationally misleading: requests that don’t reflect reality, limits that permit dangerous bursts, readiness probes that lie, or replica placement left to default heuristics.
+
+</details>

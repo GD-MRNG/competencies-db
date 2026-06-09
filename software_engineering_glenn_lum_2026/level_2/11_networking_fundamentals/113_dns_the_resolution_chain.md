@@ -198,3 +198,261 @@ Low TTL means you can change direction quickly, but you are also forcing the wor
 - An engineer who understands this will verify glue and delegation any time nameserver records change, because some of the nastiest DNS failures are not bad endpoint records but broken reachability to the servers that are supposed to answer authoritatively.
 
 </details>
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) Stub resolver vs. recursive resolver: who does the real work?
+
+```python
+# Minimal pseudocode
+
+def app_requests_ip(name):
+    if os_cache.has_fresh(name):
+        return os_cache[name]           # no network at all
+
+    return stub_resolver(name)
+
+def stub_resolver(name):
+    # Stub does NOT walk DNS hierarchy.
+    return ask(recursive_resolver="8.8.8.8", question=name)
+
+def recursive_resolver(name):
+    # Recursive resolver does the real work.
+    ns = ask(root_server, question="who handles .com?")
+    ns = ask(ns,         question="who handles example.com?")
+    ans = ask(ns,        question="A api.example.com?")
+    cache.store(name, ans, ttl=ans.ttl)
+    return ans
+```
+
+The important boundary is role, not syntax: the client-side stub mostly forwards; the recursive resolver follows the chain and caches the result.
+
+---
+
+### 2) DNS is delegation by referral, not forwarding
+
+```text
+Query: A api.example.com
+
+root server:
+  "I don't know api.example.com.
+   Ask a .com nameserver."
+   -> referral to .com NS
+
+.com TLD server:
+  "I don't know api.example.com.
+   Ask example.com's nameserver."
+   -> referral to example.com NS
+
+authoritative server for example.com:
+  "I am responsible for this zone.
+   api.example.com = 198.51.100.10, TTL=300"
+```
+
+Counterexample mental model:
+
+```text
+WRONG:
+client -> root -> .com -> example.com -> answer forwarded back through chain
+
+RIGHT:
+recursive resolver asks each server itself, one hop at a time
+```
+
+If you miss this, you debug the wrong machine. Root and TLD servers are signposts, not answer sources for your hostname.
+
+---
+
+### 3) Glue records solve the bootstrap problem
+
+```text
+Delegation without glue:
+
+.com says:
+  example.com NS ns1.example.com
+
+Problem:
+  To contact ns1.example.com, resolver needs IP of ns1.example.com
+  But that name is inside example.com
+  So we'd need example.com's server to find example.com's server
+  -> circular dependency
+```
+
+```text
+Delegation with glue:
+
+.com says:
+  example.com NS ns1.example.com
+  glue: ns1.example.com A 198.51.100.53
+
+Now the resolver can reach the authoritative server.
+```
+
+Broken glue looks more like “can’t resolve the domain” than “got the wrong A record.” The chain fails before the final lookup.
+
+---
+
+### 4) TTL is independent expiration, not propagation
+
+```python
+# Same authoritative record, cached at different times.
+
+authoritative_answer = ("api.example.com", "198.51.100.10", 300)
+
+resolver_A.cached_at = "14:00:00"
+resolver_B.cached_at = "14:02:30"
+
+resolver_A.expires_at = "14:05:00"
+resolver_B.expires_at = "14:07:30"
+```
+
+```text
+14:04:00
+  A returns cached answer
+  B returns cached answer
+
+14:06:00
+  A refreshes and may see new value
+  B still serves old cached value
+
+There is no single "internet switched over" moment.
+```
+
+This is why “DNS propagation” is sloppy language. Different caches age out independently.
+
+---
+
+### 5) Lower TTL before a migration, not during it
+
+```text
+Before change:
+  api.example.com A 93.184.216.34 TTL=86400
+
+A resolver caches it at Monday 09:00.
+It may legally serve that old IP until Tuesday 09:00.
+```
+
+```text
+Tuesday 12:00 you change record to:
+  api.example.com A 198.51.100.10 TTL=300
+
+Important:
+  the new TTL=300 does NOT shorten the old cached 86400 answer
+```
+
+Better sequence:
+
+```text
+Monday:
+  change TTL from 86400 -> 300
+  wait at least 86400 seconds
+
+Tuesday:
+  change IP from 93.184.216.34 -> 198.51.100.10
+```
+
+Tradeoff is built in: low TTL gives faster cutover, but more resolvers must come back and ask again.
+
+---
+
+### 6) NXDOMAIN is cached too
+
+```text
+09:00
+  client asks for new.api.example.com
+  authoritative answer: NXDOMAIN
+  negative TTL from SOA: 3600
+
+resolver caches:
+  "new.api.example.com does not exist" until 10:00
+```
+
+```text
+09:10
+  you create new.api.example.com A 198.51.100.20
+
+09:15
+  same client asks again
+  resolver still returns NXDOMAIN
+```
+
+Minimal rule:
+
+```python
+if cached_negative_answer.exists(name) and not expired(name):
+    return NXDOMAIN
+```
+
+So “I created the record and it still doesn’t resolve” can be correct behavior, not a failed deployment.
+
+---
+
+### 7) Different tools hit different caches
+
+```sh
+# Directly ask a specific recursive resolver:
+dig @8.8.8.8 api.example.com
+
+# Use system-configured resolution path:
+getent hosts api.example.com    # Linux
+nslookup api.example.com
+
+# Application path:
+curl https://api.example.com
+```
+
+Possible result set at one moment:
+
+```text
+dig @8.8.8.8            -> 198.51.100.10
+OS resolver             -> 93.184.216.34
+browser / app runtime   -> 93.184.216.34
+```
+
+Same name, different answers, because you are testing different layers:
+- recursive resolver cache
+- OS cache
+- application/runtime cache
+
+If you don’t know which cache your tool exercises, your test result is ambiguous.
+
+---
+
+### 8) CNAME chains trade flexibility for extra lookups
+
+```text
+Direct:
+  api.example.com A 198.51.100.10
+  -> one name to resolve
+```
+
+```text
+Alias chain:
+  api.example.com CNAME edge.example.net
+  edge.example.net CNAME lb.vendor.net
+  lb.vendor.net A 198.51.100.10
+```
+
+Minimal consequence:
+
+```python
+def resolve(name):
+    if record(name).type == "A":
+        return record(name).ip
+    if record(name).type == "CNAME":
+        return resolve(record(name).target)   # extra work, extra cache misses possible
+```
+
+CNAMEs are useful, but each extra hop can add latency and another place for stale cache to hide.
+
+---
+
+## Key Ideas
+
+DNS is easiest to reason about when you stop treating it as a single lookup and instead treat it as a delegated walk plus independent caches. The stub asks; the recursive resolver follows referrals; only the authoritative server owns the truth; parent zones may need glue so the walk can even continue. Every positive or negative answer then lives in multiple caches with separate clocks, which is why migrations depend on TTL decisions made earlier, why NXDOMAIN can persist after record creation, and why different tools can disagree without any server being “wrong.”
+
+</details>

@@ -226,3 +226,194 @@ If they only need connection forwarding, they may prefer Layer 4 for simplicity 
 That changes operational choices: they add idle keepalives, watch connection-tracking limits, think about port exhaustion, and stop assuming that silence means the connection is still healthy just because neither application has closed it.
 
 </details>
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) Encapsulation: each layer wraps opaque bytes
+
+```python
+http = b"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n"
+
+tcp_segment = {
+    "src_port": 51515,
+    "dst_port": 80,
+    "seq": 1000,
+    "payload": http,   # TCP does not care this is HTTP
+}
+
+ip_packet = {
+    "src_ip": "10.0.0.5",
+    "dst_ip": "93.184.216.34",
+    "protocol": 6,     # TCP
+    "payload": tcp_segment,  # IP does not care about ports or HTTP
+}
+
+ethernet_frame = {
+    "dst_mac": "aa:bb:cc:dd:ee:ff",
+    "ethertype": 0x0800,     # IPv4
+    "payload": ip_packet,    # Ethernet does not care about IP meaning
+}
+
+print(ethernet_frame["payload"]["payload"]["payload"])
+# b'GET / HTTP/1.1\r\nHost: example.com\r\n\r\n'
+```
+
+Same data, three wrappers. Each layer adds metadata for its own job and treats the inner payload as opaque.
+
+---
+
+### 2) Header overhead and MTU: payload shrinks as wrappers grow
+
+```python
+MTU = 1500          # Ethernet payload limit
+IP_HEADER = 20
+TCP_HEADER = 20
+TLS_OVERHEAD = 25   # rough example, varies
+
+mss_without_tls = MTU - IP_HEADER - TCP_HEADER
+mss_with_tls = MTU - IP_HEADER - TCP_HEADER - TLS_OVERHEAD
+
+print(mss_without_tls)  # 1460 bytes of app data
+print(mss_with_tls)     # 1435 bytes of app data
+```
+
+```python
+file_size = 10_000
+segments = -(-file_size // mss_without_tls)  # ceil division
+print(segments)  # number of TCP segments needed
+```
+
+Useful lie to avoid: bandwidth is not just “file size / link speed.” Headers consume real bytes, and small messages pay proportionally more overhead.
+
+---
+
+### 3) TCP connection: not a circuit, just shared endpoint state
+
+```python
+client = {}
+server = {}
+
+# 1. SYN
+client["isn"] = 1000
+syn = {"SYN": True, "seq": client["isn"]}
+
+# 2. SYN-ACK
+server["isn"] = 5000
+server["peer_seq"] = syn["seq"]
+syn_ack = {"SYN": True, "ACK": True, "seq": server["isn"], "ack": syn["seq"] + 1}
+
+# 3. ACK
+client["peer_seq"] = syn_ack["seq"]
+ack = {"ACK": True, "seq": syn_ack["ack"], "ack": syn_ack["seq"] + 1}
+
+print(client)  # {'isn': 1000, 'peer_seq': 5000}
+print(server)  # {'isn': 5000, 'peer_seq': 1000}
+```
+
+Nothing in the middle “holds the connection” by default. The connection is memory on both endpoints: sequence numbers, timers, buffers, window state.
+
+Cost: no application data flows until this round trip completes.
+
+---
+
+### 4) TCP reliability causes head-of-line blocking
+
+```python
+arrived = [1, 2, 4, 5]   # segment 3 was lost
+next_expected = 1
+buffer = set(arrived)
+
+while next_expected in buffer:
+    print("deliver", next_expected)
+    next_expected += 1
+
+print("waiting for", next_expected)
+# deliver 1
+# deliver 2
+# waiting for 3
+```
+
+Even though 4 and 5 arrived, TCP cannot deliver them yet because it promises ordered bytes. Reliability and ordering are useful, but this is the latency cost.
+
+---
+
+### 5) UDP trades guarantees for timeliness
+
+```python
+# TCP receiver mindset:
+tcp_arrived = [1, 2, 4, 5]
+tcp_visible_to_app = [1, 2]   # 4 and 5 blocked behind missing 3
+
+# UDP receiver mindset:
+udp_arrived = ["pos=10", "pos=11", "pos=13", "pos=14"]
+udp_visible_to_app = udp_arrived  # app decides what to do with gaps
+
+print(tcp_visible_to_app)
+print(udp_visible_to_app)
+```
+
+UDP is not “bad TCP.” It skips built-in ordering/retransmission/handshake so the application can prefer freshness over completeness.
+
+Cost: if you need reliability, you must build it yourself.
+
+---
+
+### 6) Symptoms map to layers, so tools should too
+
+```sh
+# Internet layer: can I reach the host IP at all?
+ping 10.0.0.8
+
+# Transport layer: is something accepting TCP on this port?
+nc -zv 10.0.0.8 443
+
+# TLS/application handshake: can we negotiate TLS?
+openssl s_client -connect 10.0.0.8:443
+
+# Full application behavior: does HTTP succeed?
+curl -v https://10.0.0.8/
+```
+
+```text
+Symptom                    Likely layer
+-------------------------  --------------------------
+No ping / no route         IP / network path
+Connection refused         TCP / port listener / firewall
+TLS cert mismatch          TLS / application protocol
+HTTP 502                   Application-to-application
+Works small, hangs large   MTU / fragmentation / PMTU
+```
+
+The trick is not memorizing the stack. It is picking the first layer whose promise failed.
+
+---
+
+### 7) Layer 4 vs Layer 7 load balancing: what can be inspected?
+
+```python
+# Layer 4 LB: route only on connection metadata
+def route_l4(dst_ip, dst_port):
+    if dst_port == 443:
+        return "web-pool"
+    return "default-pool"
+```
+
+```python
+# Layer 7 LB: terminate TCP/TLS, parse HTTP, then route on content
+def route_l7(http_request):
+    if http_request["path"].startswith("/api/"):
+        return "api-pool"
+    return "static-pool"
+```
+
+Layer 4 is cheaper and more opaque. Layer 7 is smarter but must parse higher-level protocol data, often including TLS termination.
+
+## Key Ideas
+
+The useful part of the layer model is mechanical: each layer wraps bytes, adds its own control data, and makes promises with real costs. TCP’s promise is not “network magic” but endpoint state, a handshake, retransmissions, and ordered delivery; that buys reliability but also latency and head-of-line blocking. UDP removes those guarantees so applications can optimize differently. In production, these abstractions become visible as concrete tool choices and failure modes: whether a load balancer can inspect paths, whether a connection fails before or after TLS, and whether transfers hang only when packets get large. The practical skill is to reason from the symptom to the layer whose promise stopped holding.
+
+</details>

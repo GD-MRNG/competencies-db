@@ -259,3 +259,263 @@ That changes how they debug traffic flow. Instead of asking “why did traffic i
 That changes network design conversations. Choosing `/24` versus `/20` stops being a stylistic preference and becomes an explicit decision about isolation, growth headroom, and operational flexibility.
 
 </details>
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### Sketch 1 — A CIDR prefix is a bit boundary
+
+```text
+IP:     10.0.1.5  = 00001010.00000000.00000001.00000101
+/24                 ^ network bits -----------^ host bits -^
+
+Mask /24:          11111111.11111111.11111111.00000000
+                   = 255.255.255.0
+```
+
+Change only the host bits:
+
+```text
+10.0.1.0   = 00001010.00000000.00000001.00000000
+10.0.1.5   = 00001010.00000000.00000001.00000101
+10.0.1.255 = 00001010.00000000.00000001.11111111
+```
+
+All three are in the same `/24` because the first 24 bits are identical.
+
+Cost of moving the boundary:
+
+```text
+/24 -> 8 host bits  -> 2^8   = 256 addresses
+/20 -> 12 host bits -> 2^12  = 4096 addresses
+/28 -> 4 host bits  -> 2^4   = 16 addresses
+```
+
+---
+
+### Sketch 2 — The network address is just `IP AND mask`
+
+```python
+ip   = "10.0.1.5"
+mask = "255.255.255.0"   # /24
+
+# binary:
+# ip   = 00001010.00000000.00000001.00000101
+# mask = 11111111.11111111.11111111.00000000
+# and  = 00001010.00000000.00000001.00000000
+
+network = "10.0.1.0"
+broadcast = "10.0.1.255"
+usable = "10.0.1.1 - 10.0.1.254"
+```
+
+Counterexample with a mid-octet prefix:
+
+```python
+ip   = "10.0.13.9"
+mask = "255.255.240.0"   # /20
+
+# 13 = 00001101
+# mask third octet = 11110000
+# result third octet = 00000000
+
+network = "10.0.0.0"
+broadcast = "10.0.15.255"
+```
+
+The surprise is the point: `/20` does not mean “something around 10.0.13.x”.
+It means “keep the first 20 bits, zero the rest.”
+
+---
+
+### Sketch 3 — Subnet sizes change exponentially, not gradually
+
+```python
+def total_addresses(prefix):
+    return 2 ** (32 - prefix)
+
+for p in [28, 24, 23, 20, 16, 32]:
+    print(f"/{p}: {total_addresses(p)}")
+```
+
+Output:
+
+```text
+/28: 16
+/24: 256
+/23: 512
+/20: 4096
+/16: 65536
+/32: 1
+```
+
+Small prefix change, big effect:
+
+```text
+/24 -> 256
+/23 -> 512    # one bit shorter = double
+/25 -> 128    # one bit longer  = half
+```
+
+Practical cost:
+
+```text
+Traditional usable hosts in /28 = 16 - 2 = 14
+AWS usable hosts in /28         = 16 - 5 = 11
+```
+
+A “small subnet” gets very small very quickly.
+
+---
+
+### Sketch 4 — Valid subnet starts must align to the block size
+
+Inside `10.0.0.0/16`, allocate `/20` subnets.
+
+A `/20` has 4096 addresses, which is `16 * 256`, so starts jump by 16 in the third octet:
+
+```text
+valid /20 starts:
+10.0.0.0/20
+10.0.16.0/20
+10.0.32.0/20
+10.0.48.0/20
+...
+```
+
+Counterexample:
+
+```text
+allocated: 10.0.0.0/20   -> covers 10.0.0.0   - 10.0.15.255
+proposed:  10.0.8.0/20   -> also starts inside 10.0.0.0 - 10.0.15.255
+
+result: overlap
+```
+
+Why `10.0.8.0/20` is invalid as a `/20` boundary:
+
+```text
+/20 means last 12 bits must start at 0
+10.0.8.0  = ... 00001000.00000000
+                     ^ these host bits are not all zero for a /20 boundary
+```
+
+If you do subnet math by decimal eyeballing, this is where mistakes happen.
+
+---
+
+### Sketch 5 — A subnet must be more specific than its parent
+
+```text
+VPC:    10.0.0.0/16
+
+valid subnets:
+- 10.0.0.0/17
+- 10.0.1.0/24
+- 10.0.16.0/20
+
+invalid:
+- 10.0.0.0/15   # larger than the VPC
+- 10.0.0.0/16   # not really a subdivision; it's the whole VPC
+- 10.1.0.0/24   # outside the VPC range
+```
+
+Capacity tradeoff inside one `/16`:
+
+```text
+if subnets are /24:
+- number of subnets = 2^(24-16) = 256
+- addresses per subnet = 256
+
+if subnets are /20:
+- number of subnets = 2^(20-16) = 16
+- addresses per subnet = 4096
+```
+
+You are spending bits either on:
+- more subnet identities, or
+- more host capacity per subnet
+
+You do not get both.
+
+---
+
+### Sketch 6 — Routing picks the most specific matching CIDR
+
+```python
+routes = [
+    ("10.0.0.0/16", "vpc-router"),
+    ("10.0.1.0/24", "local-subnet"),
+    ("0.0.0.0/0",   "internet-gateway"),
+]
+
+destination = "10.0.1.17"
+
+matches = [
+    ("10.0.0.0/16", "vpc-router"),
+    ("10.0.1.0/24", "local-subnet"),
+    ("0.0.0.0/0",   "internet-gateway"),
+]
+
+chosen = ("10.0.1.0/24", "local-subnet")   # longest prefix wins
+```
+
+Counterexample showing deliberate override:
+
+```python
+routes = [
+    ("10.0.0.0/16",  "default-internal-path"),
+    ("10.0.1.17/32", "special-firewall-path"),
+]
+
+destination = "10.0.1.17"
+chosen = ("10.0.1.17/32", "special-firewall-path")
+```
+
+Benefit: precise overrides are possible.  
+Cost: a more specific route can silently defeat your broader intent.
+
+---
+
+### Sketch 7 — Overlapping private ranges make connectivity ambiguous
+
+Before:
+
+```text
+prod    = 10.0.0.0/16
+staging = 10.1.0.0/16
+
+Can they peer? yes
+A packet for 10.1.5.20 has one clear destination.
+```
+
+After the common mistake:
+
+```text
+prod    = 10.0.0.0/16
+staging = 10.0.0.0/16
+
+Can they peer? no
+A packet for 10.0.5.20 now matches both networks.
+```
+
+This is not a route-table tweak problem:
+
+```text
+destination: 10.0.5.20
+question: "which VPC owns this address?"
+answer:   "both claim it"
+```
+
+That is why overlap is expensive: fixing it usually means re-addressing one side, not just editing one config line.
+
+---
+
+## Key Ideas
+
+CIDR is a binary partitioning system, not a naming convention. The prefix draws a hard line between network bits and host bits; `AND` with the mask gives the network, the remaining host bits determine block size, and every one-bit prefix change doubles or halves capacity. Once you treat subnetting as bit allocation, three practical rules become obvious: subnet starts must align to power-of-two boundaries, child subnets must be more specific than their parent network, and routing works by longest-prefix match. From there, the operational consequences follow directly: mid-octet prefixes are where humans misread boundaries, small cloud subnets run out faster than expected, and overlapping private CIDRs break connectivity because the address hierarchy stops being unambiguous.
+
+</details>

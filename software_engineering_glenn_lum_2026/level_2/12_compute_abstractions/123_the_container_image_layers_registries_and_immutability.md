@@ -267,3 +267,250 @@ The unaware engineer installs build tooling, compiles, then removes the tooling 
 ---
 
 </details>
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) A layer is a diff, not a full filesystem snapshot
+
+```text
+# Start with empty filesystem
+L0 = {}
+
+# Layer 1: add one file
+L1 diff:
+  add /app/a.txt = "hello"
+
+# Layer 2: modify that file, add another
+L2 diff:
+  change /app/a.txt = "hello v2"
+  add    /app/b.txt = "new"
+
+# Reconstruct visible filesystem by applying diffs in order:
+apply(L0, L1, L2) =>
+  /app/a.txt = "hello v2"
+  /app/b.txt = "new"
+```
+
+```text
+Important consequence:
+- L2 does NOT contain a full copy of /app/a.txt and /app/b.txt "as of layer 2".
+- It only records what changed relative to layers below.
+- So if a lower layer changes, higher layers may no longer be reusable as cache.
+```
+
+---
+
+### 2) "Delete" in a later layer means "hide", not "erase"
+
+```text
+# Layer 1
+add /tmp/secret.txt = "TOP-SECRET"
+
+# Layer 2
+delete /tmp/secret.txt
+# implemented as a whiteout marker, conceptually:
+add /.wh./tmp/secret.txt
+```
+
+```text
+Merged runtime view:
+  /tmp/secret.txt   -> not visible
+
+But raw layer contents still include:
+  Layer 1 tarball: /tmp/secret.txt = "TOP-SECRET"
+```
+
+```dockerfile
+# Looks safe, isn't
+COPY secret.txt /tmp/secret.txt
+RUN use /tmp/secret.txt
+RUN rm /tmp/secret.txt
+```
+
+```text
+Cost:
+- Runtime filesystem looks clean.
+- Image history still contains the secret bytes in the earlier layer.
+```
+
+---
+
+### 3) A running container adds one writable layer on top of read-only image layers
+
+```text
+read-only image layers:
+  L1: /etc/app.conf = "prod=false"
+  L2: /app/log.txt  = ""
+
+writable container layer:
+  RW: initially empty
+```
+
+```text
+Process writes /etc/app.conf = "prod=true"
+
+copy-on-write result:
+  RW now contains /etc/app.conf = "prod=true"
+
+Visible merged view:
+  /etc/app.conf = "prod=true"   # from RW
+  /app/log.txt  = ""            # still from L2
+
+Underlying read-only layers remain unchanged.
+```
+
+```text
+Benefit:
+- Many containers can share the same image layers safely.
+
+Cost:
+- First write to a lower-layer file requires copy-up.
+- Writes are container-local; they do not modify the image.
+```
+
+---
+
+### 4) An image is a manifest that points to blobs; the digest names the exact artifact
+
+```json
+{
+  "manifest": {
+    "config": "sha256:cfg",
+    "layers": ["sha256:L1", "sha256:L2"]
+  }
+}
+```
+
+```text
+Registry stores blobs separately:
+  sha256:L1   -> layer bytes
+  sha256:L2   -> layer bytes
+  sha256:cfg  -> config JSON
+  sha256:M    -> hash(manifest JSON above)
+```
+
+```text
+References:
+  myapp:prod            -> mutable pointer -> sha256:M
+  myapp@sha256:M        -> immutable identity
+```
+
+```text
+If someone retags:
+  myapp:prod -> sha256:M2
+
+Then:
+- same tag, different artifact
+- digest reference still means the old exact manifest
+```
+
+```text
+Cost of digest pinning:
+- Exact reproducibility
+- Worse ergonomics: humans dislike reading and updating digests
+```
+
+---
+
+### 5) Cache invalidation cascades upward, so Dockerfile order changes build time
+
+#### Bad ordering: source changes force dependency reinstall
+
+```dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+
+COPY . /app
+RUN pip install -r requirements.txt
+```
+
+```text
+Change one file: app.py
+
+Invalidated:
+  COPY . /app                 # source changed
+  RUN pip install ...         # must rerun because layer below changed
+```
+
+#### Better ordering: only dependency changes force reinstall
+
+```dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+
+COPY requirements.txt /app
+RUN pip install -r requirements.txt
+COPY . /app
+```
+
+```text
+Change one file: app.py
+
+Invalidated:
+  COPY . /app
+
+Reused from cache:
+  COPY requirements.txt /app
+  RUN pip install ...
+```
+
+```text
+Same final filesystem shape.
+Different rebuild cost.
+```
+
+---
+
+### 6) Add-then-remove across layers does not shrink the shipped image
+
+#### Looks tidy, stays large
+
+```dockerfile
+FROM ubuntu:22.04
+
+RUN apt-get update && apt-get install -y build-essential
+RUN make
+RUN apt-get remove -y build-essential && rm -rf /var/lib/apt/lists/*
+```
+
+```text
+Visible final filesystem:
+  build-essential appears gone
+
+Transferred/stored layers:
+  Layer A: big install
+  Layer B: build outputs
+  Layer C: whiteouts + cleanup markers
+
+Net effect:
+- final view is smaller
+- image bytes are still large because Layer A still ships
+```
+
+#### Real fix: do work and cleanup in one layer, or use multi-stage
+
+```dockerfile
+FROM ubuntu:22.04 AS build
+RUN apt-get update && apt-get install -y build-essential
+COPY . /src
+RUN make -C /src
+
+FROM ubuntu:22.04
+COPY --from=build /src/bin/myapp /usr/local/bin/myapp
+```
+
+```text
+Tradeoff:
+- Multi-stage is slightly more complex
+- Final image contains only runtime artifact, not build toolchain layers
+```
+
+## Key Ideas
+
+Container images are easiest to reason about if you stop thinking of them as files and start thinking of them as an append-only stack of diffs, named by content hashes. That one model explains why deletion does not erase secrets, why containers can share image data safely through copy-on-write, why tags are convenient but untrustworthy deployment references, why build cache reuse depends so heavily on Dockerfile ordering, and why removing large packages in later layers does not actually make an image small. The reliable boundary is the manifest digest: it pins the exact config and exact ordered layer set, while everything built on mutable tags or add-then-hide behavior only looks stable from the surface.
+
+</details>

@@ -200,3 +200,212 @@ They will benchmark multiple memory settings instead of picking the smallest RAM
 ---
 
 </details>
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) One event = one execution environment use
+```python
+# Traditional server: one process boots once, then handles many requests.
+db = connect_once()
+
+def handle_http_request(req):
+    return db.query("select ...")
+
+
+# Serverless: the platform calls handler(event) per invocation.
+# There may or may not be a reused environment behind it.
+db = connect_once()   # runs on cold start, may be reused on warm start
+
+def handler(event, context):
+    return db.query("select ...")
+```
+
+What this makes visible:
+- Same code shape, different execution model.
+- In serverless, `db = connect_once()` is not "application startup"; it is "environment initialization if this environment had to be created."
+- You might get reuse, but you cannot assume a permanent process exists.
+
+---
+
+### 2) Cold start is a pipeline, not a single delay
+```text
+invoke(event):
+  if warm_environment_exists():
+      run_handler(event)                # fast path
+  else:
+      provision_sandbox()               # microVM/container
+      download_code_package()           # size matters
+      start_language_runtime()          # Python/Node faster, JVM slower
+      run_module_imports_and_globals()  # your init code
+      run_handler(event)
+```
+
+Now make the cost visible in code shape:
+
+```python
+# slower cold starts
+import pandas
+import boto3
+model = load_large_model()
+client = boto3.client("s3")
+
+def handler(event, context):
+    return "ok"
+```
+
+```python
+# cheaper cold starts: defer expensive work until needed
+client = None
+
+def handler(event, context):
+    global client
+    if client is None:
+        import boto3
+        client = boto3.client("s3")
+    return "ok"
+```
+
+Tradeoff:
+- Deferring work reduces cold-start cost for invocations that do not need it.
+- But the first invocation that does need it now pays that cost in-handler.
+
+---
+
+### 3) Trigger type changes failure semantics
+```python
+def charge_customer(event):
+    charge_card(event["customer_id"], event["amount"])
+    return "done"
+```
+
+Same handler, different contract:
+
+```text
+SYNC (HTTP):
+caller ---> function ---> response
+if function fails:
+    caller sees error
+    caller decides whether to retry
+```
+
+```text
+ASYNC (queue / event bus):
+producer ---> platform queue ---> function
+if function fails:
+    platform retries automatically
+    same event may run more than once
+```
+
+```text
+STREAM (records in order, often batched):
+stream shard ---> [r1, r2, r3] ---> function
+if batch fails on r2:
+    platform retries the batch
+    later records on that shard may be blocked
+```
+
+The key idea:
+- "A function failed" is not enough information.
+- You need to know who retries and what gets retried: request, event, or whole batch.
+
+---
+
+### 4) Idempotency is the difference between safe retries and duplicate side effects
+```python
+# bad: duplicate invocation sends two emails
+def handler(event, context):
+    send_receipt_email(event["order_id"])
+```
+
+```python
+# better: record first, side effect once
+processed = set()   # pretend this is durable storage, not memory
+
+def handler(event, context):
+    key = event["event_id"]
+
+    if key in processed:
+        return "already done"
+
+    processed.add(key)
+    send_receipt_email(event["order_id"])
+    return "sent"
+```
+
+What this sketch is really saying:
+- In async/stream systems, duplicate delivery is normal.
+- Correctness comes from making repeated processing converge to one result.
+
+Honest cost:
+- Real idempotency needs durable storage, unique keys, and careful ordering.
+- In-memory dedupe is only a sketch; a cold start would lose it.
+
+---
+
+### 5) Auto-scaling compute can overload the database
+```python
+# each execution environment opens its own DB connection
+db = connect_to_postgres()
+
+def handler(event, context):
+    return db.query("select 1")
+```
+
+```text
+1 request   -> 1 environment   -> 1 DB connection
+100 requests -> 100 environments -> 100 DB connections
+500 requests -> 500 environments -> 500 DB connections
+```
+
+A safer shape:
+
+```python
+# Function still scales out, but connections are pooled behind a proxy.
+db = connect_to_rds_proxy()
+
+def handler(event, context):
+    return db.query("select 1")
+```
+
+Tradeoff made visible:
+- Serverless scaling solves compute saturation.
+- It can create downstream saturation unless you add a buffer/proxy/queue/concurrency cap.
+
+---
+
+### 6) Memory is also a CPU dial, and time limits are architectural
+```yaml
+# same function, different memory settings
+functions:
+  thumbnail:
+    timeout: 30s
+    memory: 128MB   # cheap per ms, less CPU, may run slowly
+
+  thumbnail_fast:
+    timeout: 30s
+    memory: 1024MB  # costs more per ms, gets more CPU, may finish much faster
+```
+
+And some jobs simply do not fit:
+
+```text
+if work_duration <= platform_timeout:
+    run_in_one_invocation()
+else:
+    split_into_steps()
+    # e.g. fan out chunks, orchestrate with a workflow, or use containers instead
+```
+
+This is the boundary:
+- In serverless, timeout is not a suggestion.
+- If the work cannot finish in one invocation, architecture must change.
+
+## Key Ideas
+
+Serverless is easiest to reason about when you stop imagining a tiny always-on server and instead think in invocations: an event arrives, the platform materializes or reuses an execution environment, runs one unit of work, and may discard that environment later. From that model, the rest follows directly: cold starts are setup steps you pay when materialization is needed; trigger type determines who retries and whether duplicates or blocked batches are normal; idempotency is required because retries are part of delivery semantics; automatic scale-out moves pressure onto databases and APIs; and platform limits like memory/CPU coupling and hard timeouts are not tuning details but design constraints.
+
+</details>

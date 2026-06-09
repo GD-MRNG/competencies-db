@@ -218,3 +218,217 @@ The unaware engineer checks one layer, sees an allow rule, and then jumps into a
 The unaware engineer inherits permissive outbound rules and only thinks about ingress. The aware engineer asks which destinations a workload really needs — DNS, package repos, external APIs, control planes — and constrains or documents those paths intentionally. That improves both security posture against exfiltration and reliability when diagnosing “service cannot reach X” failures.
 
 </details>
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) Stateful filtering: one allowed packet creates a remembered flow
+```text
+# Security-group-like logic
+
+state_table = set()
+
+on_packet(packet):
+  flow = (src_ip, src_port, dst_ip, dst_port, proto)
+  reverse_flow = (dst_ip, dst_port, src_ip, src_port, proto)
+
+  if reverse_flow in state_table:
+    ALLOW   # return traffic for an already-allowed connection
+
+  elif packet.direction == INBOUND and rule_allows(packet):
+    state_table.add(flow)
+    ALLOW   # first packet admitted, flow is now tracked
+
+  else:
+    DENY
+```
+
+```text
+# Consequence:
+# Allow inbound TCP dst_port=443
+# No explicit outbound rule needed for the response packet.
+#
+# Cost:
+# The behavior depends on remembered state, not just current rules.
+# Existing tracked connections can keep working after a rule change.
+```
+
+---
+
+### 2) Stateless filtering: every packet must match on its own
+```text
+# NACL-like logic
+
+on_packet(packet):
+  if packet.direction == INBOUND:
+    return first_matching_inbound_rule(packet) or DENY
+  else:
+    return first_matching_outbound_rule(packet) or DENY
+```
+
+```text
+# Example flow for HTTPS:
+# client 1.2.3.4:52344  -> server 10.0.0.10:443   # inbound request
+# server 10.0.0.10:443  -> client 1.2.3.4:52344   # outbound response
+#
+# If rules are only:
+#   inbound:  ALLOW tcp dst_port=443
+#   outbound: ALLOW tcp dst_port=443
+#
+# Then the response is DROPPED.
+# Why? Its destination port is 52344, not 443.
+```
+
+```text
+# Cost:
+# You must model both directions explicitly.
+# "Open 443" is not enough in a stateless layer.
+```
+
+---
+
+### 3) The ephemeral-port trap, shown as the minimal fix
+```yaml
+# Broken NACL
+inbound:
+  - allow: tcp dst_port=443 src=0.0.0.0/0
+outbound:
+  - deny: all
+```
+
+```yaml
+# Working NACL for public HTTPS server
+inbound:
+  - allow: tcp dst_port=443 src=0.0.0.0/0
+
+outbound:
+  - allow: tcp dst_port=1024-65535 dst=0.0.0.0/0   # client ephemeral ports
+  - deny: all
+```
+
+```text
+# Cost:
+# This is broader than many people expect.
+# Tightening stateless egress safely requires knowing real client/server flows.
+```
+
+---
+
+### 4) Rule evaluation is different: additive vs first-match-wins
+
+**Security group style**
+```text
+rules = [
+  allow tcp from 10.0.0.0/16 to port 22,
+  allow tcp from 0.0.0.0/0   to port 443,
+]
+
+# Evaluation:
+# if ANY allow rule matches -> ALLOW
+# else -> DENY
+
+# Adding a rule can only increase access.
+# There is no "deny this one IP inside the allowed range".
+```
+
+**NACL style**
+```text
+100 DENY  tcp from 0.0.0.0/0   to port 22
+200 ALLOW tcp from 10.0.0.0/16 to port 22
+```
+
+```text
+# Result: all SSH is denied.
+# Rule 100 matches first; rule 200 is never reached.
+```
+
+```text
+# Cost:
+# NACLs are more expressive, but numbering is part of the policy.
+# A badly ordered rule silently overrides later intent.
+```
+
+---
+
+### 5) The same packet is checked at different attachment points
+```text
+Packet path: instance A -> instance B
+
+A's security group     : per-interface check
+A subnet's NACL        : per-subnet check
+B subnet's NACL        : per-subnet check
+B's security group     : per-interface check
+```
+
+```text
+# Minimal truth table
+
+A-SG   A-NACL  B-NACL  B-SG   Result
+allow  allow   allow   allow  PASS
+allow  deny    allow   allow  DROP
+allow  allow   deny    allow  DROP
+allow  allow   allow   deny   DROP
+```
+
+```text
+# Cost:
+# "The rule looks right" is never enough.
+# Traffic must survive every layer on the path.
+```
+
+---
+
+### 6) Security group references: policy by identity, not IP
+```yaml
+# Fragile: tied to network coordinates
+db_sg:
+  inbound:
+    - allow: tcp port=5432 from=10.0.1.0/24
+```
+
+```yaml
+# Durable: tied to workload identity
+db_sg:
+  inbound:
+    - allow: tcp port=5432 from_security_group=web_sg
+```
+
+```text
+# Effect:
+# New web instances can get new IPs and still reach the DB,
+# as long as they join web_sg.
+
+# Cost:
+# This works well for resource-to-resource policy,
+# but not for arbitrary external clients on the internet.
+```
+
+---
+
+### 7) Stateful changes can look inconsistent because old flows survive
+```text
+t0: SG inbound allows tcp:5432 from app_sg
+t1: app opens DB connection -> flow is tracked
+t2: SG rule is removed
+t3: existing DB connection still works
+t4: app reconnects
+t5: new connection fails
+```
+
+```text
+# Minimal lesson:
+# Current rules explain new flows.
+# Existing tracked state can explain old flows.
+
+# Cost:
+# Testing a security group change against an already-open session is misleading.
+```
+
+## Key Ideas
+
+Cloud packet filtering is not one mechanism with different names; it is usually two different models stacked together. The sketches show the practical consequences of that split: stateful filters admit a connection and remember it, while stateless filters judge every packet independently, which makes ephemeral ports part of the policy whether you want them or not. They also show that rule syntax is not the whole story: evaluation semantics matter, attachment points matter, and tracked state can make rule changes appear inconsistent. If you keep one debugging question in mind, it should be: which layer rejected which direction of traffic?
+
+</details>

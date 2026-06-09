@@ -197,3 +197,221 @@ The unaware engineer copies a health-check config from another service and calls
 The unaware engineer makes `/healthz` verify database, cache, downstream APIs, and anything else "important," then wonders why a dependency slowdown caused every backend to disappear from rotation at once. The aware engineer uses readiness to block traffic until a node is truly able to start serving, but uses shallow ongoing checks so the load balancer does not turn dependency turbulence into a self-inflicted full outage.
 
 </details>
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) L4 makes one decision per TCP connection
+
+```python
+# A toy L4 load balancer: decide once on SYN, then pin the whole flow.
+
+backends = ["10.0.0.11:8080", "10.0.0.12:8080"]
+flow_table = {}  # 5-tuple -> backend
+
+def on_packet(pkt):
+    flow = (pkt.src_ip, pkt.src_port, pkt.dst_ip, pkt.dst_port, pkt.proto)
+
+    if pkt.tcp_flags == "SYN":
+        flow_table[flow] = pick_backend(backends)   # decision happens once
+
+    backend = flow_table[flow]
+    pkt.dst_ip, pkt.dst_port = parse_addr(backend)  # DNAT
+    forward(pkt)
+```
+
+```text
+Client opens one HTTP/2 connection carrying 10 RPCs
+          |
+          v
+L4 sees: one TCP flow
+          |
+          v
+All 10 RPCs -> same backend
+```
+
+The point is not just “L4 uses IP/port.” The point is that the routing unit is the connection. Cheap, fast, and blind after the first decision.
+
+---
+
+### 2) L7 terminates the client connection and routes per request
+
+```python
+# A toy L7 proxy: accept client connection, parse request, forward separately.
+
+backend_pool = ["10.0.0.11:8080", "10.0.0.12:8080"]
+
+def handle_client(client_conn):
+    while True:
+        req = read_http_request(client_conn)   # requires terminating TCP/TLS
+        if not req:
+            return
+
+        backend = choose_backend(req.path, req.headers)
+        upstream = connect(backend)            # separate connection
+        write_http_request(upstream, req)
+        resp = read_http_response(upstream)
+        write_http_response(client_conn, resp)
+```
+
+```text
+One client connection:
+  GET /a
+  GET /b
+  GET /c
+
+Possible L7 routing:
+  /a -> backend1
+  /b -> backend2
+  /c -> backend1
+```
+
+Same traffic, different unit of routing: request instead of connection. Cost: the load balancer is now a real participant, not a packet director.
+
+---
+
+### 3) Why gRPC/HTTP/2 breaks “good enough” L4 balancing
+
+```python
+# Three clients, one is much busier than the others.
+clients = {
+    "client-A": 1000,  # RPCs per second
+    "client-B":   10,
+    "client-C":   10,
+}
+
+# L4 assigns each long-lived connection once:
+l4_assignment = {
+    "client-A": "backend-1",
+    "client-B": "backend-2",
+    "client-C": "backend-3",
+}
+
+load = {}
+for client, rps in clients.items():
+    b = l4_assignment[client]
+    load[b] = load.get(b, 0) + rps
+
+print(load)
+# {'backend-1': 1000, 'backend-2': 10, 'backend-3': 10}
+```
+
+```python
+# L7 can distribute each RPC independently:
+backends = ["backend-1", "backend-2", "backend-3"]
+load = {b: 0 for b in backends}
+
+for client, rps in clients.items():
+    for i in range(rps):
+        b = backends[i % len(backends)]  # pretend round-robin per RPC
+        load[b] += 1
+
+print(load)
+# roughly balanced across all three
+```
+
+For gRPC, the problem is not “L4 is less smart.” The problem is structural: one long-lived connection can hide thousands of units of work.
+
+---
+
+### 4) L7 can pool backend connections; L4 cannot change that shape
+
+```python
+# 10,000 clients send one request each.
+
+clients = 10_000
+
+# L4:
+# each client TCP connection is forwarded to one backend connection
+backend_connections_l4 = clients
+
+# L7 with pooling:
+pooled_upstreams = 50   # proxy reuses a small pool of persistent backend conns
+backend_connections_l7 = pooled_upstreams
+
+print("L4 backend connections:", backend_connections_l4)
+print("L7 backend connections:", backend_connections_l7)
+```
+
+```text
+L4 backend sees: 10,000 client-shaped connections
+L7 backend sees:    50 proxy-shaped connections
+```
+
+Tradeoff encoded in the shape itself: L7 adds work to the proxy tier so the backend tier can do less connection management.
+
+---
+
+### 5) Health checks are a delayed control loop, not instant truth
+
+```yaml
+health_check:
+  interval: 10s
+  timeout: 5s
+  unhealthy_threshold: 3
+  healthy_threshold: 2
+```
+
+```python
+# Earliest removal after a crash:
+interval = 10
+unhealthy_threshold = 3
+
+removal_delay = interval * unhealthy_threshold
+print(removal_delay)  # 30 seconds
+```
+
+```text
+t=00  backend crashes just after a successful check
+t=10  fail #1
+t=20  fail #2
+t=30  fail #3 -> removed from pool
+```
+
+During those 30 seconds, traffic can still be sent to a dead backend. Lower the interval/threshold, and you remove failures faster — but you also eject healthy nodes more easily during transient blips.
+
+---
+
+### 6) Deep health checks can turn dependency slowness into total outage
+
+```python
+# Bad: ongoing health depends on shared database health
+
+def healthz():
+    if not process_is_alive():
+        return 500
+    if not db.query("select 1"):   # shared dependency
+        return 500
+    return 200
+```
+
+```text
+DB slows down for everyone
+-> every instance fails /healthz
+-> load balancer ejects every backend
+-> partial dependency problem becomes full outage
+```
+
+```python
+# Better split:
+def readiness():
+    # used before receiving traffic
+    return 200 if process_is_alive() and db_is_reachable() else 500
+
+def liveness():
+    # used for ongoing "should this process stay in rotation?"
+    return 200 if process_is_alive() else 500
+```
+
+This is the subtle tradeoff: deeper checks are more “accurate” locally, but more dangerous globally.
+
+---
+
+## Key Ideas
+
+The useful distinction is not that L4 looks at ports and L7 looks at paths; it is that L4 pins an entire connection and mostly gets out of the way, while L7 breaks the conversation in half and becomes a proxy. That single difference explains the rest of the behavior shown above: L4 is efficient but blind, so multiplexed protocols like gRPC can skew load badly; L7 is expensive but can route per request, pool backend connections, and expose request-level behavior. Health checks then become part of the system’s control logic, with unavoidable detection delay and the risk that checks which are too deep can amplify dependency trouble into a full fleet ejection.
+
+</details>

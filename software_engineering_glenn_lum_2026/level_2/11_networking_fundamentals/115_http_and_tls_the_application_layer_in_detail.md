@@ -256,3 +256,279 @@ They will not rely on human memory or dashboard observation. They will automate 
 They will permit early data only for safe/idempotent requests, and they will design write paths with duplicate protection where needed. They will see that a network optimization can become a business-logic bug if the application is not built with replay in mind.
 
 </details>
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) HTTP is just bytes on a connection
+
+```txt
+# What your client really writes for:
+# GET https://api.example.com/users/42
+
+GET /users/42 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+
+# Blank line ends headers.
+# A POST would put the body after the blank line.
+```
+
+```txt
+# What comes back:
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 27
+
+{"id":42,"name":"Alice"}
+```
+
+The useful mental shift: your library is not “calling a function.” It is formatting text onto a byte stream, then parsing text back out.
+
+---
+
+### 2) `Host` is how one IP serves many sites
+
+```python
+# Reverse proxy pseudocode
+
+def route(ip, http_request):
+    # IP alone is not enough: many domains can share one IP.
+    host = http_request.headers["Host"]
+
+    if host == "api.example.com":
+        return backend_api
+    elif host == "www.example.com":
+        return backend_web
+    else:
+        return 404
+```
+
+Counterexample:
+
+```txt
+GET / HTTP/1.1
+
+# Missing Host header => invalid in HTTP/1.1
+# Proxy/server cannot know which virtual host you wanted.
+```
+
+Same machine, same IP, different destination. `Host` is control-plane data, not decoration.
+
+---
+
+### 3) Reusing connections avoids paying setup cost repeatedly
+
+Before: new TCP/TLS connection every request
+
+```python
+for user_id in [1, 2, 3]:
+    conn = open_tcp("api.example.com", 443)
+    tls = tls_handshake(conn)         # cost paid 3 times
+    send_http_get(tls, f"/users/{user_id}")
+    read_response(tls)
+    close(tls)
+```
+
+After: one connection, many requests
+
+```python
+conn = open_tcp("api.example.com", 443)
+tls = tls_handshake(conn)             # cost paid once
+
+for user_id in [1, 2, 3]:
+    send_http_get(tls, f"/users/{user_id}")
+    read_response(tls)
+
+close(tls)
+```
+
+Tradeoff visible in the code: reuse lowers latency and connection count, but now you must manage idle timeouts, pool sizing, and broken connections correctly.
+
+---
+
+### 4) HTTP/1.1 serializes work; HTTP/2 multiplexes it
+
+HTTP/1.1 shape:
+
+```txt
+# One connection, two requests
+
+send: GET /slow HTTP/1.1
+wait: ... response /slow finishes ...
+
+send: GET /fast HTTP/1.1
+wait: ... response /fast ...
+```
+
+HTTP/2 shape:
+
+```txt
+# One connection, two streams
+
+send stream=1 HEADERS /slow
+send stream=3 HEADERS /fast
+
+recv stream=3 DATA "fast response"
+recv stream=1 DATA "slow response part 1"
+recv stream=1 DATA "slow response part 2"
+```
+
+The point is not “binary framing is fancy.” The point is that one slow response no longer forces unrelated requests on the same connection to wait behind it.
+
+Cost: HTTP/2 removes HTTP-layer head-of-line blocking, but it still sits on one transport connection, so transport-level loss can still hurt multiple streams.
+
+---
+
+### 5) TLS is a handshake before HTTP can begin
+
+```txt
+TCP:
+client -> SYN
+server -> SYN-ACK
+client -> ACK
+
+TLS 1.3:
+client -> ClientHello(
+            sni="api.example.com",
+            key_share=client_ephemeral_key)
+server -> ServerHello(
+            key_share=server_ephemeral_key),
+          Certificate,
+          CertificateVerify,
+          Finished
+client -> Finished
+
+HTTP can start only after this.
+```
+
+Two practical details are doing real work here:
+
+```txt
+SNI = "api.example.com"     # lets server choose cert for the right domain
+key_share = ephemeral key   # enables forward secrecy
+```
+
+Cost: SNI is usually plaintext, so HTTPS hides content but not always the hostname being contacted.
+
+---
+
+### 6) Certificate validation is chain validation, not “did the server send a cert?”
+
+Good chain:
+
+```txt
+[leaf cert: api.example.com]
+    signed by
+[intermediate CA]
+    signed by
+[trusted root in client trust store]
+```
+
+Client verification pseudocode:
+
+```python
+def verify(chain, hostname, trust_store):
+    leaf, intermediate = chain
+
+    assert leaf.hostname_matches(hostname)
+    assert not leaf.is_expired()
+    assert not intermediate.is_expired()
+
+    assert leaf.signed_by(intermediate.public_key)
+    assert intermediate.signed_by(trust_store.root_public_key)
+
+    return True
+```
+
+Broken in production more often than people expect:
+
+```txt
+# Server sends only:
+[leaf cert: api.example.com]
+
+# Browser may still work:
+# - cached intermediate
+# - fetched it separately
+
+# curl / Java / Python service may fail:
+# - cannot build chain to trusted root
+```
+
+The server being “encrypted” is not enough. The client must be able to prove the presented identity chains back to a root it already trusts.
+
+---
+
+### 7) 0-RTT resumption saves time by accepting replay risk
+
+```python
+# First connection
+ticket = full_tls_handshake()
+
+# Later connection
+client_hello = {
+    "session_ticket": ticket,
+    "early_data": "POST /charge-card amount=100"
+}
+send(client_hello)
+```
+
+Why this is dangerous:
+
+```python
+# Attacker replays the same early data
+send_again(client_hello)
+
+# If server accepts 0-RTT blindly:
+# card may be charged twice
+```
+
+Safer use:
+
+```python
+client_hello = {
+    "session_ticket": ticket,
+    "early_data": "GET /products/42"
+}
+```
+
+Latency win is real, but only safe when replay does not change state in a harmful way.
+
+---
+
+### 8) Many “HTTPS problems” are really layer-identification problems
+
+```txt
+symptom                         likely layer
+------------------------------------------------
+connection timeout              TCP / network path
+certificate expired             TLS / trust
+hostname mismatch               TLS / certificate validation
+too many redirects              HTTP behavior
+502 Bad Gateway                 proxy <-> backend HTTP path
+higher latency, app looks fine  repeated TCP/TLS handshakes
+```
+
+A debugging rule:
+
+```python
+def first_question(symptom):
+    if "cert" in symptom or "hostname" in symptom:
+        return "Inspect TLS handshake and chain"
+    if "502" in symptom or "redirect" in symptom:
+        return "Inspect HTTP behavior and proxy config"
+    if "timeout" in symptom:
+        return "Inspect TCP reachability and connection setup"
+```
+
+The stack is layered; your debugging should be too.
+
+## Key Ideas
+
+HTTPS becomes much less mysterious once you stop treating it as a single thing. These sketches show a stack: HTTP is structured request/response bytes, `Host` and status codes are routing and signaling mechanisms, connection reuse and HTTP/2 change latency by changing how much setup and blocking you pay, and TLS is a separate handshake that creates an authenticated encrypted channel before HTTP starts. Most real failures live at the boundaries: wrong host routing, wasted handshakes, broken certificate chains, replay-unsafe early data, or confusion about which layer is actually failing.
+
+</details>

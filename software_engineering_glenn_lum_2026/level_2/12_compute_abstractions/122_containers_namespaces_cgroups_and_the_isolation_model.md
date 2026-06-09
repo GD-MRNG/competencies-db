@@ -245,3 +245,281 @@ The unaware default is to standardize on plain containers for everything. The co
 ---
 
 </details>
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) A container is a process with extra kernel rules, not a tiny VM
+
+```sh
+# Host shell
+sleep 1000 &
+HOST_PID=$!
+echo "host pid = $HOST_PID"
+
+# "Container-like" process: same kernel, just a new PID namespace view
+unshare --pid --fork --mount-proc sh -c '
+  echo "inside namespace, I am PID $$"
+  ps -o pid,ppid,comm
+  sleep 1000
+'
+```
+
+What this shows:
+- `sleep` on the host and `sleep` “inside the container” are both ordinary host processes.
+- Inside the new PID namespace, the shell thinks it has a tiny private process tree.
+- There is still only one kernel scheduling both processes.
+
+Cost/tradeoff:
+- Fast startup comes from “just start a process”.
+- The same fact means both processes trust the same host kernel.
+
+---
+
+### 2) Namespaces isolate what a process can see
+
+```sh
+# Host sees the real process tree
+ps -o pid,comm | head
+
+# New PID namespace: filtered process view
+unshare --pid --fork --mount-proc sh -c '
+  echo "--- inside PID namespace ---"
+  ps -o pid,comm
+'
+```
+
+```sh
+# New UTS namespace: private hostname
+hostname
+unshare --uts sh -c '
+  hostname container-demo
+  echo "inside hostname = $(hostname)"
+'
+echo "host hostname = $(hostname)"
+```
+
+What this shows:
+- PID namespace: same machine, different visible process table.
+- UTS namespace: same kernel, different hostname.
+
+Cost/tradeoff:
+- Isolation is “kernel presents a filtered view,” not “new machine exists.”
+- If you share a namespace intentionally, the isolation disappears for that resource.
+
+---
+
+### 3) Mount namespaces + copy-on-write create the container filesystem illusion
+
+```sh
+# Pseudocode: what runtime storage looks like
+
+image_layers = [
+  "layer A: /bin/sh",
+  "layer B: /etc/app.conf = version=1",
+]
+
+writable_layer = {}
+
+read("/etc/app.conf"):
+  if "/etc/app.conf" in writable_layer:
+    return writable_layer["/etc/app.conf"]
+  else:
+    return topmost_match_in(image_layers, "/etc/app.conf")
+
+write("/etc/app.conf", "version=2"):
+  # copy-on-write: don't mutate image layer
+  writable_layer["/etc/app.conf"] = "version=2"
+
+delete_container():
+  writable_layer = {}   # container-local changes vanish
+```
+
+What this shows:
+- Reads can come from shared image layers.
+- Writes go to a private top layer.
+- Deleting the container deletes that writable layer, so “local filesystem changes” are ephemeral.
+
+Cost/tradeoff:
+- Efficient sharing and fast startup.
+- But persistence is not automatic; you need a volume if the data must survive.
+
+---
+
+### 4) Network namespaces isolate port space, not networking work
+
+```sh
+# Two processes can both "own port 80" if they are in different network namespaces.
+
+# namespace A
+ip netns add nsA
+ip netns exec nsA sh -c '
+  ip link set lo up
+  nc -l -p 80 >/dev/null
+' &
+
+# namespace B
+ip netns add nsB
+ip netns exec nsB sh -c '
+  ip link set lo up
+  nc -l -p 80 >/dev/null
+' &
+```
+
+Both listeners succeed because:
+- `nsA` has its own network stack.
+- `nsB` has its own network stack.
+
+But this is not free:
+```text
+container process
+  -> veth
+  -> host bridge / routing / NAT
+  -> network
+```
+
+Cost/tradeoff:
+- Great isolation and flexible wiring.
+- Slight overhead and more moving parts than host networking.
+
+---
+
+### 5) Cgroups limit what a process can use: CPU limits throttle, they do not error
+
+```sh
+# Pseudocode for CFS quota behavior
+
+period = 100ms
+quota  = 50ms   # "0.5 CPU"
+
+loop forever:
+  run_tasks_until_cpu_time_used(quota)
+  throttle_until_next_period()
+```
+
+Application view:
+
+```python
+# app.py
+while True:
+    handle_request()   # no exception says "you were throttled"
+```
+
+Kernel/accounting view:
+
+```text
+cpu.stat:
+  nr_periods     1000
+  nr_throttled    420
+  throttled_usec  9000000
+```
+
+What this shows:
+- The process is not told “CPU limit exceeded.”
+- It just stops getting scheduled until the next period.
+- From inside the app, it looks like random slowness.
+
+Cost/tradeoff:
+- CPU limits protect neighbors.
+- But they can create latency spikes that app metrics alone won’t explain.
+
+---
+
+### 6) Memory limits are hard ceilings; no limit risks the host, tight limits kill the container
+
+Before: no memory limit
+
+```python
+# alloc.py
+chunks = []
+while True:
+    chunks.append(bytearray(100 * 1024 * 1024))  # +100 MB forever
+```
+
+Effect:
+```text
+No cgroup memory limit:
+  process keeps growing
+  host memory pressure rises
+  eventually host-wide OOM risk
+```
+
+After: cgroup memory limit = 512 MB
+
+```text
+Same program, but inside a 512 MB memory cgroup:
+
+usage: 100 MB -> 200 MB -> 300 MB -> 400 MB -> 500 MB -> 600 MB
+result: kernel sends SIGKILL to a process in the cgroup
+```
+
+And the subtle trap:
+
+```sh
+# Inside container
+cat /proc/meminfo | head -n 1
+# MemTotal: 67108864 kB   <-- host memory, maybe 64 GB
+
+# But cgroup limit might actually be:
+cat /sys/fs/cgroup/memory.max
+# 536870912               <-- 512 MB
+```
+
+What this shows:
+- No limit: one container can hurt the whole node.
+- Hard limit: the container dies when it crosses the line.
+- Apps that size themselves from `/proc/meminfo` may over-allocate and get OOM-killed.
+
+Cost/tradeoff:
+- Limits contain blast radius.
+- But limits need headroom, because memory enforcement is abrupt.
+
+---
+
+### 7) “Root in the container” may still be dangerously close to root on the host
+
+Without user namespaces:
+
+```text
+container UID 0  -> host UID 0
+```
+
+With user namespaces:
+
+```text
+container UID 0  -> host UID 100000
+```
+
+Pseudocode:
+
+```sh
+# unsafe mental model
+if inside_container and uid == 0:
+  assume("basically harmless root")
+# false
+
+# safer model
+if uid == 0:
+  ask("root where?")
+  # root in container namespace?
+  # or real host root mapping?
+```
+
+What this shows:
+- “Root” is only safe-ish if mapped to an unprivileged host identity.
+- Without user namespaces, a breakout has much worse consequences.
+
+Cost/tradeoff:
+- User namespaces improve security.
+- But they can complicate mounts, permissions, and older tooling.
+
+---
+
+## Key Ideas
+
+A container is best understood as a normal Linux process wrapped in two main kinds of kernel policy: namespaces change its view of the world, and cgroups limit its budget. That combination creates the “feels like my own machine” experience without actually creating a machine. The sketches also show why this is powerful and dangerous at the same time: startup is cheap because there is no guest kernel, but the shared host kernel becomes the true trust boundary; filesystem writes are cheap because of copy-on-write, but ephemeral; CPU limits protect neighbors, but show up as invisible throttling; memory limits contain damage, but fail by killing; and “root in the container” is only meaningfully safer if user namespaces break the mapping to host root.
+
+</details>

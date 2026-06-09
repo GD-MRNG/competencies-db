@@ -225,3 +225,177 @@ The unaware engineer treats timekeeping as a solved OS detail. Then they get int
 ---
 
 </details>
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) One machine, two kernels, one actual authority
+```text
+# Bare metal
+CPU ring0 -> Linux kernel
+CPU ring3 -> app
+
+# Virtualized
+CPU VMX root      -> hypervisor
+CPU VMX non-root  -> guest kernel (thinks it's ring0), guest app
+
+# What happens on a sensitive operation:
+guest kernel: write CR3   # change page table base
+CPU: VM exit
+hypervisor: validate + update guest's virtual CPU state
+CPU: VM entry
+guest continues
+```
+
+The essential idea: the guest is not fake, but its authority is intercepted.  
+Cost: every intercepted operation crosses the guest↔hypervisor boundary.
+
+---
+
+### 2) Why VM overhead is workload-shaped: exits are the toll booths
+```python
+# Pseudocode: same CPU, different workloads
+
+vm_exit_cost = 1000   # cycles, rough order of magnitude
+
+def compute_bound(iterations):
+    exits = 1         # boot/setup only
+    work = iterations * 10
+    return work + exits * vm_exit_cost
+
+def io_heavy(requests):
+    exits = requests * 4   # doorbell, interrupt, status, etc.
+    work = requests * 10
+    return work + exits * vm_exit_cost
+
+print(compute_bound(1_000_000))  # overhead is tiny relative to work
+print(io_heavy(1_000_000))       # overhead dominates
+```
+
+Same VM, same host, wildly different results.  
+The point is not the exact numbers; it is that overhead scales with **how often you trigger exits**, not with “being in a VM.”
+
+---
+
+### 3) Old x86 problem: some sensitive instructions didn't trap
+```text
+# Desired model:
+if guest executes sensitive_instruction:
+    trap_to_hypervisor()
+
+# Broken old-x86 case:
+guest executes POPF   # tries to change interrupt flag
+CPU in low privilege:
+    does NOT trap
+    silently ignores part of the change
+
+# Result:
+guest believes:
+    "interrupts disabled"
+reality:
+    interrupts still enabled
+```
+
+If the CPU does not trap, the hypervisor cannot mediate.  
+That is why early systems needed either:
+- **binary translation**: rewrite bad instructions before running them, or
+- **paravirtualization**: modify the guest to call the hypervisor explicitly.
+
+---
+
+### 4) Memory virtualization: two translations, not one
+```text
+# Bare metal
+process virtual addr
+    -> page table
+    -> physical addr
+
+# VM
+guest virtual addr
+    -> guest page table
+    -> guest physical addr
+    -> EPT/NPT
+    -> host physical addr
+```
+
+```python
+# Cost model on a TLB miss
+
+bare_metal_walk = 4          # 4-level page table walk
+nested_vm_walk = 4 * (1 + 4) # guest levels + host walk per guest level = up to 24 accesses
+
+print(bare_metal_walk)   # 4
+print(nested_vm_walk)    # 20-ish to 24 depending on details
+```
+
+EPT/NPT removes many VM exits for memory management, which is a huge win.  
+But the cost moves: **TLB misses hurt more**. That is why huge pages can matter more inside VMs than on bare metal.
+
+---
+
+### 5) I/O path choice matters more than “VM vs not VM”
+#### Emulated device
+```text
+guest driver writes fake NIC register
+-> VM exit
+-> hypervisor/QEMU interprets register write
+-> host NIC action
+-> virtual interrupt back to guest
+-> more exits
+```
+
+#### Paravirtual device (virtio-style)
+```text
+guest puts 64 packets into shared ring buffer
+guest sends 1 notification
+-> VM exit
+-> hypervisor processes batch
+-> 1 completion interrupt
+```
+
+```python
+requests = 64
+
+emulated_exits = requests * 3   # many register touches + interrupts
+virtio_exits   = 2              # one notify, one completion
+
+print(emulated_exits)  # 192
+print(virtio_exits)    # 2
+```
+
+Paravirtual I/O wins by **batching** and **shared memory**, not magic.  
+Tradeoff: the guest needs a virtualization-aware driver.
+
+---
+
+### 6) Overcommit works until it falls off a cliff
+```python
+host_ram = 64   # GB physical
+guests_promised = [20, 20, 20, 20]   # 80 GB total virtual
+
+normal_usage = [8, 10, 7, 9]         # fine: 34 GB used
+peak_usage   = [18, 19, 17, 16]      # bad: 70 GB wanted
+
+def host_state(usage):
+    total = sum(usage)
+    if total <= host_ram:
+        return "fast"
+    return "host swapping -> every guest sees huge latency"
+
+print(host_state(normal_usage))
+print(host_state(peak_usage))
+```
+
+The dangerous part is not mild slowdown; it is **host-level swapping**, which the guest cannot explain from inside.  
+From the guest’s view, “RAM got weirdly slow.”
+
+---
+
+## Key Ideas
+
+A VM runs guest code directly on the CPU most of the time; the hypervisor mainly appears when the guest tries to exercise authority or touch virtualized resources. That gives a practical model: performance cost clusters around **VM exits**, **nested memory translation on TLB misses**, and **I/O path design**. Hardware assist made CPU virtualization cheap for many workloads, EPT/NPT traded exit frequency for more expensive misses, and virtio-style I/O reduces boundary crossings by batching. So the right question is never “what is VM overhead?” but “where does this workload cross the guest-host boundary, and how often?”
+
+</details>

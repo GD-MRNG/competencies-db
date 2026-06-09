@@ -189,3 +189,194 @@ The unaware engineer inherits old requests and limits forever, paying for idle r
 ---
 
 </details>
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) CPU contention is “wait longer,” not “die now”
+
+```python
+# One core, two CPU-hungry tasks.
+# They both finish; they just take longer because they time-share.
+
+def cpu_task(name, work_units):
+    for _ in range(work_units):
+        do_math()   # runnable work
+
+run_concurrently(
+    cpu_task("A", 10_000_000),
+    cpu_task("B", 10_000_000),
+)
+
+# Mental model:
+# - CPU shortage => scheduler alternates execution.
+# - Result => higher latency / lower throughput.
+# - Not a hard failure by itself.
+```
+
+The essential property: CPU is **compressible**. If you cannot run now, you often run later.
+
+---
+
+### 2) CPU request and CPU limit are different mechanisms
+
+```yaml
+# Kubernetes-ish sketch
+resources:
+  requests:
+    cpu: "500m"   # relative scheduling weight during contention
+  limits:
+    cpu: "500m"   # hard quota: at most 50ms CPU per 100ms period
+```
+
+```text
+If host is idle:
+  a pod with request=500m can still burst above 500m
+
+If limit=500m:
+  it cannot use >50ms CPU in a 100ms window
+  after quota is spent => CFS throttles until next window
+```
+
+```text
+Timeline for one bursty period:
+
+0ms ---------------- 30ms ----------- 100ms
+| running hard       | THROTTLED      |
+| quota consumed     | forced pause   |
+```
+
+A request says “my fair share when crowded.” A limit says “stop me here, even if spare CPU exists.”
+
+---
+
+### 3) CPU throttling creates tail-latency spikes without app errors
+
+```python
+CPU_LIMIT_MS_PER_100MS = 50
+
+def handle_requests(arrivals):
+    budget = CPU_LIMIT_MS_PER_100MS
+    for req in arrivals:          # burst: many requests arrive together
+        cpu_needed = 12           # ms of actual compute
+        if budget >= cpu_needed:
+            budget -= cpu_needed
+            req.latency += cpu_needed
+        else:
+            req.latency += (100 - current_period_elapsed_ms())  # throttled wait
+            budget = CPU_LIMIT_MS_PER_100MS - cpu_needed
+            req.latency += cpu_needed
+
+# 5 requests * 12ms = 60ms compute
+# But quota is only 50ms/period.
+# One or more requests spill into next period and stall.
+```
+
+```text
+Observed:
+- app logs: no exception
+- host CPU: may not look maxed out
+- user latency: p99 jumps
+- useful metric: cgroup cpu.stat -> nr_throttled, throttled_time
+```
+
+This is why CPU limits can hurt bursty, latency-sensitive services more than average CPU graphs suggest.
+
+---
+
+### 4) Memory contention is a cliff: crossing the line kills something
+
+```python
+LIMIT_MB = 600
+used_mb = 0
+
+used_mb += 512   # JVM heap
+used_mb += 64    # thread stacks
+used_mb += 48    # metaspace / native / buffers
+
+if used_mb > LIMIT_MB:
+    oom_kill(process)   # hard stop, in-flight work lost
+```
+
+```text
+624MB > 600MB => container dies
+```
+
+The important contrast with CPU:
+
+```text
+CPU overuse    -> slower
+Memory overuse -> killed
+```
+
+Memory is **incompressible** at the limit. There is no “just wait your turn for RAM” equivalent that preserves normal execution.
+
+---
+
+### 5) Low CPU can still mean “fully saturated” if the workload is I/O-bound
+
+```python
+def handle_request():
+    row = db.query("SELECT ...")   # waits 40ms
+    return encode(row)             # uses 2ms CPU
+```
+
+```text
+Per request wall time:
+- 40ms waiting on database
+- 2ms doing CPU work
+
+CPU utilization can stay low,
+but concurrency can still saturate:
+- all worker threads blocked on db.query()
+- request queue grows
+- latency rises
+```
+
+```python
+# Wrong fix:
+add_more_cpu()
+
+# Better questions:
+# - Is DB latency rising?
+# - Are connection pools exhausted?
+# - Are disk/network queues growing?
+```
+
+If the process is mostly blocked, not runnable, more CPU does little.
+
+---
+
+### 6) Bottlenecks shift, and resources interact
+
+```python
+# Same service at different loads
+
+if traffic == "low":
+    bottleneck = "db I/O"      # misses cache, waits on DB
+
+elif traffic == "medium":
+    bottleneck = "CPU"         # more cache hits, less waiting, more parsing/serialization
+
+elif traffic == "high":
+    bottleneck = "memory"      # many in-flight requests + cache growth
+    gc_runs_more()             # memory pressure turns into CPU work
+
+if cpu_limit_is_tight and gc_runs_more():
+    gc_slows_down()            # throttled collector
+    memory_pressure_worsens()  # feedback loop
+    maybe_oom()
+```
+
+This is the practical trap: a service is not permanently “CPU-bound” or “I/O-bound.” The binding constraint can change with traffic, cache behavior, and runtime effects like GC.
+
+---
+
+## Key Ideas
+
+These sketches show that “resources” are not one generic tuning problem. CPU is time-sharing, so shortage usually appears as queueing and throttling-induced latency; memory is occupancy, so shortage becomes an OOM cliff; I/O is waiting, so a system can be saturated while CPU looks quiet. Requests and limits are not the same thing, especially for CPU, where limits can inject invisible pauses. And because bottlenecks move under load and can amplify each other, right-sizing is less about picking numbers once and more about identifying which resource is actually binding under realistic conditions.
+
+</details>
