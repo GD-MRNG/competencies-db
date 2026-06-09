@@ -37,3 +37,199 @@ The skill this topic builds is the ability to distinguish, at decision time, bet
 **Team topology and architecture** — Conway's Law, its inverse, and the practical implications of organising teams to match the architecture you want rather than the architecture you have. Worth depth because this is the architectural lever most engineers don't recognise as architectural — and the one that most often determines whether technical evolutionary practices actually result in systems that evolve.
 
 ---
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) Correct today vs changeable tomorrow
+
+```python
+# BEFORE: maximally correct for today's rule
+def shipping_cost(order):
+    if order.country == "US":
+        return 5
+    raise ValueError("Only US shipping supported")
+
+# Works perfectly... until "support Canada" arrives.
+# Change now means editing core logic and redeploying.
+
+
+# AFTER: still simple, but with a seam where change is likely
+RATES = {
+    "US": 5,
+    # "CA": 8 can be added later
+}
+
+def shipping_cost(order):
+    try:
+        return RATES[order.country]
+    except KeyError:
+        raise ValueError(f"Unsupported country: {order.country}")
+```
+
+The second version is not “future-proof”; it just keeps one likely axis of change isolated. The cost is a tiny bit more indirection now.
+
+---
+
+### 2) Speculative flexibility is not evolvability
+
+```python
+# BAD: generic abstraction invented before any real need
+class AbstractShippingStrategyFactoryProvider:
+    def get_factory(self):
+        raise NotImplementedError
+
+class ShippingContextManager:
+    def __init__(self, provider):
+        self.provider = provider
+
+# Nothing here solves a real current problem.
+# Every future change must first understand the abstraction.
+
+
+# BETTER: simple code + one obvious seam
+def shipping_cost(order):
+    if order.country == "US":
+        return 5
+    if order.country == "CA":
+        return 8
+    raise ValueError("Unsupported")
+```
+
+Evolutionary architecture is not “add lots of extension points.” It is “keep the likely cut line visible.” The cost of over-abstraction is cognitive load and slower change.
+
+---
+
+### 3) Fitness functions make architecture executable
+
+```python
+# Goal: "billing must not depend on web"
+# Instead of writing this in a wiki, enforce it.
+
+FORBIDDEN = [("billing", "web")]
+
+imports = {
+    "billing": ["db", "email"],
+    "web": ["billing"],   # OK: web can call billing
+    "reporting": ["db"],
+}
+
+def test_architecture_dependencies():
+    for module, deps in imports.items():
+        for forbidden_source, forbidden_target in FORBIDDEN:
+            if module == forbidden_source and forbidden_target in deps:
+                raise AssertionError(
+                    f"{forbidden_source} must not depend on {forbidden_target}"
+                )
+
+test_architecture_dependencies()
+```
+
+Now imagine someone changes `imports["billing"] = ["db", "web"]`: the build fails.  
+This does not guarantee good architecture; it only guards one chosen property. The cost is maintenance: stale fitness functions become noise.
+
+---
+
+### 4) Schema evolution: additive changes survive independent deployment
+
+```python
+# v1 event written last month
+event_v1 = {
+    "id": 101,
+    "total": 49.99
+}
+
+# v2 writer adds a field
+event_v2 = {
+    "id": 102,
+    "total": 79.99,
+    "currency": "USD"   # additive change
+}
+
+# old reader
+def read_v1(event):
+    return f"order={event['id']} total={event['total']}"
+
+print(read_v1(event_v1))  # works
+print(read_v1(event_v2))  # also works: ignores unknown field
+
+
+# dangerous non-additive change
+bad_event = {
+    "id": 103,
+    "amount": 79.99   # renamed from total
+}
+
+print(read_v1(bad_event))  # KeyError: coordinated deploy now required
+```
+
+Add fields; don’t casually rename or delete them. Data outlives code. The cost is carrying old fields and compatibility rules longer than feels clean.
+
+---
+
+### 5) Incremental migration needs a seam
+
+```python
+# Router in front of old and new implementations
+
+def legacy_get_user(user_id):
+    return {"source": "legacy", "name": "Alice"}
+
+def new_get_user(user_id):
+    return {"source": "new", "name": "Alice"}
+
+USE_NEW_FOR = {42, 43}
+
+def get_user(user_id):
+    if user_id in USE_NEW_FOR:
+        return new_get_user(user_id)
+    return legacy_get_user(user_id)
+
+print(get_user(10))  # legacy
+print(get_user(42))  # new
+```
+
+This is the strangler fig in miniature: create a routing point, move traffic gradually, expand the set, then delete the legacy path. The hard part is not the `if`; it is keeping old and new behavior/data compatible during the migration.
+
+---
+
+### 6) Team boundaries can help or block evolution
+
+```text
+Architecture wanted:
+- Team A owns checkout
+- Team B owns catalog
+
+Good seam:
+checkout -> catalog API
+
+Bad seam:
+checkout code imports catalog tables directly
+checkout code also writes inventory records
+catalog code calls checkout internals
+```
+
+```python
+# Good: one contract between teams
+def get_product(product_id): ...
+def place_order(cart): ...
+```
+
+```python
+# Bad: changes now require cross-team coordination everywhere
+SELECT * FROM catalog_products;      # Team A reads Team B's tables directly
+UPDATE inventory SET stock = ...;    # Team A writes Team B's data
+```
+
+If team boundaries and system seams align, each team can change its part more independently. If they do not, the architecture may look modular in diagrams but behave like a monolith in practice.
+
+---
+
+## Key Ideas
+
+Evolutionary architecture is not about predicting the future; it is about preserving cheap ways to respond when the future arrives. The sketches show the pattern repeatedly: keep likely change points isolated, avoid speculative abstraction, turn architectural intent into executable checks, treat data formats as long-lived contracts, make large changes incremental by introducing a seam, and align those seams with team boundaries so independent change is actually possible. The tradeoff is constant: a little more discipline and compatibility work now, in exchange for avoiding rewrites and coordinated breakage later.
+
+</details>

@@ -37,3 +37,195 @@ The skill this topic builds is the ability to read a system structurally rather 
 **Component coupling patterns** — Acyclic dependencies, stable dependencies, stable abstractions: the principles that keep a component graph from becoming a tangled graph. Worth going deeper because these principles operate at the level above individual modules and govern the long-term health of the system as it grows, and most teams discover them only after violating them.
 
 ---
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### Sketch 1 — One deployable can still be modular; many deployables can still be one system
+
+```python
+# Monolith with clear internal boundaries
+
+class Pricing:
+    def total(self, items): return sum(items)
+
+class Checkout:
+    def __init__(self, pricing): self.pricing = pricing
+    def place_order(self, items): return self.pricing.total(items)
+
+# Only dependency: Checkout -> Pricing interface/behavior
+checkout = Checkout(Pricing())
+print(checkout.place_order([10, 20]))
+```
+
+```python
+# "Microservices" with hidden shared coupling
+
+# service_a.py
+# reads users.status directly from shared database
+
+# service_b.py
+# writes users.status = "ACTIVE"
+
+# later: service_b changes meaning
+# users.status = 1   # same column, new encoding
+
+# service_a did not change deployment-wise,
+# but it is still broken logically.
+```
+
+Same deployment unit does not imply bad modularity. Separate services do not imply independence. The real question is: if one part changes, what else must change with it?
+
+---
+
+### Sketch 2 — Cohesion: put together what changes for the same reason
+
+```python
+# Low cohesion: one class has unrelated reasons to change
+
+class UserManager:
+    def save_user(self, user): ...
+    def send_welcome_email(self, user): ...
+    def generate_monthly_report(self): ...
+```
+
+```python
+# Higher cohesion: each module has one job
+
+class UserRepository:
+    def save_user(self, user): ...
+
+class WelcomeMailer:
+    def send(self, user): ...
+
+class ReportGenerator:
+    def monthly(self): ...
+```
+
+The second version is easier to understand because each piece has a single reason to exist. Cost: more parts, more boundaries, and sometimes more wiring.
+
+---
+
+### Sketch 3 — Coupling: the boundary matters more than the file count
+
+```python
+# Tighter coupling: depends on concrete internals
+
+class MySQLUserRepository:
+    def insert_row(self, name): ...
+
+class UserService:
+    def __init__(self):
+        self.repo = MySQLUserRepository()   # hard-coded concrete dependency
+
+    def register(self, name):
+        self.repo.insert_row(name)
+```
+
+```python
+# Looser coupling: depends on an abstract behavior
+
+class UserRepository:
+    def save(self, name): ...
+
+class UserService:
+    def __init__(self, repo: UserRepository):
+        self.repo = repo
+
+    def register(self, name):
+        self.repo.save(name)
+```
+
+In the first version, changing storage tends to ripple into `UserService`. In the second, the service mostly cares that "something can save users." Cost: abstraction can be overdone if there is only one implementation and no real variation pressure.
+
+---
+
+### Sketch 4 — Coupling has kinds: name is cheaper than meaning
+
+```python
+# Connascence of name: both sides must agree on the field name "email"
+
+payload = {"email": "a@example.com"}
+
+def handle_signup(data):
+    return data["email"]
+```
+
+If one side renames `"email"` to `"user_email"`, the other breaks. Annoying, but usually easy to find and fix.
+
+```python
+# Connascence of meaning: both sides must agree on what "status" means
+
+# producer
+payload = {"status": 1}   # 1 means ACTIVE ... maybe
+
+# consumer
+def can_login(data):
+    return data["status"] == 1   # assumes same meaning
+```
+
+This is stronger coupling. The field name can stay the same while the system still breaks because the meaning changed. These bugs are harder: the code runs, but does the wrong thing.
+
+---
+
+### Sketch 5 — Distributed systems often add timing coupling, not remove coupling
+
+```python
+# In-process call: simple execution coupling
+inventory.reserve(item)
+payment.charge(card)
+shipping.create_label(order)
+```
+
+```python
+# Split into services: now timing matters too
+
+POST /inventory/reserve
+POST /payment/charge
+POST /shipping/create_label
+
+# New failure mode:
+# inventory succeeds
+# payment times out
+# shipping never runs
+# system now needs retries / compensation
+```
+
+Breaking code into services did not remove the workflow coupling. It changed its kind. What was once ordinary call-order dependency is now call-order plus network failure plus timeout behavior. Cost: operational complexity.
+
+---
+
+### Sketch 6 — Shared database across services = one system with costume changes
+
+```sql
+-- "user-service" owns this table
+CREATE TABLE users (
+  id INT PRIMARY KEY,
+  status VARCHAR(20)
+);
+```
+
+```python
+# billing-service
+# reads users.status directly
+
+def can_invoice(user_row):
+    return user_row["status"] == "ACTIVE"
+```
+
+```python
+# user-service decides to normalize values
+UPDATE users SET status = 'A' WHERE status = 'ACTIVE';
+```
+
+`billing-service` is now broken even though no API contract changed. The services were coupled through shared storage and shared meaning. This is why "separate repos + separate deploys" can still behave like one application.
+
+---
+
+## Key Ideas
+
+Modularity is about change independence, not packaging. The sketches show that good boundaries come from high cohesion inside modules and low coupling across them, but "low coupling" needs precision: some dependencies are just agreements on names, while others are deeper agreements on meaning, order, or timing. Those stronger forms of coupling are what make systems hard to change safely. Splitting a system into services does not automatically improve modularity; if the parts still share database schemas, meanings, or workflow timing, you have only moved the coupling around and often made it more expensive to manage.
+
+</details>

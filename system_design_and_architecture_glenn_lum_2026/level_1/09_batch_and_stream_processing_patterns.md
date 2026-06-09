@@ -37,3 +37,246 @@ What this topic builds is the ability to look at a piece of asynchronous infrast
 **Delivery semantics in asynchronous systems** — At-most-once, at-least-once, and exactly-once, and what each one actually costs to achieve in a real pipeline. Worth a deeper post because these semantics are usually treated as configuration rather than as architectural decisions, and the gap between what people assume their system delivers and what it actually delivers is where silent data corruption lives.
 
 ---
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) Work queue: producers and workers are decoupled
+
+```python
+# producer.py
+queue = []
+
+def enqueue(job):
+    queue.append(job)
+
+enqueue({"type": "send_email", "to": "a@example.com"})
+enqueue({"type": "send_email", "to": "b@example.com"})
+```
+
+```python
+# worker.py
+def handle(job):
+    print("doing", job)
+
+while queue:
+    job = queue.pop(0)   # take next job
+    handle(job)
+```
+
+What this makes visible:
+- The producer does not do the work itself.
+- Workers can scale separately from producers.
+- The queue absorbs bursts.
+
+What it hides, and therefore what becomes the real problem:
+- What if the worker crashes after starting the job?
+- How do we know whether the job is finished?
+- Can the same job run twice?
+
+---
+
+### 2) At-least-once delivery means workers must be idempotent
+
+```python
+sent_emails = set()
+
+def send_email(job):
+    recipient = job["to"]
+
+    # idempotency guard: safe if job is delivered twice
+    if recipient in sent_emails:
+        return "already sent"
+
+    print("sending email to", recipient)
+    sent_emails.add(recipient)
+    return "sent"
+```
+
+Counter-example:
+
+```python
+total_charged = 0
+
+def charge_card(job):
+    global total_charged
+    total_charged += job["amount"]   # BAD: duplicate delivery charges twice
+```
+
+Safer shape:
+
+```python
+processed_payments = set()
+total_charged = 0
+
+def charge_card(job):
+    global total_charged
+    payment_id = job["payment_id"]
+
+    if payment_id in processed_payments:
+        return "already charged"
+
+    total_charged += job["amount"]
+    processed_payments.add(payment_id)
+```
+
+The core idea:
+- In many queue systems, “maybe twice” is normal.
+- So the worker logic must be safe to repeat.
+
+---
+
+### 3) Event-driven pipeline: each stage does one thing
+
+```python
+events = [
+    {"user": "u1", "active": True,  "items": ["a", "b"]},
+    {"user": "u2", "active": False, "items": ["c"]},
+]
+
+def filter_active(events):
+    return [e for e in events if e["active"]]
+
+def split_items(events):
+    out = []
+    for e in events:
+        for item in e["items"]:
+            out.append({"user": e["user"], "item": item})
+    return out
+
+def enrich(events):
+    return [{**e, "source": "batch-2026-05-23"} for e in events]
+
+result = enrich(split_items(filter_active(events)))
+print(result)
+# [{'user': 'u1', 'item': 'a', 'source': 'batch-2026-05-23'},
+#  {'user': 'u1', 'item': 'b', 'source': 'batch-2026-05-23'}]
+```
+
+Why this matters:
+- `filter_active` filters.
+- `split_items` splits one event into many.
+- `enrich` adds data.
+- Small stages are easier to reorder, test, and replace.
+
+The cost:
+- When output is wrong, the bug may be several stages upstream.
+
+---
+
+### 4) Monolithic ETL vs composable stages
+
+Before: one large script, mixed responsibilities
+
+```python
+def process(events):
+    out = []
+    for e in events:
+        if e["active"]:                 # filter
+            for item in e["items"]:     # split
+                out.append({            # enrich
+                    "user": e["user"],
+                    "item": item,
+                    "source": "batch-2026-05-23"
+                })
+    return out
+```
+
+After: same logic, but separable
+
+```python
+def process(events):
+    return enrich(split_items(filter_active(events)))
+```
+
+The point is not fewer lines.
+The point is named boundaries:
+- you can insert a new stage,
+- swap one stage,
+- test one stage,
+- reason about one failure at a time.
+
+---
+
+### 5) Coordinated batch processing: barriers change the failure mode
+
+Some jobs cannot stream straight through. A later phase must wait for all earlier work.
+
+```python
+# Phase 1: map
+inputs = [1, 2, 3, 4]
+partials = []
+
+for x in inputs:
+    partials.append(x * 10)   # imagine many workers
+
+# Barrier: reduce cannot start until all partials exist
+if len(partials) == len(inputs):
+    total = sum(partials)
+    print(total)  # 100
+```
+
+Failure case:
+
+```python
+inputs = [1, 2, 3, 4]
+partials = [10, 20, 30]   # one worker never finished
+
+if len(partials) == len(inputs):
+    print(sum(partials))
+else:
+    print("wait / retry / mark failed")
+```
+
+New problems introduced by the barrier:
+- One slow worker delays everyone else.
+- Partial completion must be tracked.
+- Restarting must avoid losing completed work or counting it twice.
+
+---
+
+### 6) Queue vs partitioned log: consume-and-delete vs replay
+
+Traditional queue mental model:
+
+```text
+enqueue A
+worker reads A
+A is gone
+```
+
+Partitioned log mental model:
+
+```python
+log = ["A", "B", "C"]
+
+consumer1_offset = 0
+consumer2_offset = 0
+
+# consumer1 reads A, B
+consumer1_offset = 2
+
+# consumer2 is independent, reads only A
+consumer2_offset = 1
+
+# log still contains A, B, C
+# consumers track position, not message deletion
+```
+
+What changes:
+- New consumers can start later and replay old data.
+- Reprocessing becomes possible.
+- Multiple consumers can read the same history independently.
+
+The cost:
+- You now manage offsets and retention.
+- “Who has processed what?” moves from queue deletion to consumer state.
+
+## Key Ideas
+
+Batch and stream systems are easier to understand when you stop treating them like slower request-response systems and instead model them as pipelines with explicit structure. A work queue solves decoupling and scaling, but forces you to design for duplicate delivery. Event-driven pipelines stay manageable when each stage has one job and a clear name; otherwise they collapse into fragile ETL blobs. Coordinated batch jobs add barriers, which make some computations possible but introduce stragglers, partial completion, and restart complexity. Finally, replacing point-to-point queues with replayable logs changes the substrate itself: messages are no longer “used up,” so reprocessing and independent consumers become first-class patterns.
+
+</details>

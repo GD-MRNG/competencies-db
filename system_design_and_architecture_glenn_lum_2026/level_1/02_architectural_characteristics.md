@@ -37,3 +37,216 @@ The practical skill this topic builds is the habit of asking, before any archite
 **Composite characteristics** — How individual characteristics combine into emergent properties like agility, and why optimising for the composite differs from optimising for the parts. Worth deeper exploration because the composite framing changes how you diagnose problems — when a team complains about agility, the answer lives in the underlying characteristics, not in the composite itself.
 
 ---
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) Same features, different architecture drivers
+```python
+# Both functions "work". Same feature: return user profile.
+# Different architectural characteristic optimized.
+
+def get_profile_simple(user_id):
+    # optimized for simplicity / fast local development
+    return db.query(f"SELECT * FROM users WHERE id = {user_id}")
+
+def get_profile_cached(user_id):
+    # optimized for performance under repeated reads
+    key = f"user:{user_id}"
+    if cache.exists(key):
+        return cache.get(key)
+
+    user = db.query("SELECT * FROM users WHERE id = ?", [user_id])
+    cache.set(key, user, ttl=60)
+    return user
+
+# Tradeoff:
+# - simple version: fewer moving parts, easier to change
+# - cached version: faster reads, but cache invalidation complexity
+```
+
+This is the first architectural lesson: features do not determine architecture. Non-functional goals do.
+
+---
+
+### 2) The three families fail in different ways
+```text
+Requirement: "Users can place orders"
+
+If we neglect operational characteristics:
+- app works in testing
+- fails at 10,000 concurrent users
+- symptoms: timeout, crash, pager alerts
+
+If we neglect structural characteristics:
+- app works in production
+- each change touches 8 files
+- symptoms: slow delivery, fragile releases, developer pain
+
+If we neglect cross-cutting characteristics:
+- app works until an incident/audit/debug session
+- symptoms: can't trace failures, security holes everywhere
+```
+
+Same feature requirement, three different failure modes:
+- operational = loud failure
+- structural = slow decay
+- cross-cutting = whole-system weakness
+
+---
+
+### 3) Structural characteristics: modularity changes the cost of change
+
+**Before: one function does everything**
+```python
+def place_order(request):
+    user = db.get_user(request["user_id"])
+    if user["blocked"]:
+        raise Exception("blocked")
+
+    total = 0
+    for item in request["items"]:
+        product = db.get_product(item["sku"])
+        total += product["price"] * item["qty"]
+
+    payment_gateway.charge(user["card"], total)
+    db.save_order(request, total)
+    email.send(user["email"], "Order placed")
+```
+
+**After: same feature, better changeability**
+```python
+def place_order(request):
+    user = load_user(request["user_id"])
+    validate_user(user)
+    total = calculate_total(request["items"])
+    charge(user, total)
+    save_order(request, total)
+    send_confirmation(user)
+
+def calculate_total(items):
+    return sum(load_price(i["sku"]) * i["qty"] for i in items)
+```
+
+Tradeoff shown by the split:
+- after version is easier to test and change
+- but has more boundaries/functions to maintain
+- performance may be slightly worse than a big inline block
+
+Structural characteristics often cost a little now to save a lot later.
+
+---
+
+### 4) Cross-cutting characteristics must be designed in
+
+**Bolted on later**
+```python
+def transfer_money(src, dst, amount):
+    debit(src, amount)
+    credit(dst, amount)
+```
+
+Now someone asks for:
+- audit trail
+- request tracing
+- security checks
+- error correlation
+
+You now have to revisit every critical path.
+
+**Designed in from the start**
+```python
+def transfer_money(src, dst, amount, ctx):
+    audit.log(ctx.request_id, "transfer_started", src, dst, amount)
+    auth.require(ctx.user, "transfer")
+
+    try:
+        debit(src, amount)
+        credit(dst, amount)
+        audit.log(ctx.request_id, "transfer_succeeded")
+    except Exception as e:
+        audit.log(ctx.request_id, "transfer_failed", error=str(e))
+        raise
+```
+
+Tradeoff:
+- more boilerplate in every path
+- but observability and security are now properties of the whole system, not wishes
+
+---
+
+### 5) Prioritization matters because characteristics conflict
+```yaml
+# Bad architecture requirement
+characteristics:
+  - high_performance
+  - high_modularity
+  - maximum_security
+  - maximum_agility
+  - extreme_scalability
+  - minimum_cost
+  - strongest_consistency
+  - highest_availability
+```
+
+This says nothing useful.
+
+```yaml
+# Better: explicit priorities and accepted compromises
+priorities:
+  1: availability
+  2: deployability
+  3: observability
+
+acceptable_tradeoffs:
+  - "Some reads may be stale for 5 seconds"
+  - "Extra network hops are acceptable"
+  - "Developer workflow includes security review"
+```
+
+Architecture starts being real when you can say:
+- what matters most
+- what you are willing to lose to get it
+
+---
+
+### 6) Composite characteristics: agility is built from smaller parts
+```text
+Team complaint: "We are not agile"
+
+Wrong fix:
+- hold meeting about agility
+
+Better diagnosis:
+if deploys are painful: improve deployability
+if changes break things: improve testability
+if every change spreads everywhere: improve modularity
+
+agility = deployability + testability + modularity
+```
+
+Or as pseudocode:
+
+```python
+def agility(system):
+    return min(
+        system.deployability,
+        system.testability,
+        system.modularity,
+    )
+
+# If any one stays weak, overall agility stays weak.
+```
+
+Composite characteristics are emergent: you do not build them directly.
+
+---
+
+## Key Ideas
+
+Architectural characteristics make the hidden goals of a system explicit: not what the system does, but how well it must operate, change, and survive. The sketches show that identical features can lead to different designs depending on whether you optimize for performance, simplicity, deployability, or something else; that operational, structural, and cross-cutting characteristics fail in different ways; that structural qualities like modularity mainly affect future change cost; that cross-cutting concerns such as security and observability must be present in every important path from the beginning; that architecture only becomes actionable when priorities and tradeoffs are named explicitly; and that broad goals like agility are usually composites of smaller, more concrete characteristics you can actually improve.
+
+</details>

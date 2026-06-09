@@ -37,3 +37,196 @@ The skill this topic builds is the ability to look at a design and ask, before a
 **Detection and observability for failure** — The mechanisms by which failures become visible to operators and to the system itself, and why detecting partial failure is fundamentally harder than detecting clean failure. Worth depth because detection design is often treated as an operational concern rather than an architectural one, and the resulting blind spots are where the worst outages happen.
 
 ---
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) Happy-path thinking misses the real design question
+
+```python
+# "Works when everything works"
+def place_order(user_id, item_id):
+    reserve_inventory(item_id)     # service A
+    charge_card(user_id)           # service B
+    create_shipment(user_id)       # service C
+    return "ok"
+```
+
+```python
+# Same flow, but now ask: what happens when each step fails?
+def place_order(user_id, item_id):
+    reserve_inventory(item_id)     # what if this succeeds...
+    charge_card(user_id)           # ...but this times out after charging?
+    create_shipment(user_id)       # what if this fails after payment?
+    return "ok"
+```
+
+The second version looks identical, but it exposes the real problem: success is one path; failure is many. Failure reasoning starts by treating each call as “may succeed, fail, or half-fail.”
+
+---
+
+### 2) Partial failure is worse than clean failure
+
+```python
+# Clean failure: fast, obvious
+def call_service():
+    raise ConnectionError("host down")
+```
+
+```python
+# Partial failure: accepts work, but never finishes in time
+import time
+
+def call_service():
+    time.sleep(30)   # looks alive, behaves dead
+    return "ok"
+```
+
+```python
+# Caller behavior changes completely depending on which failure it sees
+def handle_request():
+    try:
+        result = call_service()
+        return result
+    except ConnectionError:
+        return "fallback"
+```
+
+A clean crash triggers the `except`. A slow, half-dead dependency does not. It just ties up the caller until resources run out. In distributed systems, “slow” is often more dangerous than “down.”
+
+---
+
+### 3) Cascading failure often starts with retries
+
+```python
+# Bad: retries multiply load on an already struggling dependency
+def fetch_profile(user_id):
+    for _ in range(3):          # retry 3 times
+        return downstream(user_id)
+```
+
+```python
+# Service A handles one request by calling B
+def handle_request(user_id):
+    return fetch_profile(user_id)
+```
+
+If 100 incoming requests hit `handle_request()` and `downstream()` is slow, A may generate up to 300 downstream calls. The retry meant to improve reliability can become a retry storm.
+
+A more honest version:
+
+```python
+def fetch_profile(user_id):
+    try:
+        return downstream(user_id, timeout=0.2)
+    except TimeoutError:
+        return "stale-profile"   # degraded result
+```
+
+Tradeoff: fewer retries reduces load and limits spread, but may return lower-quality results more often.
+
+---
+
+### 4) Containment requires explicit boundaries
+
+```python
+# Before: one shared worker pool handles everything
+from concurrent.futures import ThreadPoolExecutor
+pool = ThreadPoolExecutor(max_workers=10)
+
+pool.submit(handle_payment, order)
+pool.submit(send_email, order)
+pool.submit(generate_report, order)
+```
+
+If `generate_report` hangs, it can consume the same workers needed for payments.
+
+```python
+# After: bulkheads isolate failure domains
+payment_pool = ThreadPoolExecutor(max_workers=5)
+email_pool   = ThreadPoolExecutor(max_workers=2)
+report_pool  = ThreadPoolExecutor(max_workers=3)
+
+payment_pool.submit(handle_payment, order)
+email_pool.submit(send_email, order)
+report_pool.submit(generate_report, order)
+```
+
+Now report failures hurt reports first. Cost: isolation reduces sharing efficiency; an idle pool cannot automatically lend capacity to a busy one.
+
+---
+
+### 5) Detection must distinguish “wrong” from “dead”
+
+```python
+# Naive health check
+def health():
+    return "OK"
+```
+
+A service can return `"OK"` while serving stale or corrupted data.
+
+```python
+# Better: probe a failure-relevant invariant
+last_replicated_offset = 100
+primary_offset = 125
+
+def health():
+    lag = primary_offset - last_replicated_offset
+    if lag > 10:
+        return "DEGRADED"   # alive, but unsafe for fresh reads
+    return "OK"
+```
+
+This is failure reasoning in observability form: don’t ask only “is the process running?” Ask “is it still meeting the assumptions other components rely on?”
+
+---
+
+### 6) Recovery depends on idempotency
+
+```python
+# Dangerous: retry can double-charge
+balance = 0
+
+def charge(amount):
+    global balance
+    balance += amount
+```
+
+```python
+charge(50)   # succeeds, but response is lost
+charge(50)   # client retries
+print(balance)   # 100
+```
+
+```python
+# Safer: same operation ID can be replayed without applying twice
+balance = 0
+seen = set()
+
+def charge(op_id, amount):
+    global balance
+    if op_id in seen:
+        return
+    seen.add(op_id)
+    balance += amount
+```
+
+```python
+charge("txn-123", 50)   # succeeds, response lost
+charge("txn-123", 50)   # retry
+print(balance)          # 50
+```
+
+Cost: you must store operation IDs somewhere durable enough to survive the failures you care about.
+
+---
+
+## Key Ideas
+
+Failure reasoning means designing around the shape of failure, not just the shape of success. The sketches show that distributed systems break in partial, ambiguous ways; that retries and shared resources can spread one fault into many; that containment only happens when you introduce explicit boundaries; that detection must check meaningful invariants rather than mere liveness; and that recovery depends on properties like idempotency that must be designed in early. A system is not “reliable” because it avoids failure, but because its failures are limited, visible, and recoverable.
+
+</details>

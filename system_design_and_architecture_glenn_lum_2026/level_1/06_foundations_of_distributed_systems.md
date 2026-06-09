@@ -35,3 +35,197 @@ The skill this topic builds is the ability to read any distributed system — yo
 **Latency as a first-class constraint** — Why latency in distributed systems is a design constraint that shapes service decomposition, communication patterns, and where you can and cannot draw service boundaries. Worth deeper treatment because the difference between thinking of latency as a metric to optimise and thinking of it as a constraint to design around changes how you read every architectural decision.
 
 ---
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) A remote call has an extra outcome: **unknown**
+
+```python
+# Local call: usually "returned" or "raised".
+def local_divide(a, b):
+    return a / b
+
+# Remote call: "returned", "failed", or "unknown".
+def charge_customer():
+    send_request("POST /charge", {"amount": 100})
+
+    if timeout_waiting_for_response():
+        raise Exception("UNKNOWN: server may have charged, reply may be lost")
+    return "charged"
+```
+
+```python
+# Why retrying is dangerous:
+try:
+    charge_customer()
+except Exception as e:
+    if "UNKNOWN" in str(e):
+        charge_customer()   # maybe first one already succeeded -> double charge
+```
+
+A network call is not just a slower function call. The caller can lose the response after the server already did the work.
+
+---
+
+### 2) Distributed components depend on **contracts**, not shared code
+
+```python
+# Client assumes this contract:
+# request:  {"user_id": 7}
+# response: {"name": "Ana"}
+
+# Server v1
+def get_user_v1(request):
+    return {"name": "Ana"}
+
+# Server v2 - breaking change
+def get_user_v2(request):
+    return {"full_name": "Ana"}   # renamed field
+```
+
+```python
+# Client code
+user = rpc_call("get_user", {"user_id": 7})
+print(user["name"])   # works with v1, breaks with v2
+```
+
+The client and server are coupled by message shape and meaning. They do not share memory or execution; they survive only if the contract stays compatible.
+
+---
+
+### 3) Delivery semantics are a **tradeoff table**, not interchangeable features
+
+| Semantics      | What you get        | What you pay |
+|----------------|---------------------|--------------|
+| At-most-once   | 0 or 1 deliveries   | messages can be lost |
+| At-least-once  | 1 or more deliveries| duplicates happen |
+| Exactly-once   | "once" effect       | needs dedup/idempotency/coordination |
+
+```text
+send(message):
+  if no retry:
+    at-most-once
+  if retry until ack:
+    at-least-once
+  if retry + dedup/applied-once tracking:
+    "exactly-once effect"
+```
+
+"Exactly once" is not a free transport property. It is built with extra state and coordination somewhere.
+
+---
+
+### 4) Idempotency is about **operation + state**
+
+```python
+balance = 100
+
+def deduct_10():
+    global balance
+    balance -= 10
+
+deduct_10()
+deduct_10()
+print(balance)   # 80  -> duplicate changed result
+```
+
+```python
+balance = 100
+seen = set()
+
+def deduct_10_once(request_id):
+    global balance
+    if request_id in seen:
+        return
+    balance -= 10
+    seen.add(request_id)
+
+deduct_10_once("req-123")
+deduct_10_once("req-123")
+print(balance)   # 90 -> duplicate suppressed
+```
+
+`deduct_10` is not idempotent. `deduct_10_once(request_id)` becomes idempotent because the system remembers whether that logical action already happened.
+
+---
+
+### 5) Retries are safe only when paired with idempotency
+
+```python
+def send_with_retry(op):
+    for _ in range(3):
+        try:
+            return op()
+        except TimeoutError:
+            pass
+    raise Exception("gave up")
+```
+
+```python
+# Unsafe: duplicate side effects possible
+send_with_retry(lambda: rpc_call("deduct_balance", {"amount": 10}))
+
+# Safer: caller supplies an idempotency key
+send_with_retry(lambda: rpc_call(
+    "deduct_balance",
+    {"amount": 10, "request_id": "req-123"}
+))
+```
+
+```python
+# Server-side pseudocode
+if request_id already processed:
+    return previous_result
+apply deduction
+store request_id as processed
+return success
+```
+
+Retries solve temporary failure, but they turn one uncertain action into possibly many deliveries. Idempotency is what makes that survivable.
+
+---
+
+### 6) Latency changes architecture, not just speed
+
+```python
+# Chatty design: 5 network round trips
+user    = rpc("user-service")
+orders  = rpc("order-service")
+cart    = rpc("cart-service")
+prefs   = rpc("prefs-service")
+offers  = rpc("offer-service")
+page = render(user, orders, cart, prefs, offers)
+```
+
+```python
+# If each call takes ~50ms:
+# total network wait ~= 250ms before rendering
+```
+
+```python
+# Less chatty: one aggregated call
+page_data = rpc("profile-page-service")
+page = render(page_data)
+```
+
+Or:
+
+```python
+# Parallel helps, but does not make latency zero
+user, orders, cart, prefs, offers = parallel_rpc([...])
+# total wait is now roughly the slowest call, plus coordination cost
+```
+
+Every service boundary adds network latency. Too many fine-grained calls can turn a clean design into a slow distributed monolith.
+
+---
+
+## Key Ideas
+
+Distributed systems become easier to reason about once you stop pretending remote calls are local calls with worse performance. The sketches show the core shift: network communication adds an **unknown** outcome, services depend on **message contracts** rather than shared code, delivery guarantees are explicit **tradeoffs**, retries require **idempotent effects** to avoid duplicate work, and latency constrains how finely you can split a system. Most real systems survive by accepting at-least-once delivery and then designing operations so duplicates are harmless.
+
+</details>

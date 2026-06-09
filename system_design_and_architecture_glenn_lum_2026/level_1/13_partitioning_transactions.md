@@ -41,3 +41,244 @@ Which is where partitioning and transactions collide. A transaction that touches
 **Distributed transactions and two-phase commit** — The protocol for atomicity across partitions, and the failure modes (coordinator crash, indefinite blocking, the heuristic decisions that violate atomicity) that make it fragile in practice. Worth deeper treatment because this is the point where partitioning and transactions actually collide, and the alternatives (sagas, compensation, accepting weaker guarantees) are architectural decisions that deserve their own analysis.
 
 ---
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) Partitioning picks your pain: range vs hash
+
+```python
+# Same keys, two partitioning strategies.
+
+keys = [1001, 1002, 1003, 9001]
+
+def range_partition(user_id):
+    if user_id < 5000:
+        return "node_A"
+    return "node_B"
+
+def hash_partition(user_id):
+    return ["node_A", "node_B"][hash(user_id) % 2]
+
+for k in keys:
+    print(k, "range->", range_partition(k), "hash->", hash_partition(k))
+```
+
+What this makes visible:
+
+- **Range partitioning** keeps nearby keys together.
+  - Query like `WHERE user_id BETWEEN 1000 AND 1999` can hit one node.
+  - But if new users mostly get increasing IDs, one node becomes hot.
+- **Hash partitioning** spreads load more evenly.
+  - But `BETWEEN 1000 AND 1999` now likely needs **both nodes**.
+
+The partition function is not just storage layout. It decides which queries are cheap and which become scatter-gather operations.
+
+---
+
+### 2) Secondary indexes stop routing from being easy
+
+```sql
+-- Table is partitioned by primary key: user_id
+CREATE TABLE orders (
+  order_id   BIGINT PRIMARY KEY,
+  user_id    BIGINT,
+  status     TEXT
+);
+
+-- Query we want:
+SELECT * FROM orders WHERE status = 'PENDING';
+```
+
+```text
+Case A: local secondary index on each partition
+-----------------------------------------------
+node_1 has index(status)
+node_2 has index(status)
+node_3 has index(status)
+
+To answer status='PENDING':
+  ask node_1
+  ask node_2
+  ask node_3
+  merge results
+
+Cheap writes, expensive reads (fan-out).
+```
+
+```text
+Case B: global secondary index
+------------------------------
+global_index[status='PENDING'] -> [order_id 7, order_id 22, ...]
+
+To answer status='PENDING':
+  ask global index
+  route to owning partitions for matching rows
+
+Cheap reads, but every write must update:
+  - the row's home partition
+  - the global index, which may live elsewhere
+
+Now one logical write touches multiple nodes.
+```
+
+Primary-key routing is simple because partitioning tells you where the row lives. Secondary indexes break that alignment.
+
+---
+
+### 3) Naive rebalancing: mod-N hashing moves almost everything
+
+```python
+keys = [10, 11, 12, 13, 14, 15]
+
+def mod_n_partition(key, n):
+    return key % n
+
+before = {k: mod_n_partition(k, 3) for k in keys}
+after  = {k: mod_n_partition(k, 4) for k in keys}
+
+for k in keys:
+    print(f"key={k}: before={before[k]} after={after[k]}")
+```
+
+Typical outcome: many keys change partitions when node count changes from 3 to 4.
+
+That means:
+
+- adding one node can force **massive data movement**
+- cache locality disappears
+- rebalancing becomes a cluster-wide event
+
+A better scheme is usually:
+
+```text
+partition = hash(key) % 1024    # fixed logical partitions
+node = assignment_table[partition]
+```
+
+Now adding a node mostly means reassigning some of the **1024 logical partitions**, not remapping every key in the database.
+
+---
+
+### 4) Read committed prevents dirty reads, but not changing answers
+
+```sql
+-- Initial row:
+-- accounts(id=1, balance=100)
+
+-- Transaction T1
+BEGIN;
+SELECT balance FROM accounts WHERE id = 1;  -- sees 100
+
+-- Transaction T2
+BEGIN;
+UPDATE accounts SET balance = 50 WHERE id = 1;
+COMMIT;
+
+-- Back to T1, same transaction:
+SELECT balance FROM accounts WHERE id = 1;  -- now sees 50
+COMMIT;
+```
+
+At **read committed**:
+
+- T1 does **not** see uncommitted data from T2
+- but T1 can get **different answers** from the same query in one transaction
+
+So "I wrapped it in a transaction" does **not** automatically mean "my reads are stable."
+
+---
+
+### 5) Snapshot isolation can still violate invariants: write skew
+
+```sql
+-- Rule: at least one doctor must remain on call.
+-- Initial state:
+-- doctors(name, on_call)
+-- ('A', true), ('B', true)
+```
+
+```sql
+-- Transaction T1
+BEGIN;
+SELECT COUNT(*) FROM doctors WHERE on_call = true;  -- 2
+-- "Safe for A to go off call"
+UPDATE doctors SET on_call = false WHERE name = 'A';
+COMMIT;
+```
+
+```sql
+-- Concurrent Transaction T2
+BEGIN;
+SELECT COUNT(*) FROM doctors WHERE on_call = true;  -- 2
+-- "Safe for B to go off call"
+UPDATE doctors SET on_call = false WHERE name = 'B';
+COMMIT;
+```
+
+Final state:
+
+```sql
+SELECT * FROM doctors;
+-- ('A', false), ('B', false)
+```
+
+Each transaction saw a consistent snapshot. Each changed a different row. Together they broke the rule.
+
+That is the important lesson: **consistent snapshot** is weaker than **serializable correctness**.
+
+---
+
+### 6) Once a transaction spans partitions, atomicity needs coordination
+
+```text
+Goal: transfer $10 from account A on node_1 to account B on node_2
+
+Without coordination:
+  1. debit A on node_1   ✔
+  2. network failure
+  3. credit B on node_2  ✘
+
+Money vanished.
+```
+
+Minimal two-phase commit pseudocode:
+
+```text
+coordinator:
+  send PREPARE to node_1, node_2
+  if all vote YES:
+      send COMMIT
+  else:
+      send ABORT
+
+participant (each node):
+  on PREPARE:
+    check constraints
+    write "prepared" to durable log
+    reply YES or NO
+
+  on COMMIT:
+    finalize changes
+
+  on ABORT:
+    discard changes
+```
+
+This fixes the "half-committed transfer" problem, but introduces distributed failure modes:
+
+- if the **coordinator crashes** after participants prepare, they may block
+- if a node is slow, others cannot tell whether it is slow or dead
+- latency increases because commit now requires cross-node coordination
+
+Partitioning scales the system by splitting data. Distributed transactions are the bill you pay when one invariant still spans the split.
+
+---
+
+## Key Ideas
+
+Partitioning and transactions are linked because partitioning turns one machine's simple atomic updates into cross-node coordination problems. The sketches show the chain: partition strategy decides which requests are local and which scatter; secondary indexes break clean routing; naive rebalancing can make cluster changes painfully expensive; weaker isolation levels allow surprising anomalies even on one node; and once one transaction touches multiple partitions, atomicity requires protocols like two-phase commit, with real operational costs. The core skill is not memorizing terms, but recognizing which invariants remain local to a partition and which ones force you into distributed correctness.
+
+</details>

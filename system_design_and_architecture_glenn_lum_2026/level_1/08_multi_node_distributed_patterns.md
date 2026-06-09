@@ -39,3 +39,204 @@ The skill this topic builds is pattern recognition under pressure — the abilit
 **Functions and event-driven processing (FaaS)** — Covers the pattern of replacing long-running services with stateless functions triggered by events, and the operational characteristics (cold starts, vendor lock-in, observability) it produces. Worth depth because FaaS is often adopted for reasons that do not match its actual tradeoff profile, and recognising when those tradeoffs are and are not justified is a distinct skill.
 
 ---
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) Replication works only when any node can handle any request
+
+```python
+# Two identical service instances behind a load balancer.
+instances = ["app-1", "app-2"]
+
+def load_balancer(request_id):
+    return instances[request_id % 2]   # pretend round-robin
+
+def handle_request(instance, request):
+    # OK: everything needed is in the request or shared DB
+    return f"{instance} served user={request['user_id']}"
+
+for req_id, req in enumerate([{"user_id": 10}, {"user_id": 11}, {"user_id": 12}]):
+    node = load_balancer(req_id)
+    print(handle_request(node, req))
+```
+
+If requests are truly self-contained, replication is easy: add more identical nodes and spread traffic across them.
+
+---
+
+### 2) A tiny bit of hidden state breaks “any node can serve any request”
+
+```python
+# Bad: session state stored in process memory.
+sessions = {
+    "app-1": {},
+    "app-2": {},
+}
+
+def login(instance, user_id):
+    sessions[instance]["current_user"] = user_id
+
+def get_profile(instance):
+    return sessions[instance].get("current_user", "NOT LOGGED IN")
+
+login("app-1", 42)
+
+print(get_profile("app-1"))  # 42
+print(get_profile("app-2"))  # NOT LOGGED IN
+```
+
+Same service code, but now requests are not interchangeable across nodes. Replication stops being “free” the moment important state lives inside one process.
+
+---
+
+### 3) Session stickiness is a workaround, not a cure
+
+```python
+# Route a given client to the same node every time.
+sticky_table = {"client-A": "app-1"}
+
+def route(client_id):
+    return sticky_table[client_id]
+
+# Works while app-1 is healthy.
+print(route("client-A"))  # app-1
+
+# But if app-1 dies, the "session" dies with it.
+alive = {"app-1": False, "app-2": True}
+
+node = route("client-A")
+if not alive[node]:
+    print("client-A lost session; must log in again")
+```
+
+Stickiness preserves stateful behavior by reintroducing coupling to one machine. You get fewer immediate code changes, but weaker failover and uneven load.
+
+---
+
+### 4) Sharding scales state by splitting ownership
+
+```python
+# Each shard owns part of the dataset.
+shards = {
+    0: {},
+    1: {},
+}
+
+def shard_for(user_id):
+    return user_id % 2
+
+def put_user(user_id, name):
+    shards[shard_for(user_id)][user_id] = name
+
+def get_user(user_id):
+    return shards[shard_for(user_id)][user_id]
+
+put_user(10, "Ana")   # shard 0
+put_user(11, "Ben")   # shard 1
+
+print(shards)         # data is split, not copied
+print(get_user(10))   # routed to the right shard
+```
+
+Replication gives many copies of the same data. Sharding gives different nodes different pieces of the data, which increases storage and write capacity.
+
+---
+
+### 5) Sharding introduces the hot-shard problem
+
+```python
+# Bad shard key: all traffic for one "big customer" lands on one shard.
+def shard_for(customer_id):
+    return customer_id % 2
+
+traffic = [1000, 2, 3, 4]   # customer 0 is huge
+load = {0: 0, 1: 0}
+
+for customer_id, requests in enumerate(traffic):
+    load[shard_for(customer_id)] += requests
+
+print(load)   # {0: 1003, 1: 6}
+```
+
+Adding shards does not help if the partitioning rule concentrates most activity on one shard. The problem is not shard count; it is shard-key choice.
+
+---
+
+### 6) Scatter/gather is fast on average, but limited by the slowest responder
+
+```python
+# Query all shards, then combine partial answers.
+shard_times_ms = [8, 9, 120]   # one slow shard
+
+def scatter_gather(times):
+    parallel_wall_clock = max(times)   # must wait for all
+    return parallel_wall_clock
+
+print(scatter_gather(shard_times_ms))  # 120 ms
+```
+
+The work happened in parallel, but the user still waits for the slowest shard. In scatter/gather systems, tail latency dominates.
+
+---
+
+### 7) Leader election is easy when failure is obvious; hard when it is ambiguous
+
+```text
+Nodes: A, B, C
+Current leader: A
+
+Every 1s:
+  followers expect heartbeat from leader
+
+Rule:
+  if no heartbeat for 3s:
+      start election
+      highest node id wins
+
+Case 1: A crashed
+  B and C stop hearing heartbeats
+  election happens
+  C becomes leader
+  -> fine
+
+Case 2: A is slow or partitioned
+  B and C do not hear A
+  A still thinks "I am leader"
+  B/C elect C
+  -> now A and C may both act as leader
+```
+
+The hard part is not choosing a winner. The hard part is deciding whether the old leader is truly dead or merely unreachable.
+
+---
+
+### 8) These patterns usually compose, not compete
+
+```text
+Client
+  -> load balancer
+      -> replicated API nodes           # stateless request handling
+          -> router
+              -> sharded database       # split state across machines
+
+Search request:
+  API node
+    -> scatter to all shards
+    -> gather partial results
+
+Background scheduler:
+  many candidates
+    -> one elected leader runs the job
+```
+
+Real systems rarely use just one pattern. The useful skill is recognizing which part of the system is using which pattern, and why.
+
+## Key Ideas
+
+Multi-node design gets simpler when you stop treating every scaling problem as unique and instead recognize the small set of patterns involved. Replication handles stateless work, but hidden per-node state breaks its promise; stickiness patches that breakage by tying users back to individual machines. Sharding scales the data itself, but makes routing and load distribution critical, because a bad shard key creates hot spots. Scatter/gather gives parallelism, but latency is set by the slowest participant. Leader election provides single-node authority, but its real difficulty is failure detection under ambiguity. In practice, production systems combine these patterns, so the main skill is identifying which pattern fits each problem and what cost comes with it.
+
+</details>

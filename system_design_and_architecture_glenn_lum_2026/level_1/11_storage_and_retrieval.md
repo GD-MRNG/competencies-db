@@ -37,223 +37,173 @@ What this layer gives you is the ability to read database performance claims as 
 ---
 
 <details>
-  <summary>Concept Sketches</summary>
+<summary>Concept Sketches</summary>
 
-### Introduction
+## Concept Sketches
 
-A database feels like a black box until you understand the small number of data structures doing the actual work underneath. Every storage engine is just a set of choices about how to lay bytes down on disk and find them again — and each choice optimises for some access patterns while penalising others. The five sketches below build that mental model from the ground up, starting with the simplest possible design and adding one idea at a time. By the end, the performance characteristics of real databases — why Cassandra is fast at writes, why Postgres is predictable at reads, why you can't run analytics on your production database — should feel less like folklore and more like consequences.
-
-
-### Sketch 1: The Hash Index
-
-The simplest possible persistent store. A hash map in memory, an append-only log on disk.
+### Sketch 1: Hash index = fast append, no ordering
 
 ```python
-import csv, os
+# key -> latest value
+log = []          # on disk: append-only
+index = {}        # in memory: key -> position in log
 
-# The entire index lives in memory.
-# Key → byte offset in the log file.
-index = {}
+def put(key, value):
+    log.append((key, value))          # cheap append
+    index[key] = len(log) - 1         # cheap hash update
 
-def write(key, value):
-    with open("log.csv", "a") as f:
-        offset = f.tell()
-        writer = csv.writer(f)
-        writer.writerow([key, value])
-    index[key] = offset          # remember where we just wrote
+def get(key):
+    pos = index.get(key)
+    return None if pos is None else log[pos][1]
 
-def read(key):
-    if key not in index:
-        return None
-    with open("log.csv", "r") as f:
-        f.seek(index[key])       # jump straight to it
-        row = next(csv.reader(f))
-        return row[1]
+put("user:1", "Alice")
+put("user:1", "Bob")   # update = append again; old value still exists
+print(get("user:1"))   # Bob
 
-# Updates are just new appends. Old values stay on disk — wasted space.
-write("name", "alice")
-write("name", "bob")            # index now points to "bob", "alice" is orphaned
-print(read("name"))             # → "bob"
+print(log)
+# [('user:1', 'Alice'), ('user:1', 'Bob')]
+# Fast writes, but stale bytes accumulate.
 ```
 
-**What this gets right:** Writes are just appends — the fastest thing you can do on disk. Reads are a single seek.
-
-**The tradeoffs:**
-- The entire key space must fit in RAM. The log grows forever without compaction.
-- `index.keys()` gives you nothing useful about order — range queries like *"give me all keys between A and M"* are impossible.
+This makes one tradeoff obvious: writes are cheap because nothing is updated in place. But the hash table is unordered, so queries like “all keys from `user:100` to `user:200`” have no efficient path.
 
 ---
 
-### Sketch 2: Compaction (the hidden cost of append-only)
-
-The log fills up with orphaned values. Compaction is the background job that cleans it up — but it costs I/O that competes with live traffic.
+### Sketch 2: Append-only needs compaction
 
 ```python
-def compact():
-    # Read the current live value for every known key.
-    live = {key: read(key) for key in index}
+log = [("x", "1"), ("x", "2"), ("y", "9"), ("x", "3")]
+index = {"x": 3, "y": 2}
 
-    # Rewrite the log from scratch with only live values.
-    os.remove("log.csv")
-    index.clear()
-    for key, value in live.items():
-        write(key, value)
+def compact(log):
+    latest = {}
+    for i, (k, v) in enumerate(log):
+        latest[k] = v                 # keep only newest value per key
+    return list(latest.items())       # rewritten log
 
-write("x", "1")
-write("x", "2")
-write("x", "3")   # log has 3 rows; only the last matters
-compact()          # log now has 1 row
+print("before:", log)
+print("after: ", compact(log))
+# before: [('x','1'), ('x','2'), ('y','9'), ('x','3')]
+# after:  [('x','3'), ('y','9')]
 ```
 
-**The tradeoff made visible:** Compaction is not free. While it runs, it reads and rewrites the entire log. In production systems this is a background thread competing with your queries for disk I/O. This tension — write fast now, pay the cost later — runs through every append-only design.
+Compaction recovers space, but it is extra background work: read old data, rewrite live data, compete with foreground traffic. “Fast writes” often means “pay later.”
 
 ---
 
-### Sketch 3: SSTable + LSM-Tree
-
-Add one idea to Sketch 1: keep writes *sorted*. Writes land in a sorted in-memory buffer (the memtable). When it's full, flush it to disk as a sorted file (an SSTable). Reads check the memtable first, then each file on disk.
+### Sketch 3: LSM idea = buffer writes, flush sorted files
 
 ```python
-import bisect
+memtable = {}     # in memory
+sstables = []     # on disk, each sorted by key
 
-memtable = {}       # in-memory: absorbs all incoming writes
-sstables = []       # on-disk: list of sorted [(key, value)] segments
-
-MEMTABLE_LIMIT = 4
-
-def write(key, value):
+def put(key, value):
     memtable[key] = value
-    if len(memtable) >= MEMTABLE_LIMIT:
-        flush()
 
 def flush():
-    # Sort and move memtable to disk as a new SSTable segment.
-    segment = sorted(memtable.items())
-    sstables.append(segment)
-    memtable.clear()
-    print(f"Flushed segment: {segment}")
+    global memtable
+    sstables.append(sorted(memtable.items()))   # write one sorted segment
+    memtable = {}
 
-def read(key):
-    if key in memtable:             # check memory first
+def get(key):
+    if key in memtable:
         return memtable[key]
-    for segment in reversed(sstables):   # newest segment first
-        for k, v in segment:
+    for table in reversed(sstables):            # newest file first
+        for k, v in table:
             if k == key:
                 return v
     return None
 
-write("b", "2"); write("a", "1"); write("d", "4"); write("c", "3")
-# → flushes: [('a','1'), ('b','2'), ('c','3'), ('d','4')]
-print(read("a"))   # → "1"
-print(read("c"))   # → "3"
+put("b", 2); put("a", 1); flush()
+put("c", 3); flush()
+
+print(sstables)
+# [[('a', 1), ('b', 2)], [('c', 3)]]
+print(get("a"))  # 1
 ```
 
-**What this gets right:** Writes are always sequential (memtable flush → sorted append). No in-place updates anywhere. This is why LSM-tree databases advertise high write throughput.
-
-**The tradeoffs:**
-- A read for a missing key must scan *every* SSTable. As segments accumulate, reads get slower. (Real systems use Bloom filters to skip segments cheaply.)
-- Segments pile up on disk. Compaction must merge them — same I/O tension as Sketch 2, now at larger scale. This is called *write amplification*.
+Sorted files buy you range queries and cheap sequential writes. The cost is visible in `get`: reads may need to check several files. Real LSM systems add Bloom filters and compaction because too many SSTables make reads and storage worse.
 
 ---
 
-### Sketch 4: B-Tree
-
-Instead of an append-only log, data lives in fixed-size pages organised as a sorted tree. Writes find the right page and modify it in place.
+### Sketch 4: B-tree idea = ordered pages, update in place
 
 ```python
-class BTreeNode:
-    def __init__(self):
-        self.keys   = []
-        self.values = []
-        self.children = []
+# One "page" kept sorted.
+page = [("a", 1), ("c", 3), ("d", 4)]
 
-    def is_leaf(self):
-        return len(self.children) == 0
+def get(key):
+    for k, v in page:          # real B-trees do this across tree pages
+        if k == key:
+            return v
+        if k > key:
+            return None
+    return None
 
-def read(node, key):
-    for i, k in enumerate(node.keys):
-        if key == k:
-            return node.values[i]         # found it on this page
-        if key < k:
-            if node.is_leaf(): return None
-            return read(node.children[i], key)   # go left
-    if node.is_leaf(): return None
-    return read(node.children[-1], key)          # go right
+def put(key, value):
+    for i, (k, _) in enumerate(page):
+        if k == key:
+            page[i] = (key, value)     # overwrite in place
+            return
+        if k > key:
+            page.insert(i, (key, value))
+            return
+    page.append((key, value))
 
-def write(node, key, value):
-    i = 0
-    while i < len(node.keys) and key > node.keys[i]:
-        i += 1
-    if i < len(node.keys) and node.keys[i] == key:
-        node.values[i] = value            # update in place
-        return
-    if node.is_leaf():
-        node.keys.insert(i, key)          # insert in sorted order
-        node.values.insert(i, value)
-    else:
-        write(node.children[i], key, value)
-
-root = BTreeNode()
-write(root, "b", "2"); write(root, "a", "1"); write(root, "d", "4"); write(root, "c", "3")
-print(read(root, "c"))   # → "3"
-print(read(root, "z"))   # → None
+print(get("c"))   # 3
+put("b", 2)
+print(page)       # [('a',1), ('b',2), ('c',3), ('d',4)]
 ```
 
-**What this gets right:** Reads are predictable — traverse the tree, find the page, done. Range queries work naturally because keys are sorted within pages. There's no compaction background job.
-
-**The tradeoffs:**
-- Writes are random I/O — you have to find the right page, then modify it. Much more expensive than an append.
-- Page splits (when a page is full) are complex and must be crash-safe. Real B-trees use a write-ahead log (WAL) to survive a crash mid-split — adding more write overhead.
+This tiny page sketch shows the core B-tree property: data stays ordered where it lives. Reads and range scans are predictable. The cost is that writes are not simple appends anymore—they must find and modify the right page, and full pages force splits. Real systems add a WAL because crashes during page updates must be recoverable.
 
 ---
 
-### Sketch 5: Row vs Column Storage
-
-Same data, two layouts. The layout alone determines whether analytical queries are fast or catastrophically slow.
+### Sketch 5: Same rows, two layouts, opposite strengths
 
 ```python
-# Three records: id, age, country
 rows = [
     {"id": 1, "age": 28, "country": "SG"},
     {"id": 2, "age": 34, "country": "MY"},
     {"id": 3, "age": 22, "country": "SG"},
 ]
 
-# ROW store: each record is stored together.
-row_store = rows   # → [{id,age,country}, {id,age,country}, ...]
+row_store = rows
 
-# COLUMN store: each field is stored together.
-col_store = {
-    "id":      [r["id"]      for r in rows],
-    "age":     [r["age"]     for r in rows],
-    "country": [r["country"] for r in rows],
+column_store = {
+    "id":      [1, 2, 3],
+    "age":     [28, 34, 22],
+    "country": ["SG", "MY", "SG"],
 }
 
-# OLTP query: fetch one full record. Row store wins.
-def get_record_row(id):
-    return next(r for r in row_store if r["id"] == id)   # one read, all fields
+def fetch_user_row(id):
+    return next(r for r in row_store if r["id"] == id)
 
-def get_record_col(id):
-    i = col_store["id"].index(id)
-    return {k: col_store[k][i] for k in col_store}       # must touch every column
-
-# OLAP query: aggregate one column. Column store wins.
 def avg_age_col():
-    return sum(col_store["age"]) / len(col_store["age"]) # touches only "age"
+    return sum(column_store["age"]) / len(column_store["age"])
 
-def avg_age_row():
-    return sum(r["age"] for r in row_store) / len(row_store)  # reads every field of every row
+print(fetch_user_row(2))  # touches one row, gets all fields
+print(avg_age_col())      # touches one column, skips the rest
 ```
 
-**What this makes visible:**
-- `avg_age_col()` reads one array. `avg_age_row()` reads every field of every row to get to `age`.
-- At millions of rows, that's the difference between microseconds and seconds.
-- Column storage also compresses aggressively — `["SG", "MY", "SG", "SG", "SG"]` becomes trivial to encode. Row storage can't do this because adjacent bytes belong to different fields.
-
-**The fundamental mismatch:** A column store makes single-row writes painful — inserting one record means appending to *every* column array. This is why you can't use an analytical database as your application database, and why trying produces exactly the kind of performance problems that look like tuning issues but are actually the wrong architecture.
+The storage layout determines the workload it likes. Row layout is good for OLTP: “get me user 2.” Column layout is good for OLAP: “average age over 100M users.” Using one for the other is not a tuning mistake; it is an architectural mismatch.
 
 ---
 
-These five sketches cover the full arc of the document — from the simplest possible design to the architectural split that explains why OLTP and OLAP databases exist as separate categories.
+### Sketch 6: Read vendor claims as tradeoffs
+
+| Claim | Likely storage choice | Cost moved where? |
+|---|---|---|
+| “Very fast writes” | Append-only / LSM | Compaction, read amplification |
+| “Predictable point reads” | B-tree | More expensive writes, page management |
+| “Fast range scans” | Ordered structure | Writes must preserve order |
+| “Fast analytics” | Column store | Painful row updates/inserts |
+| “Simple key lookup only” | Hash index | No efficient range queries |
+
+This is the practical skill: translate performance claims into storage-engine consequences.
+
+## Key Ideas
+
+Storage engines are not interchangeable boxes with different feature checklists; they are different answers to two questions: how do we write bytes, and how do we find them again? Hash indexes optimise for simple key lookups with cheap appends, LSM-trees extend that idea into sorted immutable files with compaction-heavy write optimisation, B-trees keep data ordered in place for predictable reads and range scans, and row versus column layout determines whether the system fits transactional or analytical work. Once you can see those few underlying structures, database behavior stops looking mysterious: every speedup is bought by a cost somewhere else.
 
 </details>

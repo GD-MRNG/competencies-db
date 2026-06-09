@@ -37,3 +37,223 @@ The skill this topic builds is the ability to read a system structurally rather 
 **Choosing the right style** — The framework for mapping characteristic requirements to style candidates. Worth a Level 2 because the actual practice — surfacing the non-negotiable characteristics, eliminating styles that cannot deliver them, and choosing among what remains — is a repeatable discipline rather than the intuitive judgment most engineers treat it as.
 
 ---
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### Sketch 1 — A style is a structural claim, not a component list
+
+```text
+System A
+- web/
+- service/
+- db/
+- queue/
+
+This is only a parts list.
+It tells us what exists, not what shape the system has.
+```
+
+```text
+System B: Layered monolith
+request
+  -> controller layer
+  -> business layer
+  -> persistence layer
+  -> database
+
+Structural claim:
+- single deployment unit
+- boundaries drawn by technical role
+- changes often flow through multiple layers
+```
+
+```text
+System C: Microservices
+client
+  -> order-service -> order-db
+  -> payment-service -> payment-db
+
+Structural claim:
+- multiple deployment units
+- boundaries drawn by business domain
+- coordination happens over the network
+```
+
+Same kinds of components can appear in all three.  
+The style is the rule for how they are arranged and how change flows.
+
+---
+
+### Sketch 2 — Two fast classification axes: monolith/distributed and technical/domain boundaries
+
+```python
+def classify(deployments, boundaries):
+    if deployments == 1 and boundaries == "technical":
+        return "likely layered monolith"
+    if deployments > 1 and boundaries == "domain":
+        return "likely microservices"
+    if deployments == 1 and boundaries == "domain":
+        return "likely modular monolith"
+    if deployments > 1 and boundaries == "technical":
+        return "likely service-based or mixed style"
+```
+
+```python
+print(classify(1, "technical"))  # layered monolith
+print(classify(12, "domain"))    # microservices
+print(classify(1, "domain"))     # modular monolith
+```
+
+This does **not** identify every style exactly.  
+It is a narrowing tool: first ask “how many deployment units?”, then ask “what are the boundaries for?”
+
+---
+
+### Sketch 3 — Style predicts which changes are cheap and which are expensive
+
+#### Layered architecture: easy technical separation, expensive feature changes
+
+```python
+# To add "discount codes" in a layered system:
+
+# presentation.py
+def apply_discount_endpoint(req):
+    return service.apply_discount(req.code, req.cart)
+
+# service.py
+def apply_discount(code, cart):
+    discount = repo.find_discount(code)
+    return total(cart) - discount.amount
+
+# repository.py
+def find_discount(code):
+    return db.query("select amount from discounts where code=?", code)
+```
+
+A single feature crosses controller → service → repository.  
+That is normal in a layered system.
+
+Cost profile:
+- cheap: replacing logic inside one layer
+- expensive: end-to-end feature work that touches many layers
+
+#### Microservices: easy independent service change, expensive coordinated change
+
+```text
+Change request: rename event field "customer_id" -> "user_id"
+
+order-service publishes:   { "user_id": 42 }   # changed
+billing-service expects:   { "customer_id": 42 }  # not changed yet
+
+Result:
+- publisher deploys fine
+- consumer breaks at runtime
+```
+
+Cost profile:
+- cheap: changing one service internally
+- expensive: changes that require coordination across services or schemas
+
+---
+
+### Sketch 4 — Recognize architecture pain from the structure before reading code
+
+```text
+Symptom:
+"Every small change needs edits in controller, service, repository,
+plus a full-app deployment."
+
+Likely structure:
+layered monolith
+
+Likely reason:
+the system is partitioned by technical role, so one business change
+cuts across multiple layers.
+```
+
+```text
+Symptom:
+"We cannot follow one customer action without checking logs from
+five services and a message broker."
+
+Likely structure:
+distributed, probably event-driven or microservices
+
+Likely reason:
+the request path crosses process boundaries, so observability is now
+part of the architecture, not an optional tool.
+```
+
+The point is diagnostic:  
+you can often predict the pain from the shape of the system alone.
+
+---
+
+### Sketch 5 — Drift: systems often become hybrids without the discipline of either style
+
+#### Started as a clean layered monolith
+
+```text
+app/
+  controllers/
+  services/
+  repositories/
+```
+
+#### Then "just one extraction"
+
+```text
+app/
+  controllers/
+  services/
+  repositories/
+invoice-service/   # separate deploy now
+```
+
+#### Then cross-boundary shortcuts appear
+
+```python
+# monolith service calling remote service directly
+def checkout(order):
+    save_order(order)                 # local DB
+    http.post("http://invoice/create", order)  # remote call
+    send_confirmation(order)
+```
+
+Now the system has mixed assumptions:
+- some calls are in-process, some are over network
+- some failures are exceptions, some are timeouts
+- developers may still think “it’s basically a monolith”
+
+That mismatch is architectural drift.  
+Naming it matters because operating a hybrid requires different discipline than pretending it is one clean style.
+
+---
+
+### Sketch 6 — Choosing a style means choosing which future changes you want to be cheap
+
+| Likely future change | Style that tends to absorb it cheaply | What becomes expensive instead |
+|---|---|---|
+| Add new business modules inside one deployable app | Modular monolith | Cross-module coupling |
+| Deploy one business capability independently | Microservices | Cross-service coordination |
+| Add new consumers of existing business events | Event-driven | Event schema evolution, debugging |
+| Keep implementation simple for a small team | Layered monolith | Growth in scale and cross-layer change |
+
+A style is a bet:
+```text
+"We expect these kinds of changes often,
+so we accept the costs required to make them cheap."
+```
+
+If the predicted future is wrong, the architecture will feel hostile.
+
+---
+
+## Key Ideas
+
+Architecture styles are useful because they let you describe a system by structure rather than by inventory. The important questions are not “does it have services and a database?” but “is it one deployment or many?” and “are boundaries technical or domain-based?” Once you can answer those, you can usually predict where change will be easy, where it will hurt, and what kinds of complaints the team will have before opening the code. That is why style matters: it makes tradeoffs legible, exposes drift when a system becomes a messy hybrid, and turns architecture from vague opinion into a concrete claim about which future changes the system is designed to absorb.
+
+</details>

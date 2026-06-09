@@ -33,3 +33,179 @@ The skill this topic builds is the discipline of treating architectural decision
 **Fitness functions** — Automated checks that verify architectural characteristics are maintained as the system evolves, turning architectural intent into a continuous constraint rather than a decision documented once and forgotten. Worth deeper treatment because it is the bridge between decision-making (a one-time act) and architectural integrity (an ongoing property), and it changes how you think about what an ADR is actually for.
 
 ---
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) Ordinary decision vs architectural decision = cost of reversal
+
+```python
+# Cheap to change later: ordinary code decision
+def price_label(amount):
+    return f"${amount:.2f}"   # easy to reformat later
+
+
+# Expensive to change later: architectural decision
+# Order service writes directly into the same database schema as Billing.
+def create_order(db, order):
+    db.execute("INSERT INTO billing.orders ...")  # shared schema boundary
+
+# Later "small" change request:
+# "Split Billing into its own service"
+#
+# This now implies:
+# - moving data ownership
+# - changing APIs
+# - changing deployments
+# - changing failure modes
+# - migrating old data
+#
+# Same codebase, but not the same kind of decision.
+```
+
+The point: architectural decisions are the ones where undoing them is expensive, not merely annoying.
+
+---
+
+### 2) Undocumented architecture becomes "do not touch"
+
+```text
+# What a future engineer sees
+
+system/
+  payment_service.py
+  auth_gateway.py
+  kafka_consumer.py
+  postgres/
+  redis/
+  legacy_sync_api_client.py
+
+Question: Why Kafka?
+Answer in code: none
+
+Question: Why sync client instead of async events?
+Answer in code: none
+
+Question: Why Redis for sessions?
+Answer in code: none
+
+Resulting team behavior:
+if nobody knows why it exists:
+    leave_it_alone()
+```
+
+If the reasoning is gone, people cannot tell whether a choice was deliberate, temporary, or obsolete. So the safest move becomes inaction.
+
+---
+
+### 3) Minimal ADR: context, decision, alternatives, consequences
+
+```md
+# ADR-007: Use PostgreSQL for order storage
+
+## Context
+- Orders need multi-step updates:
+  create order + reserve inventory + record payment status
+- We need strong consistency for these operations
+- Team has PostgreSQL operational experience
+
+## Decision
+Use PostgreSQL as the primary order database.
+
+## Alternatives considered
+- DynamoDB
+  - Rejected: transaction model is a worse fit for our multi-record workflow
+- Cassandra
+  - Rejected: high write scale benefits do not justify current operational cost
+
+## Consequences
+- Good: simpler transactional logic
+- Good: lower operational risk for current team
+- Bad: harder horizontal scaling than some distributed stores
+- Bad: future migration cost if write volume grows sharply
+```
+
+The format is simple; the value is that it separates forces that are usually blurred together.
+
+---
+
+### 4) Bad ADR vs useful ADR
+
+```md
+# Bad
+We chose PostgreSQL because it fits our needs.
+```
+
+```md
+# Useful
+We chose PostgreSQL.
+
+Alternatives:
+- DynamoDB: rejected because we need multi-record transactional consistency
+- Cassandra: rejected because our current scale does not justify its ops overhead
+
+Revisit if:
+- write throughput grows beyond single-cluster comfort
+- transaction requirements weaken
+```
+
+The second version helps with the future question: "Is this still the best choice under current conditions?"
+
+---
+
+### 5) Consequences are part of the decision, not an afterthought
+
+```yaml
+decision: "Use synchronous HTTP calls between services"
+
+good:
+  - simple request/response flow
+  - easy to debug with logs
+
+bad:
+  - caller latency now depends on callee latency
+  - failures can cascade across services
+  - retries/idempotency become required
+  - difficult to support offline processing later
+```
+
+If the bad consequences are not written down, future engineers may treat the decision as if it were free and "solve" the costs with endless patches.
+
+---
+
+### 6) Revisit decisions when conditions change
+
+```python
+adr = {
+    "decision": "Use PostgreSQL",
+    "context": {
+        "needs_transactions": True,
+        "write_volume": "moderate",
+    }
+}
+
+current_system = {
+    "needs_transactions": False,
+    "write_volume": "very_high",
+}
+
+def should_revisit(adr, current):
+    return adr["context"] != current
+
+if should_revisit(adr, current_system):
+    print("Open new ADR: original conditions no longer hold")
+else:
+    print("Decision still fits")
+```
+
+An ADR is not a permanent lock. It records the conditions under which a choice made sense, so you can detect when those conditions stop being true.
+
+---
+
+## Key Ideas
+
+Architectural decision-making is about treating expensive-to-reverse choices as first-class artifacts instead of tribal knowledge. The sketches show the progression: some decisions are costly because they shape boundaries and failure modes; when their reasoning is lost, teams freeze and preserve them by default; an ADR makes the decision legible by recording context, alternatives, and consequences; the alternatives section is what lets future engineers judge whether the choice still fits; the consequences section makes the cost explicit; and once the original conditions change, the right move is not blind loyalty to the old choice but a new decision with new reasoning.
+
+</details>

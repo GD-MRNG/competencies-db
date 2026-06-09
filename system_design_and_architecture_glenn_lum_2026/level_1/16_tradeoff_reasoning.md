@@ -37,3 +37,148 @@ The skill this topic builds is the ability to turn "it depends" from an evasion 
 **Triggers for revisiting decisions** — The specific signals — load thresholds, team size changes, failure rate shifts — that should prompt re-examination of an architectural decision. Worth depth because most decisions are made well and then preserved past the point where their conditions still hold, and naming the triggers in advance is the only mechanism that reliably surfaces the moment to revisit.
 
 ---
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) A decision is really a choice between cost profiles
+
+```md
+Question: "Should we use read replicas?"
+
+Wrong shape:
+- Option A: single DB
+- Option B: replicas
+
+Useful shape:
+| Choice        | Gain                                              | Cost given up                            | Correct when...                        |
+|---------------|---------------------------------------------------|------------------------------------------|----------------------------------------|
+| Single DB     | Simple writes; no stale reads                     | Limited read scaling                     | Read load is modest                    |
+| Read replicas | 10x read throughput by spreading read traffic     | Replication lag -> users may read old data | Stale reads are acceptable sometimes   |
+```
+
+The point: architecture is not “better vs worse”; it is “which bill can we afford?”
+
+---
+
+### 2) Vague benefits are not tradeoff reasoning
+
+```python
+# Bad decision note
+decision = {
+    "choice": "add cache",
+    "why": "better performance"
+}
+```
+
+```python
+# Better decision note
+decision = {
+    "choice": "add cache for product pages",
+    "gain": "reduce median page render from 300ms to 80ms",
+    "cost": "users may see product data up to 60s old",
+    "correct_when": "product data changes infrequently",
+    "revisit_if": "stale-price complaints exceed 5/day"
+}
+```
+
+“Better performance” hides the cost.  
+“300ms -> 80ms, but maybe 60s stale” makes the tradeoff visible.
+
+---
+
+### 3) Every gain has a paired loss
+
+```python
+# Before: always correct, slower under load
+def get_inventory(product_id):
+    return db.query("SELECT count FROM inventory WHERE id = ?", product_id)
+```
+
+```python
+# After: faster, but correctness changed
+cache = {}
+
+def get_inventory(product_id):
+    if product_id in cache:
+        return cache[product_id]   # may be stale
+    count = db.query("SELECT count FROM inventory WHERE id = ?", product_id)
+    cache[product_id] = count
+    return count
+```
+
+The gain is obvious: fewer DB reads.  
+The hidden loss is not just “complexity” — it is a correctness change: the answer may now be wrong for a while.
+
+---
+
+### 4) “It depends” becomes useful only when you name the conditions
+
+```python
+def choose_architecture(requests_per_minute, team_size, need_independent_deploys):
+    if requests_per_minute < 10_000 and team_size <= 8 and not need_independent_deploys:
+        return "modular monolith"
+    return "consider microservices"
+```
+
+This is not a real architecture selector.  
+It shows the shape of a valid answer:
+
+- under these conditions -> modular monolith
+- under those conditions -> consider microservices
+
+Without the conditions, “it depends” is evasion.
+
+---
+
+### 5) Decoupling in one place can create coupling somewhere else
+
+```python
+# Monolith: one transaction, tighter code coupling
+def place_order(user_id, product_id):
+    begin_transaction()
+    charge_card(user_id)
+    reserve_inventory(product_id)
+    commit()
+```
+
+```python
+# Split services: looser deployment coupling, tighter distributed coordination
+def place_order(user_id, product_id):
+    payment_service.charge(user_id)          # success
+    inventory_service.reserve(product_id)    # fails
+    # now you need retry, compensation, or reconciliation
+```
+
+Microservices can reduce code/deploy coupling.  
+But they often increase data/workflow coupling because a single transaction became a distributed conversation.
+
+---
+
+### 6) A decision is incomplete until it includes a trigger to revisit
+
+```yaml
+decision: "Use a single PostgreSQL instance"
+gain: "simpler operations, easy backups, strong consistency"
+cost: "vertical scaling limit, no independent read scaling"
+correct_when:
+  - "traffic < 2k requests/second"
+  - "team has no dedicated SRE"
+revisit_if:
+  - "CPU > 70% for 3 weeks"
+  - "read queries are 80% of DB load"
+  - "need zero-downtime regional failover"
+```
+
+Without `revisit_if`, the choice turns into tradition.  
+With it, the decision stays valid only as long as its conditions do.
+
+---
+
+## Key Ideas
+
+Tradeoff reasoning means forcing architectural decisions into a form that can survive time: state the specific gain, state the specific cost, name the conditions that make the choice correct, and name the signal that should cause a re-evaluation. The sketches show that many “technical” arguments are really unspoken differences in what cost profile people are willing to accept. Caches, replicas, microservices, and weak consistency are not free optimizations; they buy one property by spending another. Once the gain, loss, conditions, and revisit triggers are explicit, “it depends” stops being hand-waving and becomes an actual engineering answer.
+
+</details>

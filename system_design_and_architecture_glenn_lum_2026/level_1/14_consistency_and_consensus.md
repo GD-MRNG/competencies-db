@@ -39,3 +39,237 @@ The skill this topic builds is not memorising the hierarchy of consistency model
 **Weaker consistency models in practice** — Causal consistency, read-your-writes, monotonic reads, and consistent prefix reads as the practical guarantees that real applications usually need. Worth deeper treatment because these are the models most production systems actually provide, and matching them to application requirements is where consistency reasoning earns its keep.
 
 ---
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) “Consistent” is not one thing
+
+```python
+# One write, then one read. What can the app safely assume?
+
+write(user="u1", field="name", value="Ada")   # returns OK
+
+# Different guarantees imply different promises:
+
+read("u1.name")
+
+# Linearizable:
+#   must return "Ada"
+
+# Read-your-writes:
+#   if the SAME user/session reads, must return "Ada"
+#   another client may still see old value
+
+# Eventual consistency:
+#   may return old value now, but should converge to "Ada" later
+```
+
+Same API, different guarantees. Most bugs happen when the app assumes the first and the database only provides the third.
+
+---
+
+### 2) Linearizability: “as if there were one copy”
+
+```python
+# Two replicas, but clients want single-copy behavior.
+
+# Time -->
+# client A                    replica 1 / replica 2                 client B
+#
+# write(x=1) -----------------------------------------------------> returns OK
+#                                                         read(x) ---------> ?
+
+# Linearizable system:
+#   if read starts AFTER write completed, read must see x=1
+
+# Non-linearizable but replicated:
+#   write reaches replica 1, not replica 2 yet
+#   client B reads replica 2 and sees old x=0
+```
+
+Why this matters:
+
+```python
+# uniqueness check needs linearizability
+
+if not username_exists("ada"):
+    create_username("ada")
+
+# If two replicas answer "doesn't exist" at the same time,
+# two clients can both create "ada".
+```
+
+Linearizability prevents that class of race, but it needs coordination, which adds latency and can block during failures.
+
+---
+
+### 3) CAP, precisely: partition forces a choice
+
+```python
+# Node A and Node B are replicas.
+# A network partition disconnects them.
+
+# Client 1 can reach only A
+# Client 2 can reach only B
+
+# Client 1:
+write(balance=100)  # at A
+
+# Client 2:
+read(balance)       # at B
+```
+
+Two possible behaviors:
+
+```text
+Option 1: Stay available
+- A accepts write
+- B answers read
+- B may return stale data
+=> available, but not linearizable
+
+Option 2: Preserve linearizability
+- A or B refuse/block some requests until coordination is possible
+=> linearizable, but not fully available during partition
+```
+
+Partition tolerance is not optional; the network already broke. The real choice is what your system does next.
+
+---
+
+### 4) Weaker guarantees are often enough
+
+```python
+# Read-your-writes
+
+session = connect()
+
+session.write("profile.bio", "Hello")
+print(session.read("profile.bio"))   # must be "Hello"
+
+other_user = connect()
+print(other_user.read("profile.bio"))  # may still be old
+```
+
+```python
+# Monotonic reads: don't go backwards
+
+# First read from a fresh replica:
+v1 = read("post.likes")   # 10
+
+# Later read from a stale replica:
+v2 = read("post.likes")   # 8   <-- bad if monotonic reads promised
+```
+
+```python
+# Causal consistency: reply must not appear before original message
+
+post("msg1", "I got the job")
+post("reply-to-msg1", "Congrats!")
+
+# Allowed under causal consistency:
+#   everyone may see the two messages later
+# Not allowed:
+#   seeing "Congrats!" before seeing "I got the job"
+```
+
+These are cheaper than linearizability because they preserve less order.
+
+---
+
+### 5) No global clock: ordering needs logical clocks
+
+```python
+# Physical clocks can lie about order.
+
+# machine A clock: 12:00:05
+# machine B clock: 12:00:03   (skewed backward)
+
+A: send("update")
+B: receive("update")
+
+# Wall-clock timestamps might record:
+#   receive at 12:00:03
+#   send    at 12:00:05
+# which falsely suggests receive happened before send
+```
+
+Lamport clock sketch:
+
+```python
+# each node keeps an integer clock
+
+# on local event: clock += 1
+# on send: attach clock
+# on receive(msg_clock): clock = max(clock, msg_clock) + 1
+```
+
+Example:
+
+```python
+A.clock = 0
+A.clock += 1              # event: prepare update, A=1
+send(msg, ts=A.clock)     # send ts=1
+
+B.clock = 0
+recv_ts = 1
+B.clock = max(0, 1) + 1   # B=2
+# Now B's receive is correctly ordered after A's send
+```
+
+Logical clocks do not give real time. They give enough order to talk about causality.
+
+---
+
+### 6) Consensus: majority overlap is the safety trick
+
+```python
+# 3-node cluster: N1, N2, N3
+# A value is committed only after a majority accepts it.
+
+majority = 2
+```
+
+Leader proposes:
+
+```python
+proposal = "x=1"
+
+acks = [N1.accept(proposal), N2.accept(proposal), N3.timeout()]
+# 2 accepts => committed
+```
+
+Why conflicting commits are prevented:
+
+```text
+Possible majorities in 3 nodes:
+- {N1, N2}
+- {N1, N3}
+- {N2, N3}
+
+Any two majorities share at least one node.
+That shared node cannot honestly accept two different committed values
+for the same log position.
+```
+
+Cost shown directly in the protocol:
+
+```python
+# write latency includes waiting for quorum
+propose()
+wait_for_majority()   # extra network round-trip(s)
+commit()
+```
+
+Consensus is what makes leader election, metadata stores, and replicated logs safe — and what makes them slower when the network is unhealthy.
+
+---
+
+## Key Ideas
+
+The useful mental shift is to stop asking “is the system consistent?” and start asking “what exact ordering or visibility guarantee do I need, and what coordination cost does that imply?” Linearizability gives single-copy behavior but must coordinate and may refuse requests during partitions. Weaker guarantees like read-your-writes, monotonic reads, and causal consistency preserve only the order many applications actually need, so they are cheaper. Because distributed systems have no trustworthy global clock, ordering must be constructed with logical mechanisms. And when you need the strongest guarantees across replicas, consensus works by quorum overlap: safety comes from majority agreement, while latency and reduced availability during failures are the price.
+
+</details>

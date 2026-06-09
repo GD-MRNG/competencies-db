@@ -35,3 +35,206 @@ What you are building, in the end, is the ability to look at an unfamiliar syste
 **The cost of distributed transactions across layers** — How the architectural-layer need for cross-service transactions drives data-layer complexity (two-phase commit, sagas, outbox patterns) that surfaces as operational risk and latency. Worth deeper treatment because the decision to require a distributed transaction is almost always made implicitly at the architectural layer and paid for explicitly at the data and operational layers.
 
 ---
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) One user symptom, many valid causes
+
+```text
+Symptom:
+  "User saves profile, refreshes, sees old name"
+
+Trace it across layers:
+
+[Product / UX]
+  broken expectation: "I should see my change immediately"
+
+[Routing layer]
+  POST /profile  -> app instance A
+  GET  /profile  -> app instance B -> follower DB
+
+[Data layer]
+  leader has new value
+  follower is 500ms behind
+
+[Architecture choice behind it]
+  stateless app + load balancer + async replicas
+
+Important:
+  Every component is "working as designed".
+  The bug lives in the interaction, not a single broken part.
+```
+
+This is the core move: do not stop at the first correct explanation.
+
+---
+
+### 2) Minimal stale-read failure
+
+```python
+# Pseudocode: write goes to leader, read goes to follower.
+
+leader = {"name": "old"}
+follower = {"name": "old"}
+
+def update_profile(new_name):
+    leader["name"] = new_name
+    # replication happens later, asynchronously
+
+def read_profile():
+    return follower["name"]   # cheap read, but possibly stale
+
+update_profile("new")
+print(read_profile())         # "old"
+```
+
+The data-layer diagnosis is true: replication lag caused a stale read.  
+But this sketch hides an important fact: *something upstream chose follower reads*.
+
+---
+
+### 3) Same database, different routing policy, different user experience
+
+```python
+leader = {"name": "old"}
+follower = {"name": "old"}
+last_writer = None
+
+def replicate():
+    follower["name"] = leader["name"]
+
+def post_profile(user, new_name):
+    global last_writer
+    leader["name"] = new_name
+    last_writer = user
+
+def get_profile(user, sticky=False):
+    if sticky and user == last_writer:
+        return leader["name"]    # read-your-writes, but more leader load
+    return follower["name"]      # scalable, but stale possible
+
+post_profile("u1", "new")
+
+print(get_profile("u1", sticky=False))  # old
+print(get_profile("u1", sticky=True))   # new
+```
+
+The symptom changed without changing replication itself.  
+That is cross-layer reasoning: a routing decision can "fix" a consistency symptom.
+
+Cost shown in code:
+- `leader["name"]` on reads gives fresher data
+- but pushes more traffic to the leader
+
+---
+
+### 4) Fixes live in different layers, with different costs
+
+```text
+Goal: "User should see their own update immediately"
+
+Possible fixes:
+
+1. Data-layer fix
+   - make reads go to leader after writes
+   + strongest guarantee
+   - more load on leader
+   - may hurt availability/latency
+
+2. Routing-layer fix
+   - sticky session for recent writer
+   + limited blast radius
+   - adds statefulness to routing
+   - breaks some "purely stateless" assumptions
+
+3. Application-layer fix
+   - cache just-written value in session / request context
+   + cheap and local
+   - more app complexity
+   - edge cases on retries, multi-device usage
+
+4. UX/product fix
+   - show "Saving..." until replica catches up
+   + preserves scalable architecture
+   - user waits
+   - product accepts eventual consistency visibly
+```
+
+Cross-layer reasoning is not just "find the cause".  
+It is "choose the cheapest safe layer to intervene in."
+
+---
+
+### 5) Architectural choice creates data problems elsewhere
+
+```text
+Before: modular monolith + one database
+
+place_order():
+  BEGIN TX
+  insert order
+  decrease inventory
+  charge payment
+  COMMIT
+
+After: microservices
+
+OrderService.create_order()
+InventoryService.reserve()
+PaymentService.charge()
+
+Now "one transaction" is gone.
+You must choose:
+
+- distributed transaction (complex, fragile)
+- saga / compensating actions
+- eventual consistency
+```
+
+The architecture change was not only about deployment.  
+It moved consistency work from the database into the application.
+
+---
+
+### 6) Event-driven architecture makes hidden responsibilities explicit
+
+```python
+# Consumer sees the same event twice.
+processed = set()
+balance = 100
+
+def handle(event):
+    global balance
+    if event["id"] in processed:
+        return                      # idempotency guard
+    processed.add(event["id"])
+    balance -= event["amount"]
+
+event = {"id": "e1", "amount": 10}
+handle(event)
+handle(event)
+
+print(balance)  # 90, not 80
+```
+
+If you choose async events, you also choose:
+- duplicate delivery
+- replay
+- ordering concerns
+
+Those are not messaging-layer details anymore.  
+They become application logic.
+
+Without the `processed` check, the business outcome is wrong even though the broker behaved normally.
+
+---
+
+## Key Ideas
+
+Cross-layer reasoning means treating the system as one connected machine rather than separate boxes like "app", "database", and "network". A user-visible failure often has a correct explanation in several layers at once: stale data may be replication lag, but also follower-read routing, but also a stateless scaling choice, but also a product decision about acceptable consistency. The useful skill is to trace symptoms across those layers and then choose the intervention point with the best overall tradeoff, not the first layer where you can explain the problem. Architectural decisions also propagate downward: microservices and event-driven designs do not remove complexity, they relocate it into consistency, idempotency, ordering, and recovery logic.
+
+</details>

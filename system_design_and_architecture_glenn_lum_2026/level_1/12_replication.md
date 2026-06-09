@@ -37,3 +37,181 @@ The skill this topic builds, in the end, is the ability to look at any distribut
 **Replication and consensus** — Covers the relationship between replication protocols and consensus algorithms (Raft, Paxos), and why strong replication guarantees ultimately reduce to a consensus problem. Worth deeper treatment because it is the bridge from this topic to L1-14, and the connection is what makes the CAP-theorem tradeoffs feel inevitable rather than arbitrary.
 
 ---
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) Single-leader replication: one place decides write order
+
+```text
+# Client wants to update account balance.
+
+Client -> Leader:  UPDATE accounts SET balance = 80 WHERE id = 1;
+Leader:            apply locally
+Leader -> Follower: "UPDATE accounts SET balance = 80 WHERE id = 1;"
+Follower:          apply later
+
+# Important property:
+# all writes are ordered at the leader
+
+Write order at leader:
+1. balance = 100 -> 80
+2. balance = 80  -> 60
+
+Followers replay in that same order.
+```
+
+The simplification is the benefit: there is exactly one node that decides write order.  
+The cost is also visible: followers are always catching up to a past decision.
+
+---
+
+### 2) Replication lag: a successful write does not mean every replica agrees yet
+
+```python
+leader = {"title": "old"}
+follower = {"title": "old"}
+
+def write_to_leader(new_title):
+    leader["title"] = new_title
+    return "200 OK"
+
+def replicate_later():
+    follower["title"] = leader["title"]
+
+print(write_to_leader("new"))     # user sees success
+print(follower["title"])          # old  <- stale read from replica
+replicate_later()
+print(follower["title"])          # new
+```
+
+This is the core replication fact: after a write succeeds, replicas may still disagree for some window of time.  
+That window is replication lag, and it creates correctness problems, not just slower dashboards.
+
+---
+
+### 3) Read-your-own-writes: route some reads to the leader
+
+```python
+# bad: write to leader, then read from any replica
+
+write_to_leader("new profile name")
+read_from = follower
+print(read_from["title"])   # maybe stale
+
+# better: after a user writes, pin that user's reads to leader for a while
+
+recently_wrote = True
+
+def read_profile():
+    if recently_wrote:
+        return leader["title"]    # read your own write
+    return follower["title"]
+```
+
+This fixes one specific anomaly: a user should not save and then immediately see old data.  
+The cost is reduced read scaling for those sessions, because some reads must go back to the leader.
+
+---
+
+### 4) Monotonic reads: always using “any replica” can move time backwards
+
+```python
+replica_a = {"msg_count": 5}  # less lagged
+replica_b = {"msg_count": 3}  # more lagged
+
+def random_replica():
+    # imagine a load balancer
+    return replica_a, replica_b
+
+# first request
+seen1 = replica_a["msg_count"]   # 5
+
+# second request, same user, different replica
+seen2 = replica_b["msg_count"]   # 3  <- older than before
+```
+
+A user has now observed time going backwards.  
+Typical fix: keep one user tied to one replica, or track a minimum version and reject older reads.
+
+---
+
+### 5) Multi-leader replication: availability goes up, conflicts appear
+
+```python
+# Two datacenters, both accept writes.
+
+leader_us = {"email": "a@example.com"}
+leader_eu = {"email": "a@example.com"}
+
+# same user edited in two places before replication finished
+leader_us["email"] = "alice@us.example"
+leader_eu["email"] = "alice@eu.example"
+
+# later, replication exchanges updates
+incoming_from_us = leader_us["email"]
+incoming_from_eu = leader_eu["email"]
+
+# conflict: which value is correct?
+```
+
+Single-leader avoids this by choosing one writer.  
+Multi-leader gains flexibility for multi-region/offline use, but now “what is the truth?” becomes an application decision.
+
+---
+
+### 6) Conflict resolution: last-write-wins is simple and lossy
+
+```python
+# two conflicting writes with timestamps from different machines
+write1 = {"value": "alice@us.example", "ts": 105}
+write2 = {"value": "alice@eu.example", "ts": 110}
+
+def last_write_wins(a, b):
+    return a if a["ts"] > b["ts"] else b
+
+winner = last_write_wins(write1, write2)
+print(winner["value"])   # alice@eu.example
+
+# simple, but one write disappears
+```
+
+If clocks are wrong, the “winner” may not even be the truly later write.  
+The code is small because the policy is crude: it resolves conflicts by discarding one side.
+
+---
+
+### 7) Leaderless replication: consistency comes from quorum arithmetic, not a leader
+
+```text
+# 3 replicas: R1, R2, R3
+# write quorum W=2, read quorum R=2
+
+Client write x=7:
+  send to R1, R2, R3
+  success after any 2 acknowledge
+
+Example:
+  R1 = 7
+  R2 = 7
+  R3 = old value   # missed the write
+
+Client read x:
+  read from any 2 replicas
+  values returned: [7, old]
+
+Client picks newest version -> 7
+```
+
+The attraction is no single leader bottleneck.  
+The cost is that reads and writes are now more complicated: clients or coordinators must compare versions, repair stale replicas, and reason about partial success.
+
+---
+
+## Key Ideas
+
+Replication means one logical database becomes several physical copies that can temporarily disagree. Single-leader replication is easiest to reason about because one node defines write order, but lag makes follower reads stale. That lag creates concrete anomalies such as not reading your own writes and seeing older data on a later read, which applications must defend against through routing or session policies. If you allow writes in multiple places, conflicts become unavoidable, and “resolution” is really a business rule about which data may be lost or merged. Leaderless systems remove the leader but replace it with quorum math and version reconciliation, so the central question never goes away: when replicas disagree, what does your application consider correct?
+
+</details>

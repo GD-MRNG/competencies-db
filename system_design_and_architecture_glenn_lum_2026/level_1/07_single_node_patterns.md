@@ -35,3 +35,213 @@ The skill this topic builds is the ability to look at a deployment manifest and 
 **Modular container design** — The principle that containers should be designed for reuse across applications rather than coupled to a single one, and the design discipline that makes this possible (parameterised configuration, narrow interfaces, single responsibility). Worth going deeper because this is the principle that turns the three patterns above from named tricks into a coherent design philosophy — and because most teams violate it by default, producing sidecars that are really just deployment artifacts of one specific application.
 
 ---
+
+
+<details>
+<summary>Concept Sketches</summary>
+
+## Concept Sketches
+
+### 1) The deployment unit is the *group*, not the container
+
+```yaml
+# One logical app unit: three containers, one pod, one lifecycle.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-with-helpers
+spec:
+  containers:
+    - name: app
+      image: myapp:1.0
+      ports:
+        - containerPort: 8080
+
+    - name: tls-sidecar
+      image: nginx:alpine
+      ports:
+        - containerPort: 8443
+
+    - name: metrics-adapter
+      image: prom/statsd-exporter
+      ports:
+        - containerPort: 9102
+```
+
+The point is structural: users may think “my app runs in one container,” but deployment often says “my app runs as a small cooperating set.” These containers are scheduled together, restarted together, and usually communicate over `localhost`. Cost: more moving parts in one unit means more logs, more resource tuning, and harder debugging.
+
+---
+
+### 2) Sidecar pattern: add inbound behavior without changing the app
+
+**Before: app handles TLS itself**
+
+```python
+# app.py
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+import ssl
+
+server = HTTPServer(("0.0.0.0", 8443), SimpleHTTPRequestHandler)
+server.socket = ssl.wrap_socket(
+    server.socket,
+    certfile="cert.pem",
+    keyfile="key.pem",
+    server_side=True,
+)
+server.serve_forever()
+
+# App now owns web logic + TLS certs + TLS config.
+```
+
+**After: app stays plain HTTP, sidecar owns TLS**
+
+```python
+# app.py
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+
+HTTPServer(("127.0.0.1", 8080), SimpleHTTPRequestHandler).serve_forever()
+```
+
+```nginx
+# nginx.conf in sidecar
+server {
+  listen 8443 ssl;
+  ssl_certificate     /certs/cert.pem;
+  ssl_certificate_key /certs/key.pem;
+
+  location / {
+    proxy_pass http://127.0.0.1:8080;
+  }
+}
+```
+
+The app keeps only application logic. The sidecar owns the cross-cutting concern. Benefit: TLS can be upgraded or standardized without touching app code. Cost: when requests fail, you now debug two processes, not one.
+
+---
+
+### 3) Ambassador pattern: app talks to localhost, proxy handles outbound complexity
+
+```python
+# app.py
+import requests
+
+# App thinks there is just one local cache endpoint.
+r = requests.get("http://127.0.0.1:9000/user/42")
+print(r.text)
+```
+
+```python
+# ambassador.py (precise pseudocode)
+backends = ["redis-a:6379", "redis-b:6379"]
+
+def handle_request(user_id):
+    shard = hash(user_id) % len(backends)
+    target = backends[shard]
+
+    for attempt in [1, 2, 3]:
+        try:
+            return call(target, user_id, timeout="50ms")
+        except Timeout:
+            continue
+
+    return "cache unavailable"
+```
+
+The primary container only knows `localhost:9000`. The ambassador hides sharding, retries, failover, or protocol translation. Benefit: old apps can gain smarter networking behavior unchanged. Cost: latency and failures become less obvious because the “real” network path is hidden behind the proxy.
+
+---
+
+### 4) Adapter pattern: translate app output into a standard external format
+
+```python
+# app.py exposes its own weird stats format
+from flask import Flask
+app = Flask(__name__)
+
+@app.get("/internal-stats")
+def stats():
+    return "users=12;errors=3;latency_ms=41"
+```
+
+```python
+# adapter.py converts to Prometheus text format
+import requests
+from flask import Flask, Response
+
+app = Flask(__name__)
+
+@app.get("/metrics")
+def metrics():
+    raw = requests.get("http://127.0.0.1:5000/internal-stats").text
+    parts = dict(item.split("=") for item in raw.split(";"))
+    body = f"""users {parts['users']}
+errors {parts['errors']}
+latency_ms {parts['latency_ms']}
+"""
+    return Response(body, mimetype="text/plain")
+```
+
+Monitoring systems scrape the adapter, not the app’s custom format. Benefit: infrastructure gets one standard interface even if apps are inconsistent. Cost: if the app changes its internal format, the adapter can silently break.
+
+---
+
+### 5) Good single-node patterns depend on reusable containers, not app-specific hacks
+
+**Bad: sidecar coupled to one app**
+
+```sh
+#!/bin/sh
+# start-tls.sh
+# Hardcoded for service-x only
+nginx -g "daemon off;" \
+  -c /etc/nginx/service-x.conf
+```
+
+**Better: reusable sidecar configured at deploy time**
+
+```sh
+#!/bin/sh
+cat >/etc/nginx/conf.d/default.conf <<EOF
+server {
+  listen ${TLS_PORT};
+  location / {
+    proxy_pass http://${UPSTREAM_HOST}:${UPSTREAM_PORT};
+  }
+}
+EOF
+
+nginx -g "daemon off;"
+```
+
+The second version is “TLS termination” as a reusable unit, not “the TLS helper for service X.” That is what makes sidecars, ambassadors, and adapters worth having at all. Cost: reusable containers need cleaner interfaces and better configuration discipline.
+
+---
+
+### 6) Choosing the pattern: where does the concern live?
+
+```text
+If the concern is...
+- "Handle inbound TLS / secrets / config reload"   -> Sidecar
+- "Control outbound calls to remote services"      -> Ambassador
+- "Translate logs/metrics/health into a standard"  -> Adapter
+
+If the concern is core business logic:
+- Keep it in the app, not in a helper container.
+```
+
+Counter-example:
+
+```python
+# Wrong use of a sidecar: business rule moved out of app code
+def sidecar_decide_discount(user):
+    if user == "vip":
+        return 0.20
+```
+
+That is not a cross-cutting concern; it is product behavior. Single-node patterns help separate infrastructure concerns from application logic, not hide business logic in neighboring containers.
+
+## Key Ideas
+
+Single-node patterns are about decomposing one deployed unit into cooperating containers with distinct responsibilities. The sidecar adds or modifies inbound/local behavior, the ambassador mediates outbound communication, and the adapter translates app-specific output into standard formats. The important design move is not “use more containers,” but “move cross-cutting concerns out of the app and into reusable helpers.” That makes deployments more modular and consistent, but it also adds process boundaries, resource overhead, and debugging complexity—so the boundary only pays off when the concern is truly infrastructural rather than core application logic.
+
+</details>
