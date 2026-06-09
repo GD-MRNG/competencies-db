@@ -42,7 +42,8 @@ What none of this removes is the need to understand what is happening. The CEO w
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -119,3 +120,5 @@ In practice, they will create smaller checkpoints, branch earlier, and stop digg
 
 **An engineer who understands this will match the tool to the scope of the coding task because local completions, chat tools, and project-level agents have different context strengths and different failure modes.**  
 They will not use the same interface for a one-line rename, a multi-file refactor, and a whole-project implementation plan.
+
+</details>

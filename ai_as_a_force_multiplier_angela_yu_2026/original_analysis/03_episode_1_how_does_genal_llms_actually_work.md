@@ -38,7 +38,8 @@ So the working model you want to carry forward is this: an LLM is a Transformer-
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -115,3 +116,5 @@ Smaller staged prompts reduce the chance that one hidden misunderstanding contam
 
 **An engineer who understands this will reason about cost and latency in tokens, not just in requests, because the architecture processes text through a finite context window and pricing tracks that unit.**  
 That affects practical design decisions like whether to paste whole documents, how much history to retain, and when a summary is cheaper and more reliable than brute-force context retention.
+
+</details>

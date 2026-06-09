@@ -38,7 +38,8 @@ The skill this builds is not motivation and it's not discipline — both are unr
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -115,3 +116,5 @@ So they will include concrete context about advantages, hindrances, geography, t
 
 **A builder who understands this will keep collapsing plans to immediate next actions because long roadmaps only help if they reduce uncertainty at the point of execution.**  
 They will judge a plan less by how comprehensive it looks and more by whether it makes tomorrow’s move unambiguous.
+
+</details>

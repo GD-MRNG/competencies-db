@@ -40,7 +40,8 @@ The practical takeaway is to stop reaching for one model out of habit. Build a d
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -117,3 +118,5 @@ So they will keep a human in the loop for anything involving money, commitments,
 
 **An engineer who understands this will maintain a living task-to-tool map because the durable skill is not loyalty to a platform, but fast matching between work type and the tool chain most likely to handle it well.**  
 That map becomes part of their personal operating system, and it improves every downstream workflow they build.
+
+</details>

@@ -38,7 +38,8 @@ What this all builds toward is one trainable capacity: attention as a muscle. Pi
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -118,3 +119,5 @@ Group streaks, visible progress, and self-imposed rewards become practical tools
 
 **A builder who understands this will train attention directly because the ability to return to the task after distraction is becoming one of the most valuable meta-skills in an AI-heavy world.**  
 They will treat reading, meditation, and uninterrupted deep work not just as outputs in themselves, but as practice for the underlying cognitive capacity that makes all other leverage usable.
+
+</details>

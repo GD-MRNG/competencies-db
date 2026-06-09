@@ -38,7 +38,8 @@ So here is the working model to carry around. AI is your feedback partner first,
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -115,3 +116,5 @@ In practice, that means asking the model to withhold solutions, reveal hints gra
 
 **A learner who understands this will exploit multimodal capture when curiosity appears because questions asked in the moment are more likely to turn into real learning than questions deferred and forgotten.**  
 So they will use voice, images, and quick conversational prompts to capture and work through live questions, then convert the useful ones into review material later.
+
+</details>

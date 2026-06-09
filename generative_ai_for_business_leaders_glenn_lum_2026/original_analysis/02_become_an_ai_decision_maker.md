@@ -40,7 +40,8 @@ The skill this builds is the ability to look at any AI proposal — yours or som
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -135,3 +136,5 @@ The default temptation is to buy “agentic” capability because it sounds more
 
 **5. An engineer who understands this will frame AI implementation as an evaluation loop, not a one-time architecture bet, because the only reliable way to choose between retrieval, fine-tuning, and agents is to measure them against the actual business task.**  
 The unaware engineer argues from intuition or vendor claims. The stronger approach is to build a small evaluation set, define what “good” means, prototype the least costly option, and only escalate if the results fail. That changes outcomes because it makes complexity something you earn with evidence instead of something you inherit from fashion.
+
+</details>

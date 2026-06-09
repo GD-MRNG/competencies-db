@@ -38,7 +38,8 @@ If you internalise only one thing from this frame, make it this: the question is
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -141,3 +142,5 @@ The default unaware move is to estimate cost as inference plus engineering build
 The default unaware move is to treat launch as the end of implementation. The aware engineer sets up monitoring for output quality, failure categories, changing traffic patterns, and business-impact metrics; they also budget time for re-evaluation and adjustment. That changes staffing, SLOs, support models, and whether the project is viable at all in year two.
 
 ---
+
+</details>

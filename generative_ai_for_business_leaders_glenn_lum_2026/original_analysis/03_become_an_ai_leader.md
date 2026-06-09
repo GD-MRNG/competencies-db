@@ -42,7 +42,8 @@ Respect the science, or the science will embarrass you in production.
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -142,3 +143,5 @@ The unaware engineer hears "automation" and removes human review too early, espe
 
 **An engineer who understands this will plan for post-launch monitoring and retraining because model drift is an operating cost, not an anomaly.**  
 The unaware engineer treats production launch as completion and budgets only for initial build. The informed engineer instruments the North Star metric and the model's operational metrics from day one, expects performance to change over time, and arranges ownership for recalibration or retraining. That changes staffing, cost forecasts, and how ROI is judged over the life of the system.
+
+</details>

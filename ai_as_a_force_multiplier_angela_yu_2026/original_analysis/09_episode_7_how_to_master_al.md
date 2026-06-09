@@ -42,7 +42,8 @@ The frame that holds all of this together is simple. AI is a cheap, fast, high-v
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -119,3 +120,5 @@ They will choose which skills must remain sharp and ensure AI does not quietly b
 
 **An engineer who understands this will use AI frequently enough to build real fluency, but keep it positioned as a fast, cheap, high-variance assistant rather than as an authority.**  
 That balance — regular use without misplaced deference — is what turns AI from a seductive liability into a durable multiplier.
+
+</details>

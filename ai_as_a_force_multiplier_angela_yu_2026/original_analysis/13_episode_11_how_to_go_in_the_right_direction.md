@@ -42,7 +42,8 @@ The final piece is the one most people skip. All of this — the crossovers, the
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -122,3 +123,5 @@ They will treat ongoing adaptation as part of the job, not as something separate
 
 **A builder who understands this will choose with both strategy and ownership in mind because durable direction depends not only on market logic but on whether the path is actually aligned with what they want to build their life around.**  
 That alignment is what makes sustained effort feel like compounding rather than self-betrayal.
+
+</details>

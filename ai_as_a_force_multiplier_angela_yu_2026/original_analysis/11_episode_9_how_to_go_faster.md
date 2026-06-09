@@ -42,7 +42,8 @@ The thread tying all of this together is simple: going faster is not about doing
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -119,3 +120,5 @@ That means they will look for energy crashes and focus problems in their physica
 
 **A knowledge worker who understands this will build personal rules for repeated low-value decisions because preserving mental energy for ambiguous, strategic work creates more leverage than improvising every small choice.**  
 They will standardize routine decisions and use heuristics to reduce the background tax of constant decision-making.
+
+</details>

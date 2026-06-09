@@ -40,7 +40,8 @@ The through-line across all of these use cases is the same: AI is most valuable 
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -117,3 +118,5 @@ So they may use an agent to assemble itinerary options or compare solutions, but
 
 **A person who understands this will look for friction thresholds in their own life because the highest-leverage uses of AI often come from tasks that were previously too small, too annoying, or too sporadic to merit action.**  
 That means noticing where “I’ll deal with that later” can now become “I can move that forward in two minutes.”
+
+</details>

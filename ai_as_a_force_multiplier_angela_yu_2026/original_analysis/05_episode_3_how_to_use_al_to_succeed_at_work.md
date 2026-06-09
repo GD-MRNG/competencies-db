@@ -38,7 +38,8 @@ The final thing to internalise is that everyone you work with is going to be usi
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -115,3 +116,5 @@ That includes mock interviews, negotiation roleplay, stakeholder objection drill
 
 **A worker who understands this will deliberately reinvest the time AI saves into judgment-heavy work because baseline competence is becoming cheap and visible differentiation is shifting upward.**  
 They will spend more attention on prioritization, stakeholder understanding, tradeoff calls, clarity of communication, and the nuanced parts of execution that polished generic output cannot replace.
+
+</details>

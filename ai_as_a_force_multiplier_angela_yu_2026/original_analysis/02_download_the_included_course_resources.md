@@ -38,7 +38,8 @@ The deepest shift, especially for anyone using AI to write code, is from author 
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -112,3 +113,5 @@ They might use a stronger reasoning model to shape an approach, a cheaper fast m
 
 **An engineer who understands this will build defenses against agreement and confident error because the default model behavior is optimized for plausibility, not truth.**  
 So they will ask for competing proposals, request explicit critique, compare alternatives, use delimiters to separate instructions from data, and treat niche or recent claims as needing external verification rather than taking the answer at face value.
+
+</details>

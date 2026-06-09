@@ -34,7 +34,8 @@ The skill, then, is not "using AI." It is designing personal workflows that put 
 
 ---
 
-# Discussion
+<details>
+<summary>Discussion</summary>
 
 ## Why This Conversation Is Happening
 
@@ -108,3 +109,5 @@ If code review is inconsistent, requirements are vague, or decisions are undocum
 
 **An engineer who understands this will make conscious decisions about where AI stays out of the loop because in some tasks the human judgment is the deliverable.**  
 For example, in high-stakes tradeoffs, sensitive communication, or final architectural responsibility, the point is not to produce a plausible answer quickly. The point is to exercise accountable judgment. They will use AI to sharpen their thinking around that decision, but not to replace ownership of it.
+
+</details>
