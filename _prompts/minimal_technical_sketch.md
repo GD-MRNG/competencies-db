@@ -34,7 +34,7 @@ Pick the medium that makes the idea clearest, not the most familiar one:
   a diagram would genuinely replace 100 words of explanation
 
 **Step 4 — Write a one-paragraph conclusion**
-- Title ## Core Ideas
+- Title ## Key Ideas
 - Write this after the sketches are complete. It should reflect what
 the sketches actually demonstrate, not summarise the source material.
 
