@@ -1,0 +1,41 @@
+## Metadata
+- **Date:** 11-06-2026
+- **Source:** 11_code_review_as_negotiation.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-11 ·  Code Review as Negotiation
+
+Code review is sold to you as a quality gate — a checkpoint where bugs get caught, standards get enforced, and the team's collective taste gets applied to your work. That framing is not wrong, but it hides the thing that actually makes review hard. Almost nothing about a contested review is about whether the code works. It's about two people, with different mental models and different stakes in the outcome, trying to agree on a change that one of them wrote and the other has to bless. The technical content is the surface. Underneath, review is a negotiation, and treating it as anything else is how it goes wrong.
+
+The negotiation is asymmetric in a way the process pretends it isn't. The author has done the work, holds the context, and wants to ship. The reviewer has fresh eyes, holds the power to block, and is being asked to spend attention on someone else's problem. Both are operating under time pressure, neither has full information about what the other knows or cares about, and the medium — inline comments on a diff — is famously bad at conveying tone. Into that gap rush all the things that aren't supposed to be there: ego, taste preferences dressed as principles, the reviewer who wants the code written their way, the author who reads every comment as an attack. The skill of code review is recognising that this is the actual terrain and learning to move on it deliberately instead of pretending it's neutral ground.
+
+You'll be on both sides of this exchange, often on the same day, and the moves are different for each. As an author, almost everything that determines how your review goes happens before the reviewer opens the diff. A change that is small, focused, and accompanied by a description that explains why this change exists — not what it does, the diff shows what it does — gets engaged with seriously. A sprawling change with a one-line title gets a cursory glance, a couple of safe comments, and then sits. Reviewer willingness degrades sharply with size, and it degrades again when the reviewer has to reconstruct the reasoning from scratch. The author's job is to make the change cheap to review: pre-empt the obvious questions, flag the parts you're uncertain about, separate the mechanical refactor from the behavioural change so each can be evaluated on its own terms. An unreviewable PR is a stalled one, and most of the time the author made it unreviewable.
+
+As a reviewer, the discipline is harder because the failure mode is more comfortable. The temptation is to comment on everything you notice — every naming choice you'd have made differently, every structural call that doesn't match your habits — because finding things to say feels like doing the job. It isn't. The reviewer's real job is to separate the changes that matter from personal preference, and the hardest version of that skill is letting go of "I would have done it differently" when the difference doesn't matter. Some things are substantive: correctness, security, a contract that other code depends on, a pattern the team has explicitly agreed to. Most things are not. A reviewer who can't tell the difference taxes every author on the team for their own taste, and the tax is paid in slowed delivery and quiet resentment.
+
+Even when the substance is right, the wording is half the battle. "Why did you do it this way?" and "This is wrong, change it" can describe the same observation, and they produce wildly different responses. A comment phrased as a question invites the author to explain, which often surfaces context the reviewer didn't have; a comment phrased as a verdict invites defence. Giving the reason behind a request — "this path runs in the hot loop, so the allocation matters" — turns an order into an argument the author can engage with. None of this is about being soft; it's about whether the feedback gets acted on or resisted, and the wording is what determines which.
+
+The other half of receiving review is decoupling your work from your worth. Harsh feedback on code you spent two days on will feel personal, because you wrote it and it's now being criticised in writing where everyone can see. The engineers who get the most out of review are the ones who can read past the sting to the signal, even when the signal is wrapped in a comment that should have been phrased better. This isn't a personality trait; it's a skill, and it pays off well beyond review — it's the same skill that lets you take a hard piece of feedback from a manager or a customer and act on it instead of defending against it.
+
+There is one more layer that the polite version of this topic glosses over: review is where power lives. The reviewer can block the merge. The senior engineer's nitpicks have to be addressed, the junior's can be brushed off. A PR can sit for days because the one person who can approve it is busy, or because they don't like the approach and won't say so directly. Knowing how to get a stalled review unstuck — when to nudge, when to split the change, when to escalate, when to ask a different reviewer — is a social skill, not a technical one, and it's the difference between work that flows and work that piles up in a queue you don't control.
+
+Done well, review is how a team's standards actually propagate, how junior engineers learn the local taste, and how trust gets built between people who often don't otherwise work closely together. Done badly, it's where good changes go to die and where the team's worst dynamics get rehearsed daily under the cover of "we're just being rigorous." The skill is to treat each review — yours or someone else's — as a small negotiation with stakes, and to play it well enough that the work moves and the relationship survives.
+
+## Level 2 candidates
+
+**Authoring a Reviewable Change** — Covers the moves that make a PR cheap for someone else to engage with: small diffs, a description that explains why, separating mechanical from behavioural changes, pre-empting the obvious questions. Worth depth because most review latency is caused by the author, and the techniques are concrete and learnable rather than a matter of taste.
+
+**Separating Substance From Preference** — Covers the reviewer's hardest discipline: deciding when "I'd have done it differently" is a real objection and when it's a tax you're imposing on the author. Worth depth because the line is genuinely subtle — correctness, contracts, and team conventions are substance; idiom and structure usually aren't — and getting it wrong is the most common reason reviews feel adversarial.
+
+**Feedback That Improves Code Without Bruising People** — Covers the wording-level craft: questions over commands, reasons over edicts, framing that invites explanation rather than defence. Worth depth because the difference between feedback that lands and feedback that's resisted is almost entirely in the phrasing, and the moves are specific enough to teach.
+
+**Receiving Criticism on Your Own Code** — Covers the skill of decoupling your work from your worth so harsh feedback becomes signal instead of an attack to fend off. Worth depth because it's the highest-leverage personal skill in this whole area, and it generalises far beyond code — the same move applies to any feedback that stings.
+
+**Getting a Stalled Review Unstuck** — Covers the tactics for moving a PR that's been sitting: the well-timed nudge, splitting the change, picking a different reviewer, escalating without making it a confrontation. Worth depth because a stalled review is a social problem dressed as a technical one, and most engineers handle it badly — either waiting passively or pushing in a way that burns goodwill.
+
+**Nitpicks, Blocking, and the Power Dynamics of Approval** — Covers the quiet power structure of who can block what, how seniority warps the weight of comments, and how to navigate a reviewer holding your change hostage over trivia. Worth depth because this is the part of review nobody discusses openly, and recognising it is what lets you operate inside it without being naive or cynical.
+
+---

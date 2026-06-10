@@ -1,0 +1,41 @@
+## Metadata
+- **Date:** 11-06-2026
+- **Source:** 03_safe_change_under_uncertainty.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-03 · Safe Change Under Uncertainty
+
+Most of what's written about software assumes a luxury you rarely have: that you understand the code before you change it. Read it carefully, model it, then modify with confidence. In practice, you are asked to fix something on Thursday in a module nobody on the team has touched in two years, written by an engineer who left in 2019, with no tests and a comment at the top that says "TODO: clean this up." You will not understand it before you change it. You may not understand it after. The question is not how to avoid this situation — it's the job — but how to operate inside it without either freezing or breaking things.
+
+Michael Feathers gave this its sharpest definition in *Working Effectively with Legacy Code* (2004): legacy code is code without tests. Not old code, not ugly code, not code you dislike — code without the safety net that would tell you whether your change preserved what mattered. Once you accept that definition, the central paradox of the work becomes obvious: to change the code safely you need tests, and to add tests to most legacy code you need to change it. The whole discipline of safe change is a set of techniques for getting out of that circle without burning the building down.
+
+The first move is psychological, and it's the one most engineers skip. You stop trying to understand the code completely before touching it, and you stop trying to make it good while you're in there. Your only job, for the duration of this change, is to make the smallest possible alteration that solves the problem while leaving the system's existing behaviour — including the behaviour you don't understand and the behaviour that's probably wrong — exactly as it was. Improvement is a separate task, taken on deliberately, with its own safety net. Conflating the two is how a one-line fix becomes a three-day outage.
+
+From there the craft assembles around three concrete techniques. The first is the characterization test: a test that captures what the code currently does, not what it should do. You feed the function realistic inputs, observe whatever it spits out, and pin that as the expected value — even if the output is obviously buggy. The point isn't correctness; it's detecting change. Once you have a wall of characterization tests around the region you're about to edit, you have converted "I have no idea if this change broke anything" into "if I broke something, this test fails." That conversion is the entire game.
+
+The second is the seam — Feathers' term for a place in the code where you can alter behaviour without editing the code at the seam itself. A function you can override, a dependency you can inject, a configuration point you can substitute. Seams are how you get a class under test that currently calls the database in its constructor and writes to the filesystem in its destructor. You don't rewrite it; you find a place where you can intercept the awkward parts and replace them with something testable. Most "this code is untestable" claims are really "I haven't found the seam yet" — and the discipline of looking for one before declaring a rewrite necessary is what separates engineers who safely modernise systems from engineers who propose doomed migrations.
+
+The third is small, reversible steps. The instinct under pressure is to bundle changes — fix the bug, clean up the surrounding mess, rename the confusing variable, all in one commit, because you're in there anyway. The discipline is the opposite: each change should be small enough that if it breaks something, you know without investigation which change broke it, and you can revert it without losing the others. This sounds like a productivity tax. It is in fact what lets you move quickly through dangerous code, because the cost of a bad step is bounded to that step alone. The engineer making twenty small commits is usually faster, in wall-clock time, than the one making one heroic one — they just look slower at any given moment.
+
+What ties these together is a particular stance toward uncertainty. You are not pretending to understand more than you do. You are not relying on courage, intuition, or the assumption that the tests you would have written would have caught it. You are building, in real time, the minimum scaffolding that lets a partially-understood change be made without it becoming a partially-understood disaster. The scaffolding is throwaway — characterization tests often get deleted once real ones replace them, seams introduced for testing sometimes get cleaned up later — but it does its job during the window where the change is risky.
+
+The cost of lacking this skill is not dramatic; it's slow and corrosive. Engineers who can't change code they don't understand develop an entirely rational fear of the codebase, and that fear shows up as avoidance. The cursed module nobody touches gets more cursed. Workarounds accumulate in the safer layers above it. New features route around the parts that need fixing. The codebase calcifies — not because anyone decided to stop maintaining it, but because the only safe move available to people who lack these techniques is to leave it alone. Safe change under uncertainty is the skill that keeps a system alive past the tenure of the people who originally understood it. Without it, every codebase has a half-life.
+
+## Level 2 candidates
+
+**Characterization Tests: Pinning Behaviour Before You Touch It** — Tests that capture what the code currently does, right or wrong, so any change you make announces itself by breaking them. Worth a deep dive because the technique inverts how most engineers think about testing — the goal is detecting change, not verifying correctness — and the mechanics of writing them well (what to assert on, how to handle nondeterminism, when to delete them) are non-obvious.
+
+**Seams: Where You Can Change Behaviour Without Editing It** — Feathers' concept of a place in the code where you can intercept behaviour without modifying the code at that point. Worth going deeper because seam-finding is a learnable pattern with concrete varieties (object seams, link seams, preprocessing seams) and it's the single technique that most often unblocks "this is untestable" situations.
+
+**Small, Reversible Steps** — The discipline of sizing changes so that any individual step can be reverted cleanly without losing the others. Worth the depth because the argument for granularity runs against a strong instinct to bundle work, and seeing exactly how a bad large commit fails — versus how the same work in small commits recovers — is what makes the practice stick.
+
+**The Strangler Pattern: Replacing a System While It Runs** — Fowler's approach for incrementally routing functionality away from a legacy system into its replacement, rather than attempting a big-bang rewrite. Worth a separate post because it scales the same principles up from a single function to an entire system, and it's the strategy behind most successful migrations that didn't make the news for failing.
+
+**Refactoring Under a Deadline** — The honest version of cleanup work: not "leave it better than you found it" as a moral rule, but "how much can I safely improve in the time I actually have." Worth deeper treatment because it reframes refactoring from a virtue into a budgeted decision, and gives you language for defending both the cleanup you did and the cleanup you deliberately didn't.
+
+**Distinguishing the Change from the Cleanup** — The discipline of separating "make the change work" from "make the surrounding code better," and resisting the urge to combine them. Worth depth because the conflation is one of the most common ways a small fix becomes a large incident, and the rule for separating them is simple to state but hard to follow under pressure.
+
+---

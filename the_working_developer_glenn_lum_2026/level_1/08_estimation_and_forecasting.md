@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 11-06-2026
+- **Source:** 08_estimation_and_forecasting.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-08 · Estimation and Forecasting
+
+Estimation is the part of the job engineers most reliably resent, and the resentment is itself a clue. You resent it because you're being asked, over and over, to produce a number you know is wrong, in front of people who will treat it as a promise. The instinct is to refuse the question, hedge it into uselessness, or pad until you feel safe — and all three are ways of opting out of a skill that, more than almost any other, determines whether the business can plan around you. The senior engineer is not the one whose estimates are accurate. The senior engineer is the one whose estimates are honest about what they are, and who has built the discipline that makes them progressively less wrong.
+
+The reframe that unlocks the topic is simple and almost never internalised: an estimate is a probability distribution, not a number. When you say "two days," the truthful version is "somewhere between one and five days, most likely around two, with a long tail if the database migration turns out to be load-bearing." Collapsing that distribution into a single figure is a service to the listener — they wanted a number, you gave them one — and a disservice to reality, because the number they heard does not contain the information they needed. The professional move is to communicate the shape of the uncertainty, not to hide it behind a confident point estimate. This sounds like a small linguistic change. It is actually the entire game.
+
+The reason this is hard is older than software. Brooks named it in 1975: software work is genuinely, structurally difficult to estimate because each task is, in some non-trivial sense, novel — if it weren't, you'd have a library function for it. Layered on top of that irreducible difficulty is the planning fallacy that Kahneman and Tversky documented: human beings systematically underestimate how long their own tasks will take, even when they have extensive evidence of having underestimated similar tasks before. The optimism is not laziness or ego. It's a cognitive default. Knowing this matters because it explains why padding an estimate feels dishonest — it feels like you're inflating a number you know to be true — when in fact it's a correction for a known, measurable bias. Your unpadded gut estimate is the one that's lying.
+
+The actual mechanics of getting better at this come down to three moves, in order. The first is decomposition: you cannot reliably estimate work whose shape you can't see, and the shape only becomes visible when you break the work into pieces small enough that each one is something you've done a version of before. A task you can describe in a sentence is usually too coarse. A task you can describe in three or four bullets — what gets touched, what gets tested, what gets deployed — is usually estimable. If a piece resists decomposition, that resistance is itself information: it means you don't yet understand the work well enough to estimate it, and any number you produce is fiction.
+
+The second move is naming the unknowns. In any non-trivial estimate, the variance is not spread evenly across the work — it's concentrated in a small number of high-uncertainty pieces. The auth integration whose docs you haven't read. The legacy module no one currently understands. The third-party API whose rate limits you haven't tested. Most of the difference between your estimate and reality lives in those unknowns, which means refining the parts you already understand is wasted effort, and a half-day spike to de-risk the unknown is worth more than another hour of careful breakdown. The skill is locating the variance, not minimising it across the board.
+
+The third move is the social one, and it's where most engineers lose ground they earned with the first two. Once you say a number out loud, there is enormous pressure for that number to become a commitment — for "about three days, probably" to be quoted back to you next week as "you said Thursday." Resisting this slide is not evasiveness; it's a defence of the meaning of the estimate you gave. The techniques are mundane: state the range and the assumptions in the same breath, name explicitly what would make it longer, write it down in the form you said it so the conversion is visible if it happens. None of this is technical. All of it is the difference between an estimate that informs a plan and an estimate that becomes a stick to beat you with.
+
+The failure modes are symmetric and both expensive. Sandbagging — padding so heavily that you always finish "early" — buys short-term safety and burns long-term trust, because over time people notice that your numbers don't constrain anything and stop using them. Optimism — quoting your gut and then watching it slip — burns trust faster, because each missed estimate is a small, visible breach. The point of the skill is not to land on either side. It is to produce numbers calibrated enough that the business can make decisions with them, paired with uncertainty honest enough that no one is surprised by the outcome. That, more than any technical depth, is what makes a senior engineer someone the organisation can plan around. The estimate is not the artifact. The trust the estimate builds is.
+
+## Level 2 candidates
+
+**An Estimate Is a Distribution, Not a Number** — Covers the core reframe of estimates as probability ranges with shape and tails, and the language for communicating them without sounding evasive. Worth its own post because the move is simple to state and surprisingly hard to actually execute under pressure — most engineers regress to point estimates the moment a manager tilts their head.
+
+**The Planning Fallacy and Why We're Always Optimistic** — Covers Kahneman and Tversky's finding that we systematically underestimate our own tasks, and the corollary that padding is correction rather than dishonesty. Deserves depth because the cognitive mechanism is counterintuitive enough that engineers keep relearning it task by task instead of internalising it once.
+
+**Decompose Until the Pieces Are Estimable** — Covers the practical craft of breaking work down to the unit at which estimation becomes reliable, and the signal that resistance to decomposition is itself a finding. Worth a deep dive because the technique sounds obvious and is almost never executed to the depth it requires.
+
+**Naming the Unknowns That Dominate the Variance** — Covers locating the few high-uncertainty pieces in a plan and de-risking them with spikes or prototypes before refining anything else. Deserves its own post because it inverts the natural instinct to polish what you already understand, and because spikes-as-estimation-tool is a move most engineers haven't been taught explicitly.
+
+**Resisting the Estimate-to-Commitment Slide** — Covers the social mechanics of how a quoted range becomes a quoted deadline, and the techniques for keeping the uncertainty attached to the number as it travels. Worth depth because it's where the skill most often fails in practice, and the moves are conversational rather than technical — invisible to anyone who hasn't watched a senior engineer do them.
+
+---
