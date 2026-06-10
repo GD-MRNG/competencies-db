@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 11-06-2026
+- **Source:** 08_interface_contracts_and_defining_errors_away.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-08 · Interfaces, Contracts, and Defining Errors Away
+
+An interface is a promise. That sounds soft until you watch what happens when the promise is vague: every caller invents its own interpretation, every implementation handles a slightly different set of cases, and the bugs that result live in the gap between what the interface said and what everybody assumed. The canon's strongest claim about interface design is that this gap is not a documentation problem — it's a design problem, and the way you close it is by deciding, deliberately and in advance, exactly who is responsible for what.
+
+Bertrand Meyer made that decision formal in 1986 with Design by Contract, which shipped as the defining feature of his Eiffel language. A method, in this view, is a contract between caller and implementation with three clauses: preconditions (what the caller guarantees on the way in), postconditions (what the implementation guarantees on the way out), and invariants (what stays true throughout). The contract metaphor is exact, not decorative. If the caller violates a precondition, the implementation owes nothing — including correctness. If the caller meets the precondition, the implementation must deliver the postcondition. Both sides know where their responsibility ends. Most of the maddening interface bugs you've debugged were a fight over a precondition that nobody had ever written down.
+
+Once you accept that the interface is the contract, the next question is what shape that contract should take, and here Ousterhout offers the rule that surprises people: general-purpose modules are deeper. The instinct is to build the narrowest interface that serves today's caller — it feels disciplined, it feels YAGNI-aligned, it feels like good taste. But an interface tailored to one specific situation tends to encode that situation's quirks into its signature, which means the next caller (often you, six months later) finds the module almost-but-not-quite fits. The signature has leaked the original caller's circumstances into the abstraction. A slightly more general interface — one that solves the underlying class of problem rather than the specific instance — is usually simpler, has fewer methods, hides more, and lasts longer. Generality, counterintuitively, is often the simpler design.
+
+The most provocative move in this whole topic is what Ousterhout calls defining errors out of existence. The standard mental model of error handling is that errors are facts of life and the job of an interface is to report them — through exceptions, error codes, result types, whatever your language gives you. Defining errors away rejects that framing at its root. Instead of asking "how should this interface report failure?", you ask "can this interface be redesigned so that the failure simply isn't possible?" A delete operation that's harmlessly idempotent doesn't need to fail when the thing isn't there. A collection that returns an empty result instead of a null doesn't need a null check. A substring operation that clamps out-of-range indices instead of throwing doesn't need a bounds error. The error condition didn't go anywhere — but it stopped being the caller's problem, because the interface absorbed it.
+
+This sits in genuine, unresolved tension with the defensive programming tradition, which says the opposite: validate aggressively, throw early, force every caller to explicitly handle every failure. Both philosophies have a real argument behind them. Defensive programming is right that hidden failures are dangerous and that explicit handling is honest. Defining errors away is right that the safest error is the one that cannot occur, and that pushing checks onto every caller multiplies code, multiplies bugs, and turns the interface into a minefield. The synthesis is not a compromise but a hierarchy: first try to design the error away; if you can't, handle it explicitly at the boundary; never paper over a real failure mode with a try-catch that swallows it.
+
+The deeper principle underneath all of this is that an interface's quality is judged by what it makes hard to misuse, not what it makes possible to use correctly. Documentation that warns "don't pass null here" is weaker than a type system that won't let you. A return type that distinguishes "found" from "not found" is stronger than a convention that says zero means absent. Every place where the contract is enforced by the structure of the code rather than by the diligence of the caller is a place where a future bug has been preempted instead of caught. This is the connection between Design by Contract, deep general-purpose interfaces, and defining errors away — they are three angles on the same goal, which is moving responsibility from the caller's discipline into the interface's shape.
+
+What this topic builds is a particular reflex when you're designing or reviewing an interface. You stop asking "does this work?" and start asking three sharper questions. What exactly is each side promising — and is it written down, or just hoped for? Is this interface shaped to one caller's accident, or to the underlying problem? And for every error this interface reports, can it be redesigned so the error doesn't exist? Most interfaces in most codebases were never asked these questions. The ones that were are the ones that survive a decade of changing requirements without becoming the thing everybody is afraid to touch.
+
+## Level 2 candidates
+
+**Design by Contract** — Meyer's preconditions, postconditions, and invariants make the caller-implementer responsibility split explicit and checkable. Worth a deep dive because turning the vague "interface expectations" most teams operate on into a real contract changes how you write, review, and debug interface boundaries.
+
+**General-Purpose vs Special-Purpose Interfaces** — Ousterhout's argument that an interface shaped to one caller's exact need tends to be shallow and leaky, while a slightly more general one is often simpler. Worth its own treatment because it inverts the common YAGNI-derived instinct and the reasoning is non-obvious until you've seen specific examples.
+
+**The Debate: Define Errors Out of Existence vs Defensive Programming** — The two opposing philosophies of error handling and where each is genuinely right. Worth a deep dive because the tension is real, both sides have failure modes, and the synthesis only becomes usable once you've worked through concrete cases on both sides.
+
+**Exceptions vs Error Values vs Result Types** — How a language and team represent failure shapes how robust calling code actually is, and the same logic feels safe in one error model and fragile in another. Worth going deeper because the choice of error model has structural consequences most developers never connect to the bugs it produces.
+
+**Making Misuse Hard** — The strongest interfaces make the wrong call impossible to write, not merely documented as wrong, by leaning on types, structure, and naming rather than caller diligence. Worth a deep dive because it connects abstract contract thinking to concrete techniques (NonEmptyList, newtype wrappers, builder patterns, phantom types) that produce dramatically more robust code.
+
+---

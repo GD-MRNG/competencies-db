@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 11-06-2026
+- **Source:** 10_functions_size_and_the_clean_code_debate.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-10 · Functions, Size, and the Clean Code Debate
+
+If you learned to write code in the last fifteen years, you absorbed a rule you may have never examined: functions should be small, and when in doubt, smaller. Extract a helper. Then extract a helper from the helper. The rule is so widely taught that breaking a long function into a cascade of three-line methods feels like virtue itself, regardless of whether anyone reading the result can follow what it does. This is the place in the canon where a principle hardened into a reflex, and the reflex has done real damage to real code.
+
+The rule comes from a specific place. Robert Martin's *Clean Code* (2008) argues, with unusual force, that functions should be very small, do exactly one thing, and be extracted aggressively — "extract till you drop." For a generation of developers this became the operating definition of clean: line count down, function count up, and a long method was self-evidently a smell to be eliminated. The argument has a real point underneath it. Genuinely cohesive small functions are easier to name, easier to test, and easier to reason about in isolation. The mistake is treating the size as the thing that produced those benefits, when the size was downstream of something else.
+
+John Ousterhout, in *A Philosophy of Software Design*, makes the counter-case directly and by name. Aggressive decomposition produces what he calls shallow methods — functions whose interface is nearly as complex as their implementation, so they hide almost nothing and earn almost nothing for their existence. Worse, it produces conjoined methods: functions you cannot understand without flipping back and forth between several files, holding the call chain in your head, because the original logic was sliced across boundaries that don't correspond to independent ideas. In that case the split hasn't reduced complexity; it has scattered it across more surface area, and the reader is now paying the cost of multiple interfaces to read a single coherent thought.
+
+The reason this happens is that line count was never measuring the right thing. A function's contribution to complexity is not how many lines it occupies but how much it hides behind how simple an interface — its depth, in Ousterhout's vocabulary — and how singular the idea inside it is — its cohesion. A long, cohesive function that does one substantial thing well, and presents a clean signature to the world, can be radically easier to read than five short functions that each do a fragment of that thing and only make sense as a sequence. The five-function version looks cleaner by the metric the rule taught you to apply, and is often worse by the metric that actually matters.
+
+Once you stop measuring functions by length, the question of when to split becomes answerable on its own terms. You split when the pieces are genuinely independent — when the extracted function names a real sub-concept that stands on its own, when it could plausibly be reused or tested in isolation, when the interface between caller and extracted code is meaningfully simpler than the code it hides. You do not split because a function passed some line threshold, because a method "does more than one thing" at a granularity where everything does more than one thing if you squint, or because you were taught that long is automatically bad. The test is whether the split makes the reader's job easier, full stop. If the reader now has to follow a thread through three files to reconstruct what one function used to say plainly, the extraction made the code worse.
+
+The Clean Code position and the Philosophy of Software Design position are not actually opposed on the underlying principle — both want code that is easy to understand and change, and both agree that a god-method spanning hundreds of lines of unrelated logic is a problem. The disagreement is about the failure mode each is most worried about, and therefore which way the default should lean. Martin worries about the long, sprawling, undifferentiated function and pushes hard toward decomposition. Ousterhout worries about the over-decomposed system whose complexity is hidden in the spaces between methods, and pushes back. The synthesis is that both failure modes are real, and neither size nor count tells you which one you have. You read the code and ask whether the structure is helping or hurting comprehension, and you decide accordingly.
+
+What you get from internalising this is permission — permission to leave a thirty-line function alone when it does one thing clearly, permission to inline a helper that was only ever called from one place and only ever obscured the caller's intent, permission to evaluate an extraction by what it actually does for the reader rather than by whether it lowers a number. The rule was never the principle. The principle was always: reduce the complexity the reader has to hold in their head. Sometimes that means splitting. Sometimes it means not splitting. Knowing which is which is the judgment the rule was hiding from you.
+
+## Level 2 candidates
+
+**The Debate: "Extract Till You Drop" vs Deep Methods** — The direct collision between Martin's small-functions doctrine and Ousterhout's warning against shallow over-decomposition, read side by side. Worth a deep dive because seeing both arguments in their own words, with their own examples, is what converts an inherited habit into a deliberate choice — and this is one of the few places in the canon where two respected authorities openly contradict each other on practice.
+
+**Why Line Count Is the Wrong Metric** — A focused argument for why brevity measures nothing about understandability, and why the metric persisted anyway. Worth its own treatment because most developers have never had the metric itself challenged; once it falls, a lot of downstream rules fall with it, and the replacement criterion (depth, cohesion, reader effort) needs to be made concrete enough to actually use.
+
+**Conjoined Methods** — The diagnostic for an extraction that didn't reduce complexity but relocated it: when you cannot understand one function without reading the others it calls. Worth a deep dive because this is the single most useful test for a bad split, and naming the smell precisely is what lets you reverse extractions you'd otherwise feel obligated to keep.
+
+**"Do One Thing" — At Which Level of Abstraction?** — The do-one-thing rule is true and almost useless without specifying the layer at which "one thing" is being counted, since at a fine enough grain everything does many things. Worth deeper exploration because this is where the rule most often goes wrong in practice, and clarifying the abstraction-level question is what turns the principle from a license to over-split into a usable constraint.
+
+**When Extraction Genuinely Pays** — The positive criteria for a split that earns its keep: a reusable piece, an independently testable unit, real complexity hidden behind a simpler name, a sub-concept worth naming. Worth a deep dive because the negative case (don't extract reflexively) leaves a vacuum that needs filling — developers need a clear picture of the extractions that are actually good, not just a warning against the bad ones.
+
+---

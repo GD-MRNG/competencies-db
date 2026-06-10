@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 11-06-2026
+- **Source:** 07_abstraction_and_leaky_boundaries.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-07 · Abstraction and Leaky Boundaries
+
+Every non-trivial program you have ever written rests on abstractions you do not fully understand, and that is not a confession — it is the entire point. You write `read(file)` without reasoning about disk sectors, you call `send(packet)` without computing TCP windows, you query a database without thinking about B-trees. Abstraction is the only reason software at this scale is possible at all. It is also the source of a particular kind of bug that humbles experienced engineers: the moment when the layer you trusted to be invisible reaches up and grabs you by the throat.
+
+An abstraction is a deliberately simplified view of something more complicated, designed so you can reason about it without holding all of it in your head at once. A file is "a sequence of bytes you can read and write." A function is "input goes in, output comes out." A REST endpoint is "you ask, you receive." Each of these omits enormous amounts of detail — buffering, caching, retries, partial failure, ordering — and the omission is the value. The cost of an abstraction is what you pay to learn it; the benefit is everything beneath it you no longer have to learn. When that ratio is favourable, the abstraction earns its place. When it isn't, you've added a thing to know without subtracting much.
+
+The catch is permanent, and Joel Spolsky named it in 2002: every non-trivial abstraction, to some degree, leaks. The simplifying view fails to fully hide the thing it abstracts over, usually at exactly the moments you need the simplification most — under load, under failure, at the edges of normal operation. TCP pretends to give you a reliable byte stream, until the network partitions and you discover it doesn't. An ORM pretends rows are objects, until you write a query that triggers the N+1 problem and you have to think in SQL again. A filesystem pretends files are byte arrays, until two processes write at once and the abstraction's silence on concurrency becomes deafening. The leak is not a defect in the abstraction. It is a property of all abstractions over genuinely complex things, and pretending otherwise is how you write code that works in development and falls over in production.
+
+What this means practically is that you can never fully escape the layer beneath the one you're using. The abstraction lets you ignore it most of the time, which is its job, but you still have to know enough about the lower layer to recognise when it is leaking through and to debug what you're seeing when it does. This is why a senior engineer reading "the request timed out" thinks immediately about DNS, connection pools, and TCP retries, while a junior engineer thinks about the line of code that issued the call. Both are looking at the same abstraction. Only one of them knows it leaks.
+
+Ousterhout adds the constructive complement to Spolsky's warning: different layer, different abstraction. Each layer of a system should offer a genuinely different view of the world than the layers above and below it. A storage layer should not expose the same vocabulary as the business logic that calls it; a network layer should not look like the transport beneath it. When two adjacent layers expose the same concepts in nearly the same shape, one of them is not earning its place — it is indirection wearing the costume of abstraction, adding a hop without adding a simplification. The smell is a method that just forwards to another method, a class that just wraps another class with the same interface, a layer of code where the only operation is "call the thing below me." That layer has a cost (something to learn, somewhere to look) and no offsetting benefit.
+
+Hold those two ideas together and you get the calibration this topic is really about. Abstractions are indispensable: without them, you cannot build anything substantial, because your head is finite and the systems you work on are not. Abstractions are also imperfect: they leak, they cost something to introduce, and they can be added without actually simplifying anything. The wrong response to either fact in isolation is a failure mode. Trusting abstractions blindly gives you the engineer who cannot debug past the first stack frame and is mystified when the database is slow. Distrusting them on principle gives you the engineer who reinvents at every layer and ends up writing more code, not less, and understanding none of it any better.
+
+The skill, then, is judgmental rather than rule-based. When you reach for an abstraction, ask what it actually hides — and whether what it hides is worth the interface it imposes. When you build one, ask whether your layer offers a meaningfully different view of the problem than the layer beneath it, or whether you're just passing messages through a slightly different shape. When you use one, remember that it will leak, and make sure you know enough about what's underneath to recognise the leak when it happens. Good abstractions don't pretend to be perfect. They pretend to be perfect *most of the time*, and they reward you for knowing when "most" runs out.
+
+## Level 2 candidates
+
+**The Law of Leaky Abstractions** — Spolsky's 2002 observation that every non-trivial abstraction leaks at some point, usually under stress, and the catalogue of canonical examples (TCP, ORMs, virtual memory, network filesystems) that show the pattern. Worth depth because the specific leaks are themselves a useful education in the layers most developers depend on without examining.
+
+**Different Layer, Different Abstraction** — Ousterhout's design rule that adjacent layers must offer genuinely different views of the problem, with the diagnostic for spotting layers that fail this test. Worth depth because the test is concrete enough to apply during code review and catches a class of architectural waste that "looks like good decomposition" until you ask what each layer actually hides.
+
+**The Cost of an Abstraction** — Every abstraction is something a reader must learn and a place a maintainer must look, and that cost has to be repaid by what it hides. Worth depth because making the cost explicit is what lets you tell a clarifying abstraction from indirection-for-its-own-sake, which is one of the most common ways code gets worse while feeling more "designed."
+
+**Pull Complexity Downward** — Ousterhout's principle that a module should absorb complexity rather than push it onto its callers, even at the price of a harder implementation, because the interface is paid for by every caller while the implementation is paid for once. Worth depth because it inverts a common instinct (make this module simpler by exposing the hard cases as options to the caller) and explains why the inversion is usually right.
+
+**Abstraction vs Indirection** — Adding a layer is not the same as adding an abstraction; indirection that doesn't simplify just adds hops, and the difference is whether the new interface lets the caller think in genuinely simpler terms. Worth depth because the conflation of the two is how codebases accumulate layers of "architecture" that nobody can navigate and nobody can justify removing.
+
+---

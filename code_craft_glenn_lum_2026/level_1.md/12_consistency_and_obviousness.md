@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 11-06-2026
+- **Source:** 12_consistency_and_obviousness.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-12 · Consistency and Obviousness
+
+The clever local fix is usually a bug. Not in the sense that it produces wrong output — it works fine, it may even be a small improvement on what surrounds it — but in the sense that it costs the next reader something the original convention wasn't costing them. Every time a codebase rewards your eye for finding a better way to do this one particular thing, it is also asking you to pay a tax: the reader who hits your improvement has to stop, notice it's different, and figure out why. That tax is paid every time the code is read, by everyone who reads it, forever. The local win was real; it just wasn't worth what it cost.
+
+This is the uncomfortable centre of consistency as a principle. Most of the canon's rules can be defended on their own merits — a deep module is better than a shallow one, a precise name beats a vague one — but consistency asks you to sometimes choose the worse option because it matches the others. The reasoning is that a codebase isn't a collection of isolated decisions evaluated independently; it's a thing a human reads in sequence, and that human is doing pattern-matching at every line. Once a convention holds reliably, the reader stops verifying and starts predicting. They scan instead of parse. The codebase becomes legible by pattern rather than by inspection, and the cognitive load of working in it drops by something close to an order of magnitude.
+
+The destination Ousterhout names for all of this is obviousness: code where the reader's first guess about what it does is correct. Obvious code requires little effort and produces no surprises. You read a function name and the body confirms what the name implied. You see a familiar shape and the behaviour matches the shape. Notice that obviousness is a property defined relative to the reader, not the writer — it's not about whether the code is technically clear in isolation but whether it lands correctly in the head of someone who has been reading the rest of this codebase for ten minutes. That's why it can't be achieved without consistency: obviousness is what consistency feels like from the inside.
+
+The connection to the principle of least surprise is direct. Code that does what it looks like it should do is safer than code that's technically correct but unexpected, because every surprise is a place where a future reader's mental model and the actual behaviour diverge — and divergence is where bugs live. A misleadingly named function, a method with a hidden side effect, an unfamiliar pattern dropped into otherwise-uniform code: these all read as ordinary at a glance and only reveal their teeth when something breaks. Cleverness, in this frame, is a defect. Not because clever solutions are wrong, but because clever almost always means surprising, and surprising almost always means dangerous in code that other people will change.
+
+This is the quiet reason style guides, linters, and the advice to "match the surrounding code" are worth so much more than they look. None of them are about taste. They are about offloading the consistency problem to a mechanism that doesn't get tired, doesn't have a bad day, and doesn't have an opinion about whether tabs or spaces are aesthetically superior. Once the machine enforces the convention, the humans stop arguing about it in code review and stop deciding it case by case while writing — and a whole category of tiny, accumulating divergences just stops happening. The cost of mechanised agreement is that you live with conventions you might not personally have chosen. The benefit is that you stop spending attention on a problem that doesn't repay it.
+
+None of this means consistency wins absolutely. There are cases where the surrounding pattern is genuinely harmful — a legacy convention that's actively causing bugs, an idiom the language has moved past, a structure that no longer fits the problem — and matching it just propagates the damage. The skill is recognising the difference between a convention that's locally suboptimal but coherent, and one that's actively wrong. The first you live with; the second you change deliberately, and you change it everywhere, because half-applied breaks are worse than either old or new applied uniformly. The rule is that consistency loses to correctness, but it should lose visibly and completely, never as a one-off improvisation in the middle of code that still follows the old way.
+
+What this topic ultimately unlocks is a particular kind of restraint. You will, often, see a cleaner way to do something than the way the surrounding code does it. The discipline is to ask whether your improvement is worth the discontinuity — whether the next reader will be helped by your local optimisation more than they'll be hurt by the inconsistency it creates. Most of the time, the answer is no. The codebase is not a place to express your individual judgment of what's best line by line; it's a shared artifact whose value to its readers depends on its predictability as a whole. Choosing the consistent option over the locally better one is not a compromise. It's the design.
+
+## Level 2 candidates
+
+**Consistency Lets Readers Predict** — How a reliable convention shifts a reader from active verification to passive prediction, and why that shift accounts for most of consistency's compounding payoff. Worth depth because the mechanism (cognitive load reduction through pattern-matching) is the part most people accept as a slogan without ever examining the actual cost they're saving.
+
+**Code Should Be Obvious** — Ousterhout's framing of obviousness as the design target — code whose first reading is the correct reading — and what that implies about cleverness, indirection, and the writer-reader asymmetry. Worth depth because reframing cleverness as a defect rather than a virtue is a genuine reorientation, and most of the practical consequences (when to refactor a "clever" line, when to reject one in review) flow from it.
+
+**The Principle of Least Surprise** — Why code that behaves as it looks like it should is safer than code that's technically correct but unexpected, and how surprises become the seams where bugs hide. Worth depth because the link between surprise and bugs is more mechanical than it appears — divergence between mental model and actual behaviour is the structural cause of a whole class of defects.
+
+**When Consistency Should Lose** — How to tell a locally-suboptimal-but-coherent convention from one that's actively harmful, and why breaking consistency must be done completely rather than as a one-off. Worth depth because this is the failure mode of the principle — applied without the override, consistency ossifies into "we've always done it wrong," and getting the override criteria right is what keeps the principle honest.
+
+**Conventions, Linters, and Mechanised Agreement** — How offloading consistency to tools removes a category of decision and argument from human attention, and why this matters more than the specific conventions chosen. Worth depth because the meta-point — that the value is in the mechanism, not the choice — explains why teams that bikeshed conventions are missing what conventions are actually for.
+
+---

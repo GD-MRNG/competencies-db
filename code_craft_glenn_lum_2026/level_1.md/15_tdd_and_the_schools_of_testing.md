@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 11-06-2026
+- **Source:** 15_tdd_and_the_schools_of_testing.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-15 · TDD and the Schools of Testing
+
+Most developers who have an opinion about test-driven development inherited it. Either someone they respected swore by red-green-refactor and they adopted the discipline as a marker of seriousness, or someone they respected called it dogma and they quietly stopped writing tests first. Both stances are tribal, and both miss what the practice actually is and what the genuine disagreement underneath it is about. The interesting questions aren't "do you TDD?" but "what does writing the test first actually do to your design?" and "when you mock, what are you mocking, and what does that choice cost you later?"
+
+Start with what TDD is doing when it works. Kent Beck's 2003 *Test-Driven Development by Example* describes a tight loop: write a failing test, write the minimum code to pass it, refactor, repeat. The framing most people absorb — that this is a way to guarantee coverage — undersells it. The real claim is that writing the test first applies design pressure: you are forced to use your own interface before it exists, and an interface that is awkward to call is awkward to test, so the awkwardness shows up while the code is still cheap to change. In that frame, TDD is a design technique that happens to leave a test suite behind, not a verification technique that happens to influence design. That distinction is what makes the practice defensible at all — and also what tells you when it isn't paying, because if writing the test isn't teaching you anything about the interface, you're paying its cost without collecting its benefit.
+
+The genuine fork underneath TDD has nothing to do with whether you write tests first. Martin Fowler named it: the Classical (or Detroit) school and the London (or mockist) school. A Classical test exercises the unit through its real collaborators and asserts on the resulting state — what the system looks like after the operation. A London test isolates the unit with mocks for everything around it and asserts on interactions — which methods got called on which collaborators, in what order, with what arguments. These sound like stylistic preferences. They aren't. They produce meaningfully different designs and meaningfully different test suites, and the differences only become visible later, when you try to change the code.
+
+The case against the mockist style is straightforward once you connect it back to the four pillars from L1-14. Asserting on interactions couples the test to *how* the code accomplishes its work, not to *what* it accomplishes. Refactor the implementation — extract a helper, inline a method, change which collaborator does which step — and the behaviour is identical, but the interaction tests fail. This is the resistance-to-refactoring pillar collapsing in slow motion: the tests punish exactly the kind of change you most want to be able to make safely. State-based Classical tests, by contrast, only fail when observable behaviour actually changes, which is the failure mode you wanted in the first place. Vladimir Khorikov's synthesis is direct: Classical should be the default, and mocks should be reserved for genuine out-of-process dependencies — databases, network calls, message buses — where the cost of using the real thing is real isolation pain. Mocking your own internal collaborators is almost always paying for fragility you didn't need.
+
+The corollary, which is worth stating sharply: a unit test isolating one class from another class in your own codebase is usually solving the wrong problem. The boundary you actually need to isolate is the process boundary, not the class boundary. The London school's instinct to mock-everything-not-under-test was a reasonable response to slow integration tests in the early 2000s; it has aged into a reflex that produces test suites which freeze a codebase's internal structure in place. If your tests break when you reorganise classes that have the same external behaviour, the tests are the problem.
+
+The field has also openly argued about TDD itself. The 2014 "Is TDD Dead?" exchange between David Heinemeier Hansson, Kent Beck, and Martin Fowler is the honest record of three serious practitioners disagreeing in public about when test-first helps and when it harms. The exchange is worth reading not for a verdict — there isn't one — but because it models the right disposition toward the practice: TDD is a tool that pays in some contexts (well-understood domains, code with clean inputs and outputs, places where the design pressure is genuinely useful) and that taxes you in others (exploratory work, UI code, code where you don't yet know what the right interface even is). The practitioners who got the most out of TDD never treated it as a universal mandate; the ones who burned out on it were usually the ones who did.
+
+What this topic ultimately gives you is a reasoned posture instead of a tribal one. The skill is being able to articulate why you test the way you do — why you wrote this test first and that one after, why you used a real collaborator here and a mock there, why this codebase warrants strict TDD discipline and that one doesn't. The dogmatic answers ("always TDD," "TDD is dead," "mock all dependencies," "never mock anything") are all cheap, and all wrong in the cases where they matter. The reasoned answer is harder and durably more useful: tests exist to give you confidence that behaviour is preserved as the code changes, and every choice about how to write them should be evaluated against that goal.
+
+## Level 2 candidates
+
+**Red-Green-Refactor as Design Pressure** — Covers what writing the test first actually does to the interface, and why the ergonomic feedback is the real product of the loop rather than the test suite. Worth a deep dive because most TDD advocacy stops at "it gives you coverage" and misses the mechanism that makes the discipline pay.
+
+**The Debate: Classical vs London (Mockist) Schools** — Lays out the two schools side by side with concrete examples of how the same feature gets tested differently, and what each style locks in about the resulting design. Worth depth because the choice produces different codebases over years, and most developers have never seen the contrast made explicit.
+
+**Why the Mockist Style Tends Toward Fragility** — Drills into the specific mechanism by which interaction-based assertions hurt refactoring-resistance, with the failure modes you'll actually encounter. Worth its own post because the connection between "we mock a lot" and "our tests break constantly when we refactor" is rarely traced step by step.
+
+**The Debate: "Is TDD Dead?"** — Walks through the 2014 Hansson–Beck–Fowler exchange and extracts the actual disagreements about where test-first helps and where it harms. Worth depth because it's the field reasoning openly about a practice's limits, and reading it is a vaccine against treating TDD as either gospel or fraud.
+
+**Mock Only Out-of-Process Dependencies** — Covers the synthesis rule that reserves mocks for things crossing a process boundary and treats internal collaborators as part of the unit under test. Worth a deep dive because it's the operational rule that resolves most "should I mock this?" decisions, and applying it consistently changes the shape of a test suite within weeks.
+
+---
