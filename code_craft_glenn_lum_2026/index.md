@@ -4,7 +4,7 @@
 
 | Map | Owns | The question it answers |
 |---|---|---|
-| **The Canon of Code Craft** *(synthesis)* | The code as a crafted object | *Is what I built good — understandable and changeable?* |
+| **Code Craft** *(synthesis)* | The code as a crafted object | *Is what I built good — understandable and changeable?* |
 | **The Working Developer** *(unwritten curriculum)* | The human practice of producing change | *Can I actually get it done, here, with these people?* |
 | **Software Engineering** *(operations)* | The code as a running system | *Will it survive contact with production?* |
 
@@ -12,7 +12,7 @@
 
 Read inside-out — from the artifact, to the practice, to the system. They're lenses, not a strict sequence, so jump freely once you're in; but this order builds each on the last.
 
-1. **The Canon of Code Craft** — start here. It's the most foundational and the one you already half-know, so it consolidates scattered habits into a single lens (*complexity is the cost*) that recurs in the other two. → fastest entry: **L1-01, The Nature of Complexity**.
+1. **Code Craft** — start here. It's the most foundational and the one you already half-know, so it consolidates scattered habits into a single lens (*complexity is the cost*) that recurs in the other two. → fastest entry: **L1-01, The Nature of Complexity**.
 2. **The Working Developer** — next, because this is where an experienced returner's real gaps live: the tacit, situated skills no book teaches. Highest ROI of the three. → fastest entry: **L1-06, Tactical vs Strategic Judgment**.
 3. **Software Engineering** — last, the broadest build-out: the full lifecycle of a running system. Most infrastructure-heavy, most "operational seniority." → fastest entry: **L1-11, Observability**.
 
