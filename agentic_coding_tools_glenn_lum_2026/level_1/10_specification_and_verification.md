@@ -1,0 +1,37 @@
+## Metadata
+- **Date:** 11-06-2026
+- **Source:** 10_specification_and_verification.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-10 · Specification and Verification
+
+The mental shift that catches most engineers off guard in the agentic era is not that they have to learn a new tool. It is that the deliverable has changed. You are no longer paid primarily to write the code. You are paid to define what the code must do and to confirm that what was produced actually does it. The middle — the typing, the syntax, the boilerplate — has been compressed into something the agent does in seconds. Everything that used to bracket that middle has expanded to fill the gap.
+
+The economic fact underneath this is simple and unforgiving: agents generate code far faster than humans can confirm it is correct. Worse, reviewing agent output often takes *more* effort than reviewing a teammate's pull request, because you cannot lean on the social signal that another engineer thought about the problem the way you would have. The bottleneck of software work has moved from generation to verification, and any workflow that doesn't acknowledge this bottleneck just relocates it — usually into production, where it gets paid for in incidents instead of review time.
+
+There are three stances you can take toward agent output, and only one of them scales. The white-box stance reads every line the agent produced, the way you'd review a junior engineer's first patch. It catches everything but it dissolves the productivity gain entirely; if you're going to read every line, you may as well have written them. The black-box stance ships whatever the agent emits and hopes — "vibe coding," in the current vernacular. It scales beautifully right up until the first incident that traces back to a confidently wrong implementation nobody read. The grey-box stance, the only one worth practising, treats the agent's output as a candidate solution and verifies it against evidence: tests that exercise the behaviour, invariants that must hold, observable outputs that match the specification. You are not certifying the code by inspection. You are certifying it by what it does.
+
+The grey-box stance only works if the specification going in is good enough to verify against. This is where most "the AI wrote bad code" stories actually begin. An underspecified intent combined with high autonomy is the most reliable recipe for confident, plausible, wrong output — and the wrongness is harder to catch than an obvious bug because the code looks like it does the right thing. The agent filled the gap between what you said and what you meant with whatever its priors suggested, and the result compiles, passes the tests it wrote for itself, and quietly does something other than what you needed. The specification is the cheapest place in the entire pipeline to prevent failure, which is precisely why it is the place teams under-invest. Tightening a spec by ten minutes routinely saves hours of review and rework downstream.
+
+Verification has to be against evidence, not appearance. Reading the diff and finding it reasonable is not verification; it is a vibe check dressed up as rigour. The questions that actually matter are mechanical: does the new behaviour pass tests you wrote, not tests the agent wrote? Do the invariants the system relied on still hold? Does the observable output match what the specification demanded? This is verification at the speed of behaviour rather than the speed of reading, which is the only way it keeps up with generation. Line-level review still matters in specific places — security-sensitive code, subtle concurrency, anything where the spec is genuinely hard to articulate — but treating it as the default is what causes teams to stall at review and conclude the agent isn't helping. The agent is helping; the workflow is asking the wrong organ to do the work.
+
+The non-negotiable underneath all of this is that accountability does not transfer to the agent. Whoever approved the merge owns what ships. "The agent wrote it" is not a defence in a postmortem, in a code review, or in your own head at 2 a.m. when something breaks. This sounds like a moral point but it is actually a design point: it tells you exactly what your verification has to cover, which is everything you would be unwilling to defend if it failed. If you can't articulate how you'd know the code is correct, you are not yet ready to merge it, regardless of how green the agent's tests are. Owning un-authored code obligates you to verify it as if you had written it yourself — not line by line, but against evidence strong enough that you'd stake your name on the behaviour.
+
+The skill this topic builds is the discipline to treat specification quality and verification rigour as the two levers that determine output quality, and to notice when you are skipping one of them. Most agentic failures, on close inspection, are not failures of the model or the tool. They are workflows where the spec was vague, the verification was inspection rather than evidence, or both — and the agent dutifully produced something plausible in the gap. Close those two gaps and the failure mode largely resolves. Leave them open and no model upgrade will fix it.
+
+## Level 2 candidates
+
+**The white / grey / black-box stances** — A deeper treatment of the three ways engineers actually relate to agent output, the conditions under which each is rational, and the diagnostic signs that you've drifted from grey-box into black-box without noticing. Worth a Level 2 because the stance is usually implicit and team-level, and surfacing it is often the highest-leverage workflow change available.
+
+**Specification as the upstream lever** — How to write specifications precise enough for an agent to execute against, including what to make explicit that you'd leave implicit for a human collaborator, and the failure patterns of underspecified intent at high autonomy. Worth going deeper because spec craft is genuinely a learnable skill with concrete techniques, and it's the cheapest place in the pipeline to prevent failure.
+
+**Verifying against evidence, not inspection** — The mechanics of evidence-based verification: held-out tests, invariants, behavioural checks, property-based testing, and the specific situations where line-level review remains irreplaceable. Worth a Level 2 because the line between "I verified this" and "I read this and it looked fine" is where most agentic-era bugs hide.
+
+**Accountability and un-authored code** — What it actually means to own code you didn't write, the professional and ethical obligations that creates, and how teams formalise sign-off on agent-produced changes. Worth deeper treatment because the social and process norms here are still being negotiated, and getting them wrong has organisational consequences beyond any individual merge.
+
+**The verification bottleneck and deskilling** — Why teams that optimise only for generation speed predictably stall at review, and how habitual over-trust of agent output erodes the very skills required to verify it. Worth a Level 2 because the deskilling dynamic is slow-moving and easy to miss until the team can no longer catch the failures the agent introduces.
+
+---
