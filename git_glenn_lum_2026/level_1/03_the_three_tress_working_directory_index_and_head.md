@@ -1,0 +1,42 @@
+## Metadata
+- **Date:** 25-06-2026
+- **Source:** 03_the_three_tress_working_directory_index_and_head.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-03 · The Three Trees: Working Directory, Index, and HEAD
+
+Almost every confusing thing Git does in your daily workflow — making you `add` before you `commit`, showing you "nothing to commit" when you can clearly see changes, splitting `git status` into two separate sections of modified files, telling you a file is both modified and staged at the same time — comes from a single fact that Git's interface does a poor job of advertising: at any given moment, Git is tracking three distinct snapshots of your project, not one. Until you can see all three, the command surface looks arbitrary. Once you can, it collapses into a small number of operations that move content between them.
+
+The three snapshots are the working directory, the index, and HEAD. The working directory is the obvious one: the actual files on your disk, the thing your editor sees. HEAD is the other end of the spectrum: the last commit you made, frozen and immutable, sitting in the object database. The interesting one — the one almost no other version control system has, and the one that causes nearly all the confusion — is the index, also called the staging area. The index is a proposed next commit. It is a real, complete snapshot of what your project would look like if you ran `git commit` right now. It is not a list of changes; it is not a queue of files; it is a full tree, just like HEAD, sitting between your working directory and your committed history.
+
+This three-tree design exists because Linus Torvalds, building Git in a hurry in 2005 after the BitKeeper licensing dispute cut off the kernel project's previous tool, deliberately rejected the model where committing is "snapshot whatever happens to be on disk right now." Older systems treat the commit as an automatic capture of the working directory. Git treats the commit as a deliberate, constructed object — something you assemble piece by piece in the index and then promote to history once it looks right. The staging area is not an inconvenience between you and your commit; it is the entire point. It is how Git makes commit composition an inspectable act rather than a side effect of saving files.
+
+Once you see this, the vocabulary stops being weird. "Staging" a change means copying it from the working directory into the index. "Committing" means promoting the index to a new HEAD. "Unstaging" means pulling something back out of the index without touching your files on disk. The reason `git status` has two separate sections — "Changes to be committed" and "Changes not staged for commit" — is that it is comparing two different pairs of trees: index versus HEAD (what your next commit would contain) and working directory versus index (what you have not yet decided to include). They are genuinely different questions with genuinely different answers, and the same file can appear in both sections at once if you staged one change, then kept editing.
+
+The same lens makes `git diff` legible. The bare `git diff` command compares the working directory against the index — it shows you what you have not yet staged. `git diff --staged` (or `--cached`) compares the index against HEAD — it shows you what your next commit will actually contain. `git diff HEAD` compares the working directory against HEAD, skipping the index entirely. The single most common "why is `git diff` showing nothing" moment is staging a change and then running plain `git diff`: there is nothing between your working directory and the index because they match, and you needed `--staged` to ask the question you actually had. Every Git diff command is just a choice of which two of the three trees to compare.
+
+The same trick works on the commands that move things around rather than just compare them. `git add` copies from the working directory into the index. `git commit` promotes the index to a new HEAD. `git reset` moves HEAD and, depending on its flags, optionally drags the index and working directory along with it. `git restore` (and the older, overloaded `git checkout`) goes the other direction, pulling content from the index or from HEAD back into the working directory, overwriting what is there. The reason `checkout` was historically so confusing — and the reason newer Git split it into `restore` and `switch` — is that the old command was doing wildly different tree operations depending on its arguments, and the interface gave you no way to tell which one you were about to trigger.
+
+The practical skill this topic builds is small and enormously high-leverage: for any Git command that confuses you, ask which two trees it is comparing or which tree it is moving content into. That single question resolves the staging confusion, the "diff shows nothing" confusion, the difference between the three flavors of reset, and most of the panic around `checkout`. You stop memorizing commands and start reading them. The interface is still leaky, but the model underneath is clean, and the model is what you need.
+
+## Level 2 candidates
+
+**The staging area / index as a real tree** — Covers the index not as a metaphor but as an actual file (`.git/index`) holding a full snapshot of blob hashes, structurally parallel to HEAD's tree. Worth going deeper because seeing the index as a concrete object rather than a vague "area" is what makes partial staging and the more exotic index manipulations stop feeling magical.
+
+**`git add` as a tree operation** — Reframes adding a file as copying a blob's hash into the index, which explains why re-adding the same file with new contents simply replaces the entry rather than queuing two changes. Worth a deeper pass because it directly connects this topic back to the object model from L1-01 and dissolves the "is `add` tracking files or contents" confusion in one move.
+
+**`git diff` vs `git diff --staged` vs `git diff HEAD`** — Maps each diff variant to a specific pair of trees being compared, turning the most common "why is this showing nothing" moment into a deterministic lookup. Worth deeper exploration because diff is the primary read-only tool you'll use to verify your assumptions before every destructive command, and fluency here pays back constantly.
+
+**`git checkout` / `git restore` / `git switch` semantics** — Explains why the original `checkout` command historically did such different things depending on its arguments, and how the newer split into `restore` (file content) and `switch` (branch) cleans up the dangerous overloading. Worth going deeper because this is the command surface most likely to silently destroy uncommitted work if you misread which tree operation you just triggered.
+
+**Partial staging with `git add -p`** — Covers staging at the hunk level rather than the file level, letting you compose a clean commit even when you edited multiple unrelated concerns in one sitting. Worth deeper treatment because it's the technique that turns the index from a mild inconvenience into a genuine authoring tool, and it's almost impossible to use confidently without already having the three-tree model in place.
+
+---
+
+## Original Content
+
+#### L1-03 · The Three Trees: Working Directory, Index, and HEAD
+Most day-to-day Git confusion — "why do I have to `add` before I `commit`," "why did `git diff` show nothing," "what does staged even mean" — comes from not tracking that Git maintains three distinct snapshots of your project at all times: the working directory (your actual files), the index/staging area (a proposed next commit), and HEAD (the last commit). This three-tree model exists because Linus Torvalds, designing Git in 2005 after the BitKeeper licensing dispute forced the kernel project to build its own VCS in days, wanted commit construction to be a deliberate, inspectable act rather than an automatic snapshot of whatever's on disk — a deliberate rejection of how older systems worked. Once you can name, for any Git command, *which two trees it's comparing or moving between*, the entire command surface stops looking arbitrary.

@@ -1,0 +1,42 @@
+## Metadata
+- **Date:** 25-06-2026
+- **Source:** 11_undoing_things_reset_revert_and_checkout.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-11 · Undoing Things: Reset, Revert, and Checkout
+
+The reason "undoing" in Git feels disproportionately stressful is that the word "undo" is doing too much work. In most software, undo is a single reversible operation with predictable scope: it walks one step backward along a linear history. In Git, there is no single undo — there are at least three commands that all get reached for under the same emotional conditions ("I did something wrong, get me out of this"), and they each touch a different part of the repository, with wildly different safety properties. The panic-and-copy-paste cycle around these commands isn't a sign you don't know Git; it's a sign that the surface vocabulary collapses three genuinely different operations into one English word.
+
+The fastest way out of that confusion is to stop asking "what's the undo command" and start asking "which of the three trees am I trying to change, and am I rewriting history or adding to it?" Every undo operation in Git is some combination of those two questions. Once you can answer them for a given command, you can predict its effect — and, more importantly, predict whether it's safe to run on a branch other people are also working on.
+
+Reset is the command that moves where a branch pointer points. By default it moves the current branch ref to a different commit, which means commits that used to be reachable from that branch may no longer be. This is what people mean when they say reset "rewrites history": it doesn't actually destroy commits (the objects still exist, and you can usually recover them via the reflog), but it changes which commits the branch claims as its own. Depending on the flag you pass, reset can stop there (soft, touching only the ref), or it can also rewind the index to match (mixed, the default), or it can also rewind the working directory to match (hard, which is the variant that overwrites your uncommitted work and is the one people lose sleep over). Reset is the right tool when the history you're rewriting is yours alone and hasn't been shared yet.
+
+Revert is the opposite philosophy. Instead of moving the branch pointer backward, it computes the inverse diff of a target commit and applies that diff as a brand-new commit on top of the current history. The original commit stays exactly where it was, fully reachable, fully part of the branch's record. What you get is a new commit whose net effect is to cancel out the old one. This sounds clunkier than just "rewinding" — and it is, locally — but it's the only one of the three undo commands that's safe to run on a branch other people have already pulled. Because revert adds to history rather than mutating it, collaborators just see a new commit show up; nothing they've already fetched suddenly disagrees with what's on the remote. If you remember nothing else, remember this: revert is for shared history, reset is for private history.
+
+Checkout — and its modern successor restore — is a different beast entirely. Neither of these commands moves any branch pointer or creates any new commit. They overwrite the working directory (and optionally the index) with content from somewhere else in the object database, usually HEAD. This is what you reach for when you've edited a file, haven't staged or committed the change, and want to throw the edit away. The destructiveness here is local and contained: you can lose uncommitted work, but you can't damage the commit graph. The historical confusion around checkout is that the same command was also used to switch branches, inspect old commits, and create new branches, depending on its arguments — which is precisely why recent Git versions split it into restore (for "discard changes in files") and switch (for "move HEAD to a different branch"), two narrower commands that are much harder to misuse.
+
+The lookup table that makes all of this click is the one from L1-03: which of the three trees (working directory, index, HEAD) does each command touch? Restore overwrites the working directory (and optionally the index) from a chosen tree, but leaves HEAD alone. Reset moves HEAD itself, and optionally drags the index and working directory along with it. Revert leaves HEAD where it is, adds a new commit on top, and updates the index and working directory to reflect that new commit. Once you can name the trees being moved, the question "did I just lose work?" becomes answerable instead of dread-inducing — and in almost every case the answer involves the reflog, which retains a record of where HEAD has been for roughly 90 days and is the reason most local "disasters" are recoverable if you act before garbage collection runs.
+
+The practical upshot is that fluency here is what lets you stop being afraid of Git. Most of the copy-paste behavior people fall into around undo commands isn't because the commands are hard — it's because the cost of guessing wrong feels unbounded, so people freeze and reach for whatever Stack Overflow answer matches the surface symptom. Replace that with a two-question diagnostic — "private or shared history?" and "which trees do I need to change?" — and the right command falls out of the answer almost every time. That diagnostic is the entire skill.
+
+## Level 2 candidates
+
+**`git reset --soft/--mixed/--hard`** — Covers the three flags that determine how far reset rewinds: ref only, ref plus index, or ref plus index plus working directory. Worth a deep dive because the precise mapping between flag and tree is the single most useful piece of operational knowledge in this whole topic, and getting it wrong is the most common way to actually lose work locally.
+
+**`git revert`** — Covers the mechanics of inverse-diff commits and the special case of reverting a merge commit (which requires choosing a parent). Worth deeper treatment because reverting merges is its own pitfall — the naive command often does something subtly wrong — and because revert is the only safe answer for shared branches, making it disproportionately important in team settings.
+
+**`git restore` (working tree vs staged)** — Covers the modern split of the overloaded checkout into restore (file content) and switch (branch movement), including how `--staged` toggles between working-directory and index targets. Worth going deeper because restore's two modes correspond exactly to the two most common "I changed my mind about this edit" scenarios, and conflating them is where people accidentally unstage work they meant to keep staged.
+
+**Recovering "lost" commits via reflog** — Covers how to find and recover commits that are no longer reachable from any branch by inspecting HEAD's movement history. Worth a dedicated descent because the reflog is the actual safety net that makes reset (and most other local mistakes) survivable, and most people don't know it exists until they desperately need it.
+
+**`git clean`** — Covers the one genuinely unrecoverable destructive operation in the local Git surface: deleting untracked files from the working directory. Worth covering separately precisely because it sits outside the reflog safety net — there's no object-database record of an untracked file — which makes it the one "undo-adjacent" command that demands a different mental model.
+
+---
+
+## Original Content
+
+#### L1-11 · Undoing Things: Reset, Revert, and Checkout
+This is the topic most directly tied to the panic-and-copy-paste cycle, because Git has *three* commands that all sound like "undo" but operate on completely different trees and have completely different safety properties. `reset` moves where a branch ref points (and optionally rewinds the index/working directory with it) — it rewrites history. `revert` creates a *new* commit that undoes a previous one's changes — it adds to history rather than rewriting it, which is why it's the only one of the three that's safe on shared branches. `checkout`/`restore` discard local changes by overwriting the working directory from another tree. Knowing which of the three trees from L1-03 each command touches is what turns "which undo command do I need" from guesswork into a lookup.

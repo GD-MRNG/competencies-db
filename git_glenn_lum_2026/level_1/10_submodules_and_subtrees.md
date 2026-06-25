@@ -1,0 +1,40 @@
+## Metadata
+- **Date:** 25-06-2026
+- **Source:** 10_submodules_and_subtrees.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-10 · Submodules and Subtrees
+
+Most of Git's design feels, once you see the object model, like a small set of ideas applied with unusual consistency. Submodules and subtrees are the exception. They are the place where Git visibly strains — where the clean "every repository is a self-contained graph of objects" premise meets the messy reality that real projects depend on other projects, and the resulting machinery feels bolted on rather than discovered. If you've ever spent an afternoon fighting a submodule and come away unsure what state it was even in, that's not your failure as a Git user. That's the abstraction leaking.
+
+The problem these tools exist to solve is narrow but real: sometimes you need one repository to depend on another repository's history, not just a snapshot of its files. A package manager gives you a version pin and a tarball — that's fine for most dependencies, but it throws away the original commit graph, the ability to step into the dependency's history, and the ability to make local changes traceable back to upstream. Vendoring by copy-paste is worse: you lose every link to where the code came from. Submodules and subtrees are Git's two answers to "I want to compose repositories without losing history," and they make opposite tradeoffs.
+
+A submodule is, at its core, a pointer. When you add another repository as a submodule, your repo doesn't gain that repo's files in any normal sense — it gains a single recorded fact: "at this path, there should be a checkout of that repository at exactly this commit SHA." The submodule's actual objects live in their own `.git` directory, fetched separately, and your repo's tree object just stores the path and the target SHA. This is precise in the way Git is usually precise: the dependency is pinned to an immutable, content-addressed point in another graph, and updating it is an explicit act that produces a visible change in your repo's history (the pointer moved from one SHA to another). The cost of that precision is that you now have two repositories sharing a working directory, each with its own HEAD, its own branches, and its own ideas about what state it's in. The classic failure mode — `git status` showing the submodule as "modified" with no diff you can find — is just this: the recorded pointer no longer matches what's checked out inside the submodule directory, and Git is correctly telling you so in a way that gives you no hint of what to do about it.
+
+A subtree takes the opposite approach: instead of keeping the other repository separate and pointing at it, you merge its history directly into yours. The dependency's commits become part of your commit graph, its files become part of your tree, and there is no second repository sitting inside your working directory pretending to be a folder. Updates work by merging upstream changes the same way you'd merge any other branch. The tradeoff is that your repo grows, the boundary between "your code" and "the dependency" exists only by convention, and round-tripping changes back upstream requires extracting them with a separate command. You've traded precision (no single SHA pins the dependency) for simplicity (no second repository to manage).
+
+Neither feels as smooth as the rest of Git, and the reason is structural. Submodules are awkward because they expose, rather than hide, the fact that you're working with two object graphs at once — every Git command now has to ask "which repo are we talking about?" and most of them don't ask cleanly. The detached HEAD problem inside submodules is the canonical example: cloning a submodule checks out a specific commit, not a branch, so your "fix" inside the submodule is committed onto nothing, easy to lose, and easy to forget to push. Subtrees are awkward in a different way: they require a separate `git subtree` command (historically a contrib script, not a first-class subcommand) and offer no easy answer to the question "what version of the upstream am I currently on?" because that information is implicit in the merged history rather than stored as a pin.
+
+The practical takeaway is that you should know both exist, recognize the situations that call for them, and lean hard toward not using either if you can avoid it. Most teams that thought they needed submodules actually needed a package manager, a monorepo, or — increasingly — to just publish the shared code as a versioned artifact. The legitimate uses are narrower than the apparent ones: vendoring a forked dependency you're actively patching, composing repositories with strict licensing or access boundaries, or integrating with a build system that genuinely requires the dependency's source to be present in-tree. When one of those applies, submodules give you precision and a clear audit trail of dependency updates; subtrees give you a simpler day-to-day working experience at the cost of a fuzzier dependency boundary.
+
+The skill this topic builds isn't fluency with either tool — it's recognizing the problem class early enough to ask whether you should be reaching for these tools at all. When the answer is yes, knowing which tradeoff you're making (precision and pain, or simplicity and fuzziness) keeps you from being surprised by the one you didn't pick.
+
+## Level 2 candidates
+
+**Submodules as commit pointers** — Covers the mechanical reality that a submodule is recorded in your tree as a path plus a target SHA, with the actual objects living in a separate `.git` directory. Worth a deeper look because nearly every confusing submodule moment — phantom "modified" status, mysterious diffs, failed updates — resolves immediately once you can name exactly which pointer is or isn't matching which checkout.
+
+**Detached HEAD inside submodules** — Covers why a freshly cloned or updated submodule lands on a specific commit rather than a branch, and what that means for any commits you make inside it. Worth descending into because this is the single most common way real work gets silently orphaned, and the recovery pattern (check out a branch first, then commit) is mechanical once you see why it's needed.
+
+**Subtree merge** — Covers the alternative model where another repository's history is folded directly into yours via merge, with no second repo on disk. Worth a deeper look because the `git subtree` command surface is small but non-obvious, and the merge-based update workflow has implications for your history graph that are worth seeing before you commit to the approach.
+
+**When to avoid both** — Covers the decision framework for choosing a package manager, a monorepo, or a published artifact over either Git-native option. Worth treating as its own topic because the most valuable thing you can learn here is often "don't" — and the reasoning behind that recommendation is what lets you push back when someone suggests submodules for a problem that doesn't need them.
+
+---
+
+## Original Content
+
+#### L1-10 · Submodules and Subtrees
+When one repository needs to depend on another repository's history rather than just its latest snapshot (vendoring a library, sharing code across projects without a package manager), Git offers two distinct, both somewhat clunky, solutions. Submodules store a *pointer* to a specific commit in another repo, which is precise but famously easy to get into a confusing detached state with. Subtrees instead merge another repo's history directly into yours, trading precision for simplicity. Knowing both exist — and why neither feels as smooth as the rest of Git — saves you from reaching for ad hoc copy-paste vendoring or fighting a submodule for hours without understanding what state it's actually in.

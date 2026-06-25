@@ -1,0 +1,44 @@
+## Metadata
+- **Date:** 25-06-2026
+- **Source:** 02_refs_branches_tags_head.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-02 · Refs: Branches, Tags, and HEAD
+
+The single most expensive misconception a Git user can carry is that a branch is a thing — some container, folder, or copy that holds a sequence of commits and grows as you work on it. It isn't. A branch in Git is a 41-byte text file. That's it. Open `.git/refs/heads/main` in any editor and you'll see a single SHA followed by a newline. Everything you think of as "the branch" — the commits, the history, the divergence from other branches — lives in the object database from L1-01. The branch itself is just a name pointing at one commit, and that commit's parent pointers do all the rest of the work.
+
+This is the most load-bearing simplification in Git, and it's what makes the system feel different from every version control tool that came before it. In CVS or Subversion, branching meant copying a directory tree — a real, physical operation whose cost scaled with the size of your project. Teams avoided branching because it was expensive, and as a result, parallel work happened in awkward, ad hoc ways. In Git, creating a branch is writing 41 bytes to disk. Deleting a branch is deleting those 41 bytes. The commits themselves are untouched, because the branch never owned them — it only named one of them. This is why `git branch feature` returns instantly even on a repository with a decade of history, and why deleting a branch never deletes commits by itself. You're manipulating names, not data.
+
+Tags are the same idea, with one philosophical difference: tags don't move. A branch ref advances every time you commit on that branch — Git updates the file in `.git/refs/heads/` to point at the new commit. A tag ref, by contrast, is meant to stay pinned to a specific commit forever, which is why tags are the right tool for marking releases. The lightweight version of a tag is literally identical to a branch in file format — a name pointing at a SHA — but conventionally never updated. The annotated version is a full object in the database with its own metadata (tagger, date, message, optional signature), which is what release tooling like `git describe` relies on. The distinction matters more than it looks: a lightweight tag is a sticky note, while an annotated tag is a signed certificate.
+
+Then there's HEAD, which is what makes "where am I right now" a question Git can answer at all. HEAD lives at `.git/HEAD`, and in normal operation it doesn't contain a SHA — it contains a reference to another ref, something like `ref: refs/heads/main`. This indirection is the entire mechanism behind "being on a branch." When you commit, Git follows HEAD to find the current branch ref, creates a new commit object with the old branch tip as its parent, and updates the branch ref to point at the new commit. HEAD itself never changed — it still says `ref: refs/heads/main` — but the thing it points to through that ref has advanced. This is what "the branch moved forward" actually means at the file level.
+
+Once you see HEAD as a ref-to-a-ref, detached HEAD stops being a scary error message and becomes a precise technical state. When you check out a specific commit instead of a branch — `git checkout abc123` instead of `git checkout main` — Git can't write `ref: refs/heads/something` into HEAD because you didn't name a branch. So it writes the SHA directly. HEAD now points at a commit instead of at a branch that points at a commit. You can still work, still commit, still inspect — but any new commits you create have nothing naming them. The branch advancement mechanism described above has no branch ref to advance, so the new commits exist in the object database but are reachable only through HEAD itself. Move HEAD elsewhere (by checking out a branch) and those commits become orphaned: still in the database, recoverable via the reflog for a while, but invisible to almost every normal command. This is exactly what the warning is telling you, in precise technical terms.
+
+The remote-tracking refs (`origin/main`, `origin/feature-x`) are the same mechanism applied to remotes. They live in `.git/refs/remotes/origin/` and are, again, just files containing SHAs. The critical thing to understand is that `origin/main` is not a live connection to the remote — it's a cached pointer recording what your local Git last saw `main` pointing to on `origin` the last time you fetched. It can be arbitrarily stale. Half the confusion around "but the remote has new commits" comes from treating `origin/main` as if it's reading from the network in real time, when it's actually reading from a file you last updated minutes or days ago.
+
+The practical payoff of all this is that an enormous category of Git behavior becomes predictable. Why is branching cheap? Because it's writing 41 bytes. Why does deleting a branch not lose your work? Because you only deleted a name; the commits remain in the object database, reachable through other refs or the reflog. Why does detached HEAD warn you? Because new commits in that state aren't named by any branch ref. Why can `origin/main` be wrong? Because it's a local cache, not a live view. Every one of these stops being a quirk of the command-line interface and becomes a direct consequence of how refs actually work on disk. You're no longer memorizing rules — you're reading file contents.
+
+## Level 2 candidates
+
+**Branches as movable pointers** — Covers the mechanics of how a branch ref advances on commit and why that makes branching and deletion cheap operations on names rather than data. Worth deeper exploration because it's the conceptual hinge that separates Git's branching model from every centralized VCS that came before, and the contrast clarifies why some workflows (cheap topic branches, throwaway experiments) only became viable with Git.
+
+**HEAD and the reflog** — Covers the reflog as a private, append-only journal of everywhere HEAD has pointed, including commits no branch currently references. Worth a deep dive because it's the single most powerful recovery tool in local Git — nearly any "I lost my work" panic resolves to a reflog lookup, and knowing this changes your risk tolerance for destructive operations.
+
+**Detached HEAD** — Covers the precise state where HEAD points directly at a commit instead of at a branch ref, and the orphaning behavior that follows when you move away. Worth deeper exploration because the same mechanism shows up in subtle places (checking out tags, inspecting old commits, submodule internals) where the disorientation is amplified by context.
+
+**Tags: lightweight vs annotated** — Covers the format difference between a lightweight tag (a ref file) and an annotated tag (a full object with metadata, signature, message). Worth a deep dive because release tooling, signing workflows, and `git describe` all depend on the distinction, and most teams get this wrong at least once before they learn to default to annotated.
+
+**Tracking branches and remotes/origin refs** — Covers what `origin/main` actually is (a cached pointer in `.git/refs/remotes/`) and how it relates to the upstream configuration that links a local branch to a remote one. Worth deeper exploration because the cache-vs-live distinction is the source of nearly all "but I already pulled" confusion, and the upstream linkage is what makes `git push` and `git pull` know where to go without arguments.
+
+**The symbolic ref mechanism** — Covers the indirection that lets HEAD contain `ref: refs/heads/main` rather than a SHA, and how Git resolves chains of refs. Worth a deep dive because it's the precise mechanism that makes "switching branches" semantically different from "checking out a commit," and understanding it makes detached HEAD feel inevitable rather than mysterious.
+
+---
+
+## Original Content
+
+#### L1-02 · Refs: Branches, Tags, and HEAD
+A "branch" in Git is not a structure that contains commits — it's a 41-byte text file containing a single SHA, living in `.git/refs/heads/`. This is the most load-bearing simplification in the entire system: branches are *cheap* (instant to create, trivial to delete) specifically because a branch is a name, not a copy. Tags are the same idea frozen in place rather than moving forward with each commit. HEAD is a ref to a ref — it's what makes "where am I right now" a well-defined question. Understanding this turns "detached HEAD state," one of the most disorienting messages in Git, into something predictable rather than alarming: it's just HEAD pointing directly at a commit instead of at a branch.

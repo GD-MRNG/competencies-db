@@ -1,0 +1,46 @@
+## Metadata
+- **Date:** 25-06-2026
+- **Source:** 01_content_addressable_storage_and_object_database.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-01 · Content-Addressable Storage & the Object Database
+
+Most people learn Git as a set of commands that happen to produce useful results. That is the wrong end of the telescope. Git is a small, surprisingly elegant database with a leaky command-line interface bolted on top, and almost every confusing thing you've ever seen it do — the cryptic SHAs, the way `git cat-file` seems to know things it shouldn't, the fact that two identical files across a thousand commits somehow don't bloat the repo — is a direct, mechanical consequence of one design decision made in 2005: name every piece of data by a hash of its own contents.
+
+That decision is called content-addressable storage, and it's the substrate everything else in Git sits on. The idea predates Git by decades — it shows up in the Plan 9 file system, in academic storage research from the 1990s, in deduplicating backup systems — but Linus Torvalds was the one who realised it was the right primitive for a version control system. The move is this: instead of giving each object a name and then asking "what's inside it?", you compute a cryptographic hash of the contents and use that hash as the name. The content, in a real sense, names itself. Two files with identical bytes get identical names, automatically, with no coordination required. A file's name changes if and only if its content changes. There is no central authority handing out IDs, because the math is the authority.
+
+Once you accept that premise, a lot of Git's apparent weirdness collapses into a single sentence. Why does a SHA never change once a commit exists? Because changing it would require the content to change, in which case it'd be a different object with a different name — the original is still sitting there, untouched. Why do two identical files in different commits take zero extra space? Because they hash to the same name, so Git stores exactly one copy and both commits point at it. Why is `git cat-file` able to dump the raw contents of any object if you just give it a SHA? Because the object database is literally a key-value store from hash to content, and `cat-file` is the lookup primitive. None of these are tricks. They're all the same fact restated.
+
+The object database stores four kinds of things, and you should know them by name because every other Git concept is built out of them. A blob is a file's contents — just the bytes, with no filename and no metadata attached. A tree is a directory listing: a list of names paired with the hashes of the blobs or sub-trees they point to. A commit is a tiny object containing one tree hash (the snapshot of your project at that moment), the hashes of its parent commit(s), an author, a timestamp, and a message. A tag, in its annotated form, is an object that points at another object with a message attached. That's it. Everything you've ever done in Git is some combination of creating, reading, or pointing at one of these four object types.
+
+Notice what this implies about how Git thinks about your project. Git does not store diffs between versions — that's how older systems like CVS and Subversion worked, and it's the model most people unconsciously assume Git uses. Git stores complete snapshots. Every commit points to a tree that points to blobs that represent every file's full contents at that moment. The reason this isn't catastrophically wasteful is precisely the content-addressing trick: unchanged files across commits share the same blob, because identical content produces identical hashes. The "diff" you see in `git log` or `git show` is computed on the fly by comparing two snapshots; it isn't stored anywhere. This is also why renames are detected heuristically rather than recorded — Git literally has no concept of a file being "moved," only of a tree entry pointing at the same blob under a different name.
+
+The actual storage lives in `.git/objects/`, and you can poke at it with no Git commands at all. Each object is gzip-compressed and dropped into a file whose path is its own SHA — the first two characters as a directory, the remaining thirty-eight as the filename. So an object with hash `e69de29...` lives at `.git/objects/e6/9de29...`. This is called a loose object. Over time, Git compacts thousands of loose objects into packfiles for efficiency, but the addressing scheme stays the same: you ask for a hash, you get back the content. The whole repo is, underneath, a glorified hash table.
+
+There is one subtlety worth knowing about, because it's slowly migrating through the ecosystem: the hash function. Git originally used SHA-1, which has since been shown to be vulnerable to collision attacks — researchers can construct two different blobs that produce the same hash. For most workflows this is irrelevant, but it matters in two ways. First, Git is in the middle of a transition to SHA-256, and you'll occasionally see tooling or repositories configured for the new format. Second, the fact that the hash is the content's identity has security implications, not just naming ones: if you can forge a collision, you can in principle smuggle different content under an expected name. The fix is the same fix the rest of the world is applying — a stronger hash function — and the model itself doesn't change.
+
+The reason to internalise all of this before learning anything else about Git is that it converts the rest of the system from arbitrary into derivable. A branch isn't a container of commits — it's a pointer to a hash. A merge isn't a structural operation — it's a new commit object with two parent hashes. A rebase doesn't move commits — it creates new ones with different parent hashes, which is why their SHAs change. Once you can see the object graph behind any command, the CLI stops being a list of incantations and starts being a window. Sometimes a badly-designed window, sure. But you can always check what's on the other side of it, because the other side is just a key-value store you can read.
+
+## Level 2 candidates
+
+**Blobs** — Covers the fact that Git tracks raw content with no notion of filename, and that filenames live in trees rather than on the blobs themselves. Worth a deeper look because it's the mechanical reason renames are detected heuristically and the reason "tracking files" is a category error when describing what Git actually does.
+
+**Trees** — Covers how directory structure is itself a hashed, versioned object pointing to blobs and sub-trees by hash. Worth deeper exploration because seeing a tree object directly is what makes `git diff` distinguishing structural from content changes feel obvious rather than magical.
+
+**Commits** — Covers the minimal commit object: one tree hash, zero or more parent hashes, author, timestamp, message. Worth its own descent because the parent-pointer mechanism is what makes history a DAG rather than a list, and that single fact underpins all of Group 2.
+
+**The `.git/objects` directory** — Covers the on-disk layout: two-character sharded directories, gzipped object files, and how to read them by hand with `git cat-file` or even basic shell tools. Worth deeper exploration because actually opening a real object file is the moment "Git internals" stops feeling like a separate, mystical layer.
+
+**SHA-1 vs SHA-256 transition** — Covers why a cryptographic hash function with collision resistance matters when the hash *is* the identity, and the state of Git's ongoing migration. Worth a focused descent if you work on security-sensitive code, sign commits, or maintain tooling that has to handle both hash formats.
+
+**Loose objects vs packfiles** — Covers how Git compacts thousands of individual object files into a small number of delta-compressed packfiles, and what `git gc` is actually doing when it runs. Worth descending into when a repo starts behaving strangely with size or performance, because the loose/packed distinction is the first thing to check.
+
+---
+
+## Original Content
+
+#### L1-01 · Content-Addressable Storage & the Object Database
+Git's core trick, inherited conceptually from systems like the Plan 9 file system and content-addressable storage research from the 1990s, is that *everything* — file contents, directory structures, commits — is stored as an immutable object, named by the SHA-1 (now transitioning to SHA-256) hash of its own content. This single decision is why Git "just works" for huge, distributed history: there's no central authority assigning IDs, because the content assigns its own ID. Once this lands, commands that look like magic — `git cat-file`, why two identical files in different commits take zero extra space, why a SHA never changes once committed — become obvious restatements of the same fact. This is the one concept worth understanding before any other, because almost every other Level 1 topic is really just "a particular way of navigating or mutating this object graph."

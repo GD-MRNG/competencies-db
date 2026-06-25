@@ -1,0 +1,46 @@
+## Metadata
+- **Date:** 25-06-2026
+- **Source:** 05_merging.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-05 · Merging
+
+You've probably resolved a merge conflict before by squinting at the angle brackets, picking the version that "looks right," deleting the markers, and hoping. That works often enough to be reinforcing, but it's the same copy-paste relationship with Git that this course is trying to dismantle — you're pattern-matching on the symptom (weird symbols in a file) without a model of what produced them or what Git is actually asking you to decide. Merging is one of the cleanest places to replace that pattern-match with a causal model, because the algorithm underneath is small, old, and once you see it the conflict markers stop being noise.
+
+Start from the problem merging exists to solve. Two branches share a common ancestor commit — the point in the DAG where they last agreed — and each has since accumulated its own commits. Now you want them to become one history again. The naive approach, which earlier version control systems actually used, is a two-way diff: compare the two branch tips directly and flag every line where they differ. The fatal weakness of that approach is that it can't tell the difference between "you changed this line and I didn't" and "I changed this line and you didn't" — both look identical from a two-way comparison. So the system has to ask the human about every difference, even the ones where only one side actually did anything.
+
+The three-way merge fixes this by bringing the common ancestor into the comparison. Git looks at each region of the file across three versions: the ancestor, your side, and their side. If only one side changed a region relative to the ancestor, Git takes that change automatically — there's no ambiguity about intent. If both sides changed the same region relative to the ancestor in different ways, that's a real conflict, because Git genuinely doesn't know which intent should win, and only then does it ask you. This is why most merges complete silently: most regions of most files were only touched by one side, and the ancestor tells Git that unambiguously.
+
+This is also what the conflict markers actually mean. When you see a block bracketed by `<<<<<<<`, `=======`, and `>>>>>>>`, you're not looking at "two random versions of some code." You're looking at the two competing resolutions of a region that both branches edited since the ancestor. The top section is what your branch did to the ancestor's version; the bottom section is what their branch did. Your job isn't to pick one — it's to produce the version that correctly expresses both intents. Sometimes that's one side verbatim, sometimes it's a blend, sometimes it's something neither side wrote. (You can ask Git for the ancestor's original text with `diff3`-style markers, which makes this dramatically easier when the two sides have diverged in subtle ways.) This also explains a question that confuses people: why does the same change merge cleanly in one context but conflict in another? Because conflicts are about overlapping edits to overlapping line ranges since the ancestor, not about identical content. Edit nearby lines on both sides and you can conflict even when the two edits don't logically interfere.
+
+Once a merge completes, Git records the result as a merge commit — a commit with two parents instead of the usual one. This is the mechanism that makes history a true DAG rather than a tree: the merge commit is the point where the two diverged lines reconverge, and both parents remain reachable from it. This is also why `git log` on a recently-merged branch shows commits "out of chronological order" — it's walking both parent chains, not a single timeline. Flags like `--first-parent` exist precisely to hide one of those chains when you want the narrative of the integration branch rather than the literal history of every commit that fed into it.
+
+There's a special case worth naming: the fast-forward merge. If your branch's tip is a direct ancestor of the branch you're merging in — meaning you haven't made any commits since you diverged — there's nothing to actually three-way-merge. Git just slides your branch pointer forward to the other tip. No merge commit gets created, because no reconciliation was needed. This is why some merges produce a merge commit and others don't, and why `--no-ff` exists as an explicit override: some teams want the merge commit anyway, as a permanent marker that "a feature branch was integrated here," even when fast-forward was possible.
+
+Everything above is the mechanics. The reason merge gets re-litigated endlessly in team chat is that there's a layer on top: the policy question of whether the DAG should record what literally happened or a curated narrative of it. A standard merge commit preserves the literal history — every commit on the feature branch survives, with its original SHA, parented exactly as it was. Squash merging takes the entire feature branch's diff and collapses it into a single new commit on the target branch, discarding the intermediate commits entirely. Rebase-and-merge replays each feature commit onto the target tip and then fast-forwards, producing linear history with no merge commits at all. These aren't different algorithms in any deep sense — they're three different answers to "what do you want the graph to look like a year from now," and the right answer depends on whether your team values forensic detail or readable narrative more.
+
+The skill this topic builds is small but high-leverage: when you see conflict markers, you should be able to name, without thinking, what each section is and what change it represents relative to the ancestor. From there the rest follows. The conflict isn't a Git failure — it's Git correctly telling you the one thing it can't decide on its own.
+
+## Level 2 candidates
+
+**Three-way merge algorithm** — Covers the precise mechanics of how Git uses the common ancestor to classify each region as "auto-mergeable" or "conflicting." Worth a deeper dive because it explains the non-obvious behavior of why nearby-but-non-overlapping edits can still conflict, and why merge results sometimes depend on which merge base Git picks when there are multiple candidates.
+
+**Conflict markers and resolution** — Covers reading the `<<<<<<<` / `=======` / `>>>>>>>` blocks fluently, including the `diff3` variant that surfaces the ancestor's original text. Worth going deeper because conflict resolution is the single highest-frequency moment where a working model pays off, and most engineers never learn the `diff3` configuration that makes hard conflicts tractable.
+
+**Merge commits and the second parent** — Covers what the two-parent structure means for log traversal, why `git log` appears to show commits out of order after a merge, and what `--first-parent` is actually filtering. Worth a Level 2 because it's the bridge between merging and reading history accurately, and it unlocks several inspection patterns that are otherwise mysterious.
+
+**Merge strategies (recursive, ort, octopus)** — Covers the named algorithms Git can use under the hood and when each one applies, including the relatively recent switch from `recursive` to `ort` as the default. Worth deeper exploration because it explains why the same merge can behave subtly differently across Git versions, and when you'd intentionally merge more than two branches in one operation.
+
+**Squash merging** — Covers the workflow where a feature branch's entire diff collapses into a single commit on the target. Worth a Level 2 because it has real tradeoffs — clean linear history at the cost of losing per-commit attribution and bisect granularity — and many teams adopt it without understanding what they're giving up.
+
+**Fast-forward vs non-fast-forward** — Covers when Git skips creating a merge commit entirely, and why `--no-ff` exists to force one anyway. Worth deeper exploration because the choice between these is one of the load-bearing decisions in a team's branching policy, and it directly shapes what your `main` branch's history looks like a year in.
+
+---
+
+## Original Content
+
+#### L1-05 · Merging
+A merge is Git's answer to "two lines of history diverged from a common point and need to become one again" — and the algorithm (three-way merge, comparing both branch tips against their common ancestor) was itself an evolution from earlier two-way diff/patch tooling that couldn't distinguish "you changed this" from "I changed this" cleanly. Understanding the three-way merge is what makes conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) interpretable as "here's what changed on each side since the common ancestor" rather than inscrutable noise. This is also where team workflow decisions (merge commits vs squash vs rebase-and-merge) actually originate — they're different philosophies about whether the DAG should preserve literal history or a cleaned-up narrative of it.

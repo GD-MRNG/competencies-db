@@ -1,0 +1,42 @@
+## Metadata
+- **Date:** 25-06-2026
+- **Source:** 12_inspecting_history.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-12 · Inspecting History
+
+Most of the fear around Git isn't really about Git — it's about acting blind. You type a command, you hope it does what you meant, and if it doesn't, you go looking for the undo. The engineers who seem unflappable around Git aren't braver or smarter; they've just made looking cheap. Before they touch anything destructive, they've already seen the shape of the graph, the contents of the commit, the diff between where they are and where they're going. The destructive command, when it comes, is the last step of a process that started with reading.
+
+This is what the inspection toolkit is for, and it deserves to be treated as a category in its own right rather than a set of flags you reach for when something has already gone wrong. The commands in this group share one property: they don't mutate anything. They don't move refs, they don't rewrite history, they don't touch the working directory. They are pure functions over the object graph. That means the cost of running them is essentially zero, and the cost of running the wrong one is also zero — which is the exact inverse of the risk profile of commands like reset, rebase, or push. The skill being built here isn't memorizing flags. It's developing a reflex to look before you leap.
+
+The mental model is simple once you've internalized the object graph and the three trees. Everything in your repository — commits, trees, blobs, refs — is content-addressable and immutable. Inspection commands are just different lenses onto that same underlying data. The lens you pick determines what becomes visible. Pick log, and you see the DAG. Pick show, and you zoom into a single object. Pick blame, and you trace a line of code back through the commits that touched it. Pick diff, and you compare any two trees in the database. The commands feel different on the surface, but they're all answering variations of the same question: what does the graph actually contain, right here, right now?
+
+The most load-bearing of these is git log, which is also the one most people use at a tenth of its capacity. The default output — a vertical list of commit messages — is misleading because it makes history look linear when it almost never is. The flags are what turn it from a chronological dump into an actual view of the graph: graph draws the branch structure as ASCII, oneline collapses each commit to a single line so the structure is legible at scale, all shows every ref's history rather than just the current branch's, and stat appends a per-file change summary so you can see scope at a glance. Combined, these turn the abstract DAG into something you can read like a map. If you only learn one thing about log, learn that the default view is a lie of omission and the flags are how you correct it.
+
+Git show is the zoom lens. Given any SHA — a commit, a tree, a blob, a tag — it tells you what that object actually is and, for commits, what changed in it. This is what collapses the "what even is this hash someone pasted into a Slack thread" question into a single command. It's also the cleanest way to inspect a single commit's diff without the noise of log's surrounding context. Blame is the orthogonal lens: instead of asking "what changed in this commit," it asks "which commit last touched each line of this file." The practical value of blame is rarely literal authorship — it's archaeology. You're using it to find the commit that introduced a line so you can read its message and surrounding diff and understand the intent behind code that, stripped of context, looks arbitrary.
+
+Git diff is the most general of these tools and the most underused. Most people know it as the command that shows unstaged changes, but that's just the default invocation — diff can compare any two trees in the repository. Two commits, two branches, a commit and a tag, your working directory against an arbitrary commit from six months ago. Once you see diff as a general two-tree comparison rather than a fixed "what's changed since the last commit" view, it becomes the tool you use to answer questions like "what's actually different between these two release branches" or "what did this PR really change relative to the merge base." The three-tree comparisons from the staging-area model are just the most common special cases. The pickaxe variant, log with the dash-S flag, extends this further: instead of searching commit messages, it searches the history of content itself, finding the commit where a specific string was added or removed. This is how you find when a deleted line existed, which is a question commit-message search cannot answer.
+
+The point of treating inspection as its own discipline is that it inverts the default Git failure mode. The copy-paste-and-pray pattern fails because the action precedes the understanding. The inspection-first pattern succeeds because by the time you run the dangerous command, you've already seen the state it operates on. You know which commits the reset will move past, which commits the rebase will replay, which commits the force-push will overwrite. The dangerous command isn't dangerous anymore — it's just the last move in a sequence you've already mentally simulated. That's what fluency in Git actually looks like, and it starts with the reflex to look first.
+
+## Level 2 candidates
+
+**git log flags (oneline, graph, all, stat)** — Covers the specific flag combinations that transform log's default chronological output into an actual visualization of the DAG, including how to see every ref at once and how to surface per-commit scope. Worth a deep dive because the difference between default log and well-flagged log is the difference between guessing at branch structure and reading it directly, and each flag has subtler interactions worth understanding (notably how all interacts with graph when branches have diverged significantly).
+
+**git show on arbitrary objects** — Covers how show behaves differently depending on whether the SHA refers to a commit, tree, blob, or tag, and how this collapses "what is this hash" into a single uniform command. Worth deeper exploration because using show on trees and blobs directly is the most concrete way to internalize that the object database is just content addressed by hash — it makes the abstract model tangible.
+
+**git blame for archaeology, not attribution** — Covers using blame to trace a line back to the commit that introduced it, then reading that commit's message and surrounding diff to recover intent. Worth going deeper because the real technique is iterative — blame, then show, then blame again on the parent — and the workflow of walking backwards through history one line at a time is a skill that takes practice to develop fluency in.
+
+**git diff between arbitrary refs** — Covers the generalization of diff from "working directory vs index" to "any tree vs any tree," including the syntax for comparing branches, commits, and tags directly. Worth a deep dive because the two-dot vs three-dot range syntax (A..B vs A...B) has real semantic differences tied to merge bases and reachability, and getting this wrong silently produces misleading diffs.
+
+**git log -S and pickaxe search** — Covers searching history by content change rather than commit message, finding the specific commit where a string was introduced or removed. Worth going deeper because pickaxe is the only practical way to answer "when did this line exist" for code that's already been deleted, and the regex variant (dash-G) has different semantics worth understanding separately.
+
+---
+
+## Original Content
+
+#### L1-12 · Inspecting History
+Most of the anxiety around Git comes from not being able to *see* what's actually happening before you act — these are the read-only tools that let you build confidence before committing to a destructive operation. `git log` with the right flags turns the abstract DAG from L1-04 into something visible; `git blame` and `git show` let you attribute and inspect specific changes; `git diff` variants let you compare any two trees, not just the three default ones. Treat this entire group as the "look before you leap" toolkit that should precede most of Group 4's other topics in practice.
