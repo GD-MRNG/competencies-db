@@ -1,0 +1,42 @@
+## Metadata
+- **Date:** 25-06-2026
+- **Source:** 04_processes_pids_and_the_process_treee.txt
+- **Model:** claude-opus-4.7
+- **Prompt:** cognitive-assets/prompts/competencies_db_level_1_post.txt
+
+## LLM Processed Content
+
+# L1-04 · Processes, PIDs, and the Process Tree
+
+When you type a command and hit enter, it feels like the shell *is* running your program — like `ls` and `git` are extensions of the prompt itself, summoned into existence by the words you typed. They're not. The shell doesn't run anything in any deep sense. What actually happens is that the OS creates a separate, independent program in memory, gives it a number, hands it some inherited state, and starts it executing — and from that instant, the thing running `ls` has no more intrinsic connection to your shell than a tenant has to their landlord. The shell is just the one who asked the kernel to let it move in.
+
+That separate, independent thing is a process, and it is the OS's primary unit of bookkeeping for "a program that is currently running." A process is not the program — the program is the file on disk, inert until something asks for it. The process is the live instance: a chunk of memory holding the program's code and data, a record of which files it has open, a snapshot of where in the code it currently is, plus everything the kernel needs to track to keep it isolated from every other running thing. The kernel hands each process a unique number, the PID, the way a hospital wristbands a patient. Every operation that touches a running program — inspecting it, signaling it, killing it, asking what it's doing — goes through that number.
+
+The detail that makes this go from a definition to a worldview is that the shell itself is also a process. So is the terminal emulator that contains it. So is the desktop environment that launched the emulator, all the way up to the very first process the kernel started at boot. Every process (except that first one) was created by another process — its parent — and remembers which process that was. The result is that everything running on your machine at any given moment is a strict tree, rooted at boot, branching out through every program you've ever launched in this session. Your terminal emulator is a process. It launched a shell process as its child. The shell launched `ls` (or `python`, or `npm`, or `git`) as *its* child. If `git` shells out to run a pager, that pager is `git`'s child, and your shell's grandchild. There is no ambiguity about who spawned whom; the kernel tracks it.
+
+This tree is what makes `ps`, `top`, Activity Monitor, and Task Manager all suddenly legible as the same thing. They are not four different inventories of four different kinds of "running stuff" — they are four different viewing tools pointed at the exact same underlying structure, the kernel's process table. The columns differ, the sort order differs, the GUI polish differs, but the rows are the same rows. Once you internalize the tree, you stop reading `ps` output as a flat list of mysterious names and start reading it as a family — this Chrome helper belongs to that Chrome main process, this Python worker belongs to that shell tab, this orphaned thing has no parent left and is therefore the survivor of some crash.
+
+It also explains a behavior you've almost certainly hit and probably found surprising: killing a parent can take its children with it. This isn't malice or a bug. It's a consequence of the tree structure plus a few rules about how processes and their controlling environment relate — close the terminal window, and the shell inside it gets a signal that says "your terminal is gone"; the shell typically reacts by signaling its own children that *their* world is ending; and so the tree comes down branch by branch. Conversely, when a parent dies but its children survive (because they were detached, or backgrounded, or just lucky in their timing), those children become "orphans" and get adopted by a designated caretaker process so the tree stays well-formed. The OS will not tolerate a process with no parent in its bookkeeping.
+
+The everyday consequence is that almost every confusion about "running programs" — why a background job died when you closed the window, why a process is still holding a file open after you thought you'd quit it, why CPU is mysteriously pegged by something with a name you don't recognize — resolves into a question about the tree. Who is the parent? Who are the children? What signal traveled from one to the other, and when? You don't need to memorize the answers to those questions in advance. You need to know that the questions are answerable, that there is a real structure underneath, and that every tool from `ps` to Task Manager is just a different window onto it.
+
+Once that lands, the shell stops feeling like a magic prompt that conjures commands into existence and starts feeling like what it actually is: a long-lived process whose entire job is to keep asking the kernel to create more processes on your behalf, then wait for them to finish, then ask for the next one. The prompt is the pause between children.
+
+## Level 2 candidates
+
+**`fork` and `exec` (Unix) vs `CreateProcess` (Windows)** — Covers the actual mechanism by which a parent process creates a child: Unix's two-step model (clone the current process, then replace its memory with the new program) versus Windows' single-step model. Worth a deeper look because the fork/exec split has real historical reasons and real present-day consequences for how environment inheritance, file descriptor passing, and shell pipelines work — it's one of the load-bearing differences between the Unix and Windows lineages.
+
+**Parent/child process relationships, orphans, and zombies** — Covers what happens at the edges of the tree: when a parent dies before its child, when a child dies but the parent hasn't yet acknowledged it, and the designated processes that clean up the resulting mess. Worth going deeper because "zombie process" sounds like jargon until you realize it's a specific, named state with a specific cause, and understanding it is the difference between guessing at weird `ps` output and reading it.
+
+**Foreground vs background jobs (`&`, `fg`, `bg`)** — Covers what's actually happening when you background a job: the shell choosing not to wait for that child before returning your prompt, and the machinery that lets you pull it back into focus. Worth deeper treatment because job control is where the abstract "shell is a process managing children" model becomes a concrete set of keystrokes you use daily, and the underlying mechanism is small enough to fully understand.
+
+**Environment variables and inheritance** — Covers why a child process sees the variables you `export`ed but not the ones you merely set, and why this happens at process-creation time rather than continuously. Worth a deeper dive because environment inheritance is the direct cause of an enormous class of "works here, not there" bugs, and it's one of the cleanest examples of how the process tree's structure produces observable, debuggable behavior.
+
+**Process states (running, sleeping, stopped, zombie)** — Covers the cryptic single-letter codes in `ps` and `top` output as a real, small state machine with well-defined transitions. Worth going deeper because these codes are dismissed as noise by most users, but they're actually one of the highest-information-density signals the OS gives you about what a process is doing right now and why it might not be making progress.
+
+---
+
+## Original Content
+
+#### L1-04 · Processes, PIDs, and the Process Tree
+A "process" is the OS's bookkeeping object for a running program — memory, open files, and execution state, all tracked under a single number (the PID). Every command you run spawns at least one process, and the shell itself is a process too, which is the detail that explains the entire parent-child structure of everything happening on your machine at any moment: your terminal emulator is a process, running a shell process, running whatever command process you just typed, in a strict tree. This is the concept that makes `ps`, Task Manager, Activity Monitor, and `top` all legible as three different windows onto the exact same underlying structure, and explains why killing a parent process can take its children down with it.
