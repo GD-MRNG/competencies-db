@@ -27,6 +27,8 @@ Level 2 candidates:
 - **Instance lifecycle** — the difference between a crash you recover from and a crash that loses state, and why that difference is a design decision, not an accident.
 - **Bin-packing and scheduling** — why your "guaranteed" capacity can still experience noisy-neighbor effects.
 - **Interruptible vs. reserved capacity** — the economic logic behind why providers sell you the same hardware at wildly different prices depending on how much control you give up.
+- **Shared responsibility boundary** — the line that shifts with every abstraction layer, and why "the provider handles it" and "you handle it" redraw themselves every time you move up the stack.
+- **Tenant isolation guarantees** — what physically stops another customer's workload from touching yours, and why that guarantee gets weaker as density and cost efficiency go up.
 
 #### L1-02 · Storage
 What it is and why it matters: Storage abstractions diverged the moment workloads diverged — a video file, a bank transaction, and a filesystem mount have incompatible access patterns, and no single storage system optimizes for all three. The object/block/file split you see in every provider isn't arbitrary; it's a direct encoding of *how* data will be read and written, not just *how much* of it there is. What breaks people is assuming durability and consistency are the same guarantee — a system can lose zero bytes and still hand you stale reads. Once you understand which access pattern a storage product was built for, you can predict its consistency behavior without reading the fine print.
@@ -115,6 +117,7 @@ What it is and why it matters: Cloud pricing looks like a billing detail but is 
 
 Level 2 candidates:
 - **Provisioned vs. consumption pricing** — the mismatch that explains most "why is this so expensive" surprises.
+- **Egress and data-transfer pricing** — why moving data out is priced differently from moving it in, and why that asymmetry is the real mechanism behind vendor lock-in, not a technical limitation.
 - **Rightsizing** — why the instinct to over-provision "to be safe" is itself a recurring cost, not a one-time buffer.
 - **Idle and orphaned resources** — how cost accumulates silently from things nobody is actively using or even aware exist.
 - **Tagging and attribution** — why cost without ownership is unaccountable, and unaccountable cost never gets fixed.
